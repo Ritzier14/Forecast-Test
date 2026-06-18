@@ -15,6 +15,11 @@ public sealed class AccountingNoDecimalsConverter : IValueConverter
         var roundedValue = decimal.Round(numericValue, 0, MidpointRounding.AwayFromZero);
         if (roundedValue == 0)
         {
+            if (parameter is string text && string.Equals(text, "BlankZero", StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Empty;
+            }
+
             return "-";
         }
 

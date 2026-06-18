@@ -202,6 +202,28 @@ public sealed partial class MainWindowViewModel
         IsDirty = true;
     }
 
+    public IReadOnlyList<WorkspaceColumnLayout> GetSelectedWorkspaceColumnLayouts()
+    {
+        return SelectedWorkspaceView?.ColumnLayouts?.Select(CloneWorkspaceColumnLayout).ToList() ?? [];
+    }
+
+    public void SetSelectedWorkspaceColumnLayouts(IEnumerable<WorkspaceColumnLayout> columnLayouts)
+    {
+        if (SelectedWorkspaceView is null)
+        {
+            return;
+        }
+
+        var nextLayouts = NormalizeWorkspaceColumnLayouts(columnLayouts);
+        if (WorkspaceColumnLayoutsEqual(SelectedWorkspaceView.ColumnLayouts, nextLayouts))
+        {
+            return;
+        }
+
+        SelectedWorkspaceView.ColumnLayouts = nextLayouts;
+        IsDirty = true;
+    }
+
     public void SetSelectedWorkspaceContentKey(string contentKey)
     {
         if (SelectedWorkspaceView is null || string.IsNullOrWhiteSpace(contentKey))
@@ -251,6 +273,65 @@ public sealed partial class MainWindowViewModel
 
         SelectedDetailWorkspaceView.HiddenColumnKeys = nextKeys;
         IsDirty = true;
+    }
+
+    public IReadOnlyList<WorkspaceColumnLayout> GetSelectedDetailWorkspaceColumnLayouts()
+    {
+        return SelectedDetailWorkspaceView?.ColumnLayouts?.Select(CloneWorkspaceColumnLayout).ToList() ?? [];
+    }
+
+    public void SetSelectedDetailWorkspaceColumnLayouts(IEnumerable<WorkspaceColumnLayout> columnLayouts)
+    {
+        if (SelectedDetailWorkspaceView is null)
+        {
+            return;
+        }
+
+        var nextLayouts = NormalizeWorkspaceColumnLayouts(columnLayouts);
+        if (WorkspaceColumnLayoutsEqual(SelectedDetailWorkspaceView.ColumnLayouts, nextLayouts))
+        {
+            return;
+        }
+
+        SelectedDetailWorkspaceView.ColumnLayouts = nextLayouts;
+        IsDirty = true;
+    }
+
+    private static List<WorkspaceColumnLayout> NormalizeWorkspaceColumnLayouts(IEnumerable<WorkspaceColumnLayout> columnLayouts)
+    {
+        return columnLayouts
+            .Where(layout => !string.IsNullOrWhiteSpace(layout.Key))
+            .GroupBy(layout => layout.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .OrderBy(layout => layout.DisplayIndex)
+            .Select(layout => new WorkspaceColumnLayout
+            {
+                Key = layout.Key,
+                Width = layout.Width,
+                DisplayIndex = layout.DisplayIndex
+            })
+            .ToList();
+    }
+
+    private static bool WorkspaceColumnLayoutsEqual(IReadOnlyList<WorkspaceColumnLayout>? current, IReadOnlyList<WorkspaceColumnLayout> next)
+    {
+        current ??= [];
+        if (current.Count != next.Count)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < current.Count; i++)
+        {
+            if (!string.Equals(current[i].Key, next[i].Key, StringComparison.OrdinalIgnoreCase)
+                || current[i].DisplayIndex != next[i].DisplayIndex
+                || Math.Abs(current[i].Width - next[i].Width) > 0.5)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public void SetSelectedDetailWorkspaceContentKey(string contentKey)

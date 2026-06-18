@@ -126,7 +126,7 @@ public partial class MainWindow
     {
         var menu = CreateColumnContextMenu();
         foreach (var column in ForecastLinesGrid.Columns
-                     .Where(column => column.Visibility == Visibility.Visible && GetColumnSortPath(column) is not null)
+                     .Where(column => GetColumnSortPath(column) is not null)
                      .OrderBy(column => column.DisplayIndex))
         {
             var columnItem = new MenuItem { Header = GetForecastColumnMenuLabel(column) };
@@ -146,8 +146,13 @@ public partial class MainWindow
     private void OpenAddFilterMenu(Button pill)
     {
         var menu = CreateColumnContextMenu();
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            menu.Items.Add(BuildQuickFiltersMenu(viewModel));
+            AddMenuSeparator(menu);
+        }
+
         foreach (var column in ForecastLinesGrid.Columns
-                     .Where(column => column.Visibility == Visibility.Visible)
                      .OrderBy(column => column.DisplayIndex))
         {
             var columnKey = GetColumnPersistenceKey(column);
@@ -162,6 +167,7 @@ public partial class MainWindow
             menu.Items.Add(columnItem);
         }
 
+        ApplyMenuIcons(menu);
         OpenPillMenu(pill, menu);
     }
 
@@ -451,7 +457,7 @@ public partial class MainWindow
     {
         if (column.Header is ForecastMonthColumnDefinition monthColumn)
         {
-            return $"[{monthColumn.Key}]";
+            return monthColumn.IsTotal ? $"[{monthColumn.Key}]" : null;
         }
 
         return GetColumnBindingPath(column);

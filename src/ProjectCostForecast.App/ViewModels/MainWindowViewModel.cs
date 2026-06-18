@@ -621,6 +621,20 @@ public sealed partial class MainWindowViewModel : NotifyObject
         }
     }
 
+    public bool ShowForecastZeroAsBlank => SelectedWorkspaceView?.ShowZeroAsBlank ?? true;
+
+    public void SetSelectedForecastShowZeroAsBlank(bool showZeroAsBlank)
+    {
+        if (SelectedWorkspaceView is null || SelectedWorkspaceView.ShowZeroAsBlank == showZeroAsBlank)
+        {
+            return;
+        }
+
+        SelectedWorkspaceView.ShowZeroAsBlank = showZeroAsBlank;
+        IsDirty = true;
+        OnPropertyChanged(nameof(ShowForecastZeroAsBlank));
+    }
+
     public string SelectedMonthlyVarianceFilter
     {
         get => _selectedMonthlyVarianceFilter;
@@ -710,6 +724,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
                 OnPropertyChanged(nameof(ShowRawTransactionsGroupedByMonth));
                 OnPropertyChanged(nameof(ShowRawTransactionsPivotByMonth));
                 OnPropertyChanged(nameof(ShowSummaryViewByMonth));
+                OnPropertyChanged(nameof(ShowForecastZeroAsBlank));
                 if (forecastGroupingChanged)
                 {
                     ApplyForecastGrouping();

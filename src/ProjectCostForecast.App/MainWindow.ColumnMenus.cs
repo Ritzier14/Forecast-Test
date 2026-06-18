@@ -222,6 +222,15 @@ public partial class MainWindow
                 swapHeaderOrder.Click += (_, _) => viewModel.ToggleMonthForecastHeaderOrder();
                 menu.Items.Add(swapHeaderOrder);
             }
+
+            var showZeroAsBlank = new MenuItem
+            {
+                Header = "Show zero as blank",
+                IsCheckable = true,
+                IsChecked = viewModel.ShowForecastZeroAsBlank
+            };
+            showZeroAsBlank.Click += (_, _) => viewModel.SetSelectedForecastShowZeroAsBlank(showZeroAsBlank.IsChecked);
+            menu.Items.Add(showZeroAsBlank);
         }
 
         if (viewModel is not null
@@ -395,11 +404,11 @@ public partial class MainWindow
         menu.Items.Add(new Separator());
         var forecastMenu = new MenuItem
         {
-            Header = "Month Forecast"
+            Header = "Forecast View"
         };
         menu.Items.Add(forecastMenu);
 
-        AddColumnGroupVisibilityItem(forecastMenu, grid, "Show Month Forecast", monthColumns);
+        AddColumnGroupVisibilityItem(forecastMenu, grid, "Show Forecast View", monthColumns);
         var financialYearsMenu = new MenuItem { Header = "Financial Years" };
         forecastMenu.Items.Add(financialYearsMenu);
 

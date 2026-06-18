@@ -214,6 +214,8 @@ public sealed class WorkspaceViewTab : ObservableModel
         set => SetProperty(ref _contentKey, value);
     }
     public List<string> HiddenColumnKeys { get; set; } = [];
+    public List<WorkspaceColumnLayout> ColumnLayouts { get; set; } = [];
+    public bool ShowZeroAsBlank { get; set; } = true;
     public bool GroupForecastLinesByTask { get; set; }
     public string ForecastGroupByKey { get; set; } = string.Empty;
 

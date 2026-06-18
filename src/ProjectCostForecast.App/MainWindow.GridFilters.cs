@@ -26,9 +26,15 @@ public partial class MainWindow
             foreach (var column in grid.Columns)
             {
                 EnsureColumnPresentation(column);
+                TrackWorkspaceColumnStateWidth(column);
             }
 
             grid.AddHandler(DataGridColumnHeader.PreviewMouseRightButtonDownEvent, new MouseButtonEventHandler(ShowColumnMenu), true);
+            if (_workspaceColumnStateTrackedGrids.Add(grid))
+            {
+                grid.ColumnReordered += Grid_ColumnLayoutChanged;
+                grid.PreviewMouseLeftButtonUp += Grid_ColumnLayoutMouseLeftButtonUp;
+            }
         }
 
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
@@ -70,6 +76,71 @@ public partial class MainWindow
         GridHoverState.SetIsRowHovered(e.Row, isHovered);
     }
 
+    private void Grid_ColumnLayoutChanged(object? sender, DataGridColumnEventArgs e)
+    {
+        if (!_applyingWorkspaceColumnState && sender is DataGrid grid)
+        {
+            QueueCaptureGridColumnState(grid);
+        }
+    }
+
+    private void Grid_ColumnLayoutMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_applyingWorkspaceColumnState
+            && sender is DataGrid grid
+            && e.OriginalSource is DependencyObject source
+            && FindParent<DataGridColumnHeader>(source) is not null)
+        {
+            QueueCaptureGridColumnState(grid);
+        }
+    }
+
+    private void TrackWorkspaceColumnStateWidth(DataGridColumn column)
+    {
+        if (!_workspaceColumnStateTrackedColumns.Add(column))
+        {
+            return;
+        }
+
+        ForecastColumnActualWidthDescriptor?.AddValueChanged(column, WorkspaceColumnActualWidthChanged);
+    }
+
+    private void WorkspaceColumnActualWidthChanged(object? sender, EventArgs e)
+    {
+        if (_applyingWorkspaceColumnState || sender is not DataGridColumn column)
+        {
+            return;
+        }
+
+        var grid = GetColumnStateGrid(column);
+        if (grid is not null)
+        {
+            QueueCaptureGridColumnState(grid);
+        }
+    }
+
+    private DataGrid? GetColumnStateGrid(DataGridColumn column)
+    {
+        return GetWorkspaceStateGrids().FirstOrDefault(grid => grid.Columns.Contains(column));
+    }
+
+    private void QueueCaptureGridColumnState(DataGrid grid)
+    {
+        if (_applyingWorkspaceColumnState || !_workspaceColumnStateCaptureQueuedGrids.Add(grid))
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        {
+            _workspaceColumnStateCaptureQueuedGrids.Remove(grid);
+            if (!_applyingWorkspaceColumnState)
+            {
+                CaptureGridColumnState(grid);
+            }
+        }));
+    }
+
     private void Grid_MouseMove(object sender, MouseEventArgs e)
     {
         if (sender is not DataGrid grid)
@@ -81,6 +152,10 @@ public partial class MainWindow
             ? FindParent<DataGridRow>(source)
             : null;
         UpdateHoveredRow(grid, row);
+        if (ReferenceEquals(grid, ForecastLinesGrid) && (Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
+        {
+            UpdateHoveredForecastLine(e.OriginalSource);
+        }
     }
 
     private void Grid_MouseLeave(object sender, MouseEventArgs e)
@@ -623,7 +698,9 @@ public partial class MainWindow
     {
         if (column is DataGridTemplateColumn { Header: ForecastMonthColumnDefinition monthColumn })
         {
-            return item => item is ForecastLine line ? line[monthColumn.Key] : null;
+            return monthColumn.IsTotal
+                ? item => item is ForecastLine line ? line[monthColumn.Key] : null
+                : null;
         }
 
         var path = GetColumnBindingPath(column);

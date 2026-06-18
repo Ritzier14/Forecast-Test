@@ -464,10 +464,23 @@ public sealed partial class MainWindowViewModel
                 Name = view.Name,
                 GroupForecastLinesByTask = view.GroupForecastLinesByTask,
                 ForecastGroupByKey = NormalizeForecastGroupByKey(view.ForecastGroupByKey),
+                ShowZeroAsBlank = view.ShowZeroAsBlank,
                 HiddenColumnKeys = view.HiddenColumnKeys
                     .Where(key => !string.IsNullOrWhiteSpace(key))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
+                ColumnLayouts = view.ColumnLayouts
+                    .Where(layout => !string.IsNullOrWhiteSpace(layout.Key))
+                    .GroupBy(layout => layout.Key, StringComparer.OrdinalIgnoreCase)
+                    .Select(group => group.First())
+                    .OrderBy(layout => layout.DisplayIndex)
+                    .Select(layout => new WorkspaceColumnLayout
+                    {
+                        Key = layout.Key,
+                        Width = layout.Width,
+                        DisplayIndex = layout.DisplayIndex
+                    })
                     .ToList()
             }))
             .ToList();
@@ -495,7 +508,17 @@ public sealed partial class MainWindowViewModel
             Name = string.IsNullOrWhiteSpace(layout.Name) ? "View" : layout.Name,
             GroupForecastLinesByTask = string.Equals(groupByKey, ForecastGroupByTaskKey, StringComparison.OrdinalIgnoreCase),
             ForecastGroupByKey = groupByKey,
-            HiddenColumnKeys = layout.HiddenColumnKeys?.ToList() ?? []
+            HiddenColumnKeys = layout.HiddenColumnKeys?.ToList() ?? [],
+            ColumnLayouts = layout.ColumnLayouts?
+                .Where(item => !string.IsNullOrWhiteSpace(item.Key))
+                .Select(item => new WorkspaceColumnLayout
+                {
+                    Key = item.Key,
+                    Width = item.Width,
+                    DisplayIndex = item.DisplayIndex
+                })
+                .ToList() ?? [],
+            ShowZeroAsBlank = layout.ShowZeroAsBlank
         };
     }
 

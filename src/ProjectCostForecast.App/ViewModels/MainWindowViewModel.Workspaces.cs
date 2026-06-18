@@ -28,6 +28,8 @@ public sealed partial class MainWindowViewModel
                 ContentKey = view.ContentKey,
                 Name = view.Name,
                 HiddenColumnKeys = view.HiddenColumnKeys ?? [],
+                ColumnLayouts = view.ColumnLayouts ?? [],
+                ShowZeroAsBlank = view.ShowZeroAsBlank,
                 GroupForecastLinesByTask = view.GroupForecastLinesByTask,
                 ForecastGroupByKey = NormalizeForecastGroupByKey(view.ForecastGroupByKey)
             })
@@ -90,8 +92,19 @@ public sealed partial class MainWindowViewModel
             WorkspaceKey = workspaceKey,
             ContentKey = "Default",
             Name = "Default",
+            ShowZeroAsBlank = true,
             GroupForecastLinesByTask = isForecast,
             ForecastGroupByKey = isForecast ? ForecastGroupByTaskKey : ForecastGroupByNoneKey
+        };
+    }
+
+    private static WorkspaceColumnLayout CloneWorkspaceColumnLayout(WorkspaceColumnLayout layout)
+    {
+        return new WorkspaceColumnLayout
+        {
+            Key = layout.Key,
+            Width = layout.Width,
+            DisplayIndex = layout.DisplayIndex
         };
     }
 
@@ -131,6 +144,8 @@ public sealed partial class MainWindowViewModel
             ContentKey = sourceView?.ContentKey ?? "Default",
             Name = $"View {nextNumber}",
             HiddenColumnKeys = sourceView?.HiddenColumnKeys?.ToList() ?? [],
+            ColumnLayouts = sourceView?.ColumnLayouts?.Select(CloneWorkspaceColumnLayout).ToList() ?? [],
+            ShowZeroAsBlank = sourceView?.ShowZeroAsBlank ?? true,
             GroupForecastLinesByTask = sourceView?.GroupForecastLinesByTask ?? false,
             ForecastGroupByKey = NormalizeForecastGroupByKey(sourceView?.ForecastGroupByKey),
             IsEditing = true
@@ -162,6 +177,8 @@ public sealed partial class MainWindowViewModel
             ContentKey = sourceView?.ContentKey ?? "Default",
             Name = $"View {nextNumber}",
             HiddenColumnKeys = sourceView?.HiddenColumnKeys?.ToList() ?? [],
+            ColumnLayouts = sourceView?.ColumnLayouts?.Select(CloneWorkspaceColumnLayout).ToList() ?? [],
+            ShowZeroAsBlank = sourceView?.ShowZeroAsBlank ?? true,
             GroupForecastLinesByTask = sourceView?.GroupForecastLinesByTask ?? false,
             ForecastGroupByKey = NormalizeForecastGroupByKey(sourceView?.ForecastGroupByKey),
             IsEditing = true

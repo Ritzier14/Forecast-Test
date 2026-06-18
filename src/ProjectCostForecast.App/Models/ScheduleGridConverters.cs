@@ -42,6 +42,14 @@ public sealed class ForecastAmountTextConverter : IValueConverter
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
+        if (parameter is string text
+            && string.Equals(text, "BlankZero", StringComparison.OrdinalIgnoreCase)
+            && value is decimal decimalValue
+            && decimalValue == 0m)
+        {
+            return string.Empty;
+        }
+
         return value;
     }
 

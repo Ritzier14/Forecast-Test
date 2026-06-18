@@ -194,7 +194,7 @@ public partial class MainWindow
         }
 
         _activeGridScrollViewer = scrollViewer;
-        _gridRightDragStart = e.GetPosition(scrollViewer);
+        _gridRightDragStart = e.GetPosition(grid);
         _gridHorizontalScrollStartOffset = scrollViewer.HorizontalOffset;
         _gridVerticalScrollStartOffset = scrollViewer.VerticalOffset;
         _gridRightDragging = false;
@@ -207,7 +207,7 @@ public partial class MainWindow
             return;
         }
 
-        var current = e.GetPosition(_activeGridScrollViewer);
+        var current = e.GetPosition(grid);
         var deltaX = current.X - _gridRightDragStart.Value.X;
         var deltaY = current.Y - _gridRightDragStart.Value.Y;
         if (!_gridRightDragging && Math.Abs(deltaX) < 6 && Math.Abs(deltaY) < 6)

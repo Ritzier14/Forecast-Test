@@ -169,6 +169,15 @@ public sealed class WorkspaceViewLayout
     public string ContentKey { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public List<string> HiddenColumnKeys { get; set; } = [];
+    public List<WorkspaceColumnLayout> ColumnLayouts { get; set; } = [];
+    public bool ShowZeroAsBlank { get; set; } = true;
     public bool GroupForecastLinesByTask { get; set; }
     public string ForecastGroupByKey { get; set; } = string.Empty;
+}
+
+public sealed class WorkspaceColumnLayout
+{
+    public string Key { get; set; } = string.Empty;
+    public double Width { get; set; }
+    public int DisplayIndex { get; set; }
 }

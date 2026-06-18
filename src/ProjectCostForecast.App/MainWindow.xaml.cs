@@ -89,6 +89,10 @@ public partial class MainWindow : Window
     private bool _ledgerChartScrollQueued;
     private bool _workspaceViewColumnStateQueued;
     private bool _detailWorkspaceViewColumnStateQueued;
+    private bool _applyingWorkspaceColumnState;
+    private readonly HashSet<DataGrid> _workspaceColumnStateTrackedGrids = [];
+    private readonly HashSet<DataGridColumn> _workspaceColumnStateTrackedColumns = [];
+    private readonly HashSet<DataGrid> _workspaceColumnStateCaptureQueuedGrids = [];
     private System.Diagnostics.Stopwatch? _forecastGridFirstDrawTimer;
     private bool _forecastGridFirstDrawReported;
     private readonly HashSet<DataGrid> _rowHoverAttachedGrids = [];

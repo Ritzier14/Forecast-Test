@@ -135,6 +135,7 @@ public partial class MainWindow
             grid.CommitEdit(DataGridEditingUnit.Cell, true);
             grid.CommitEdit(DataGridEditingUnit.Row, true);
             EnsureCurrentCellSelected(grid);
+            NormalizeDeleteSelectionToCurrentCell(grid);
             ClearSelectedGridCells(grid, e.Key == Key.Back ? "Cleared" : "Deleted");
             e.Handled = true;
             return;
@@ -407,15 +408,62 @@ public partial class MainWindow
 
     private void EnsureCurrentCellSelected(DataGrid grid)
     {
-        if (grid.SelectedCells.Count > 0)
+        if (!TryGetCurrentSpreadsheetCell(grid, out var item, out var column))
         {
             return;
         }
 
-        if (TryGetCurrentSpreadsheetCell(grid, out var item, out var column))
+        var currentInfo = new DataGridCellInfo(item, column);
+        if (grid.SelectedCells.Contains(currentInfo))
         {
-            grid.SelectedCells.Add(new DataGridCellInfo(item, column));
+            return;
         }
+
+        if (grid.SelectedCells.Count <= 1)
+        {
+            grid.SelectedCells.Clear();
+        }
+
+        if (!grid.SelectedCells.Contains(currentInfo))
+        {
+            grid.SelectedCells.Add(currentInfo);
+        }
+    }
+
+    private void NormalizeDeleteSelectionToCurrentCell(DataGrid grid)
+    {
+        if (!TryGetCurrentSpreadsheetCell(grid, out var item, out var column))
+        {
+            return;
+        }
+
+        var selectedCells = grid.SelectedCells
+            .Where(cell => cell.IsValid && cell.Item is not null && cell.Column is not null)
+            .ToList();
+        if (selectedCells.Count == 0)
+        {
+            return;
+        }
+
+        var visibleColumnCount = grid.Columns.Count(candidate => candidate.Visibility == Visibility.Visible);
+        if (visibleColumnCount <= 0)
+        {
+            return;
+        }
+
+        var distinctItems = selectedCells
+            .Select(cell => cell.Item)
+            .Distinct(ReferenceEqualityComparer.Instance)
+            .ToList();
+        if (distinctItems.Count != 1
+            || !ReferenceEquals(distinctItems[0], item)
+            || selectedCells.Count < visibleColumnCount)
+        {
+            return;
+        }
+
+        grid.SelectedCells.Clear();
+        grid.SelectedCells.Add(new DataGridCellInfo(item, column));
     }
 
     private bool TryNavigateSpreadsheetCell(DataGrid grid, Key key, bool reverse, bool control = false)
@@ -501,39 +549,29 @@ public partial class MainWindow
         return true;
     }
 
-    private void SelectSingleGridCell(DataGrid grid, object item, DataGridColumn column)
+    private void SelectSingleGridCell(
+        DataGrid grid,
+        object item,
+        DataGridColumn column,
+        bool scrollIntoView = true,
+        bool focusCell = true)
     {
         var info = new DataGridCellInfo(item, column);
         grid.SelectedCells.Clear();
         grid.SelectedCells.Add(info);
         grid.CurrentCell = info;
-        grid.SelectedItem = item;
         SelectGridRowContext(grid, item);
-        grid.ScrollIntoView(item, column);
-        grid.Focus();
-        Keyboard.Focus(grid);
-        Dispatcher.BeginInvoke(() =>
+        if (scrollIntoView)
         {
-            if (grid.ItemContainerGenerator.ContainerFromItem(item) is not DataGridRow row)
-            {
-                grid.Focus();
-                Keyboard.Focus(grid);
-                return;
-            }
+            grid.ScrollIntoView(item, column);
+        }
 
-            var presenter = FindChild<DataGridCellsPresenter>(row);
-            var cell = presenter?.ItemContainerGenerator.ContainerFromIndex(column.DisplayIndex) as DataGridCell;
-            if (cell is not null)
-            {
-                cell.Focus();
-                Keyboard.Focus(cell);
-            }
-            else
-            {
-                grid.Focus();
-                Keyboard.Focus(grid);
-            }
-        }, System.Windows.Threading.DispatcherPriority.Input);
+        if (focusCell)
+        {
+            grid.Focus();
+            Keyboard.Focus(grid);
+        }
+
         QueueSpreadsheetSelectionUpdate(grid, [item], refreshAllVisuals: false);
     }
 
@@ -546,11 +584,24 @@ public partial class MainWindow
                 return;
             }
 
-            SelectSingleGridCell(grid, item, column);
+            SelectSingleGridCell(grid, item, column, scrollIntoView: false);
         }
 
         Dispatcher.BeginInvoke((Action)Restore, System.Windows.Threading.DispatcherPriority.Input);
         Dispatcher.BeginInvoke((Action)Restore, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+    }
+
+    private void QueueSpreadsheetCellActivation(DataGrid grid, object item, DataGridColumn column)
+    {
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, new Action(() =>
+        {
+            if (!grid.Items.Contains(item) || !grid.Columns.Contains(column))
+            {
+                return;
+            }
+
+            SelectSingleGridCell(grid, item, column, scrollIntoView: false, focusCell: false);
+        }));
     }
 
     private void SpreadsheetGrid_LoadingRow(object? sender, DataGridRowEventArgs e)
@@ -616,8 +667,7 @@ public partial class MainWindow
             return;
         }
 
-        SelectGridRowContext(grid, cell.DataContext);
-        QueueSpreadsheetSelectionUpdate(grid, [cell.DataContext]);
+        QueueSpreadsheetCellActivation(grid, cell.DataContext, cell.Column);
         if (IsManagementResourceGrid(grid) && CanWriteGridCell(grid, cell.DataContext, cell.Column))
         {
             Dispatcher.BeginInvoke(() => BeginSpreadsheetCellEdit(grid, cell.DataContext, cell.Column, null, replaceText: false), System.Windows.Threading.DispatcherPriority.Input);
@@ -863,14 +913,7 @@ public partial class MainWindow
             return;
         }
 
-        var info = new DataGridCellInfo(cell.DataContext, cell.Column);
-        if (!grid.SelectedCells.Contains(info))
-        {
-            grid.SelectedCells.Clear();
-            grid.SelectedCells.Add(info);
-        }
-
-        grid.CurrentCell = info;
+        SelectSingleGridCell(grid, cell.DataContext, cell.Column, scrollIntoView: false, focusCell: false);
         var menu = BuildSpreadsheetCellContextMenu(grid, cell);
         cell.ContextMenu = menu;
         menu.PlacementTarget = cell;
@@ -1059,14 +1102,30 @@ public partial class MainWindow
     private static MenuItem BuildQuickFiltersMenu(MainWindowViewModel viewModel)
     {
         var menu = new MenuItem { Header = "Quick filters" };
-        menu.Items.Add(CreateQuickFilterToggle("Actual cost only", viewModel.ShowOnlyLinesWithActualCost, value => viewModel.ShowOnlyLinesWithActualCost = value));
-        menu.Items.Add(CreateQuickFilterToggle("Cost this month only", viewModel.ShowCostThisMonthOnly, value => viewModel.ShowCostThisMonthOnly = value));
-        menu.Items.Add(CreateQuickFilterToggle("Remaining forecast only", viewModel.ShowOnlyLinesWithRemainingForecast, value => viewModel.ShowOnlyLinesWithRemainingForecast = value));
+        menu.Items.Add(CreateQuickFilterToggle("Actual cost only", viewModel.ShowOnlyLinesWithActualCost, value =>
+        {
+            ClearForecastQuickFilters(viewModel);
+            viewModel.ShowOnlyLinesWithActualCost = value;
+        }));
+        menu.Items.Add(CreateQuickFilterToggle("Cost this month only", viewModel.ShowCostThisMonthOnly, value =>
+        {
+            ClearForecastQuickFilters(viewModel);
+            viewModel.ShowCostThisMonthOnly = value;
+        }));
+        menu.Items.Add(CreateQuickFilterToggle("Remaining forecast only", viewModel.ShowOnlyLinesWithRemainingForecast, value =>
+        {
+            ClearForecastQuickFilters(viewModel);
+            viewModel.ShowOnlyLinesWithRemainingForecast = value;
+        }));
 
         var monthly = new MenuItem { Header = "Monthly variance" };
         foreach (var option in viewModel.MonthlyVarianceFilters)
         {
-            monthly.Items.Add(CreateQuickFilterChoice(option, viewModel.SelectedMonthlyVarianceFilter, value => viewModel.SelectedMonthlyVarianceFilter = value));
+            monthly.Items.Add(CreateQuickFilterChoice(option, viewModel.SelectedMonthlyVarianceFilter, value =>
+            {
+                ClearForecastQuickFilters(viewModel);
+                viewModel.SelectedMonthlyVarianceFilter = value;
+            }));
         }
 
         menu.Items.Add(monthly);
@@ -1074,11 +1133,24 @@ public partial class MainWindow
         var budget = new MenuItem { Header = "Budget variance" };
         foreach (var option in viewModel.BudgetVarianceFilters)
         {
-            budget.Items.Add(CreateQuickFilterChoice(option, viewModel.SelectedBudgetVarianceFilter, value => viewModel.SelectedBudgetVarianceFilter = value));
+            budget.Items.Add(CreateQuickFilterChoice(option, viewModel.SelectedBudgetVarianceFilter, value =>
+            {
+                ClearForecastQuickFilters(viewModel);
+                viewModel.SelectedBudgetVarianceFilter = value;
+            }));
         }
 
         menu.Items.Add(budget);
         return menu;
+    }
+
+    private static void ClearForecastQuickFilters(MainWindowViewModel viewModel)
+    {
+        viewModel.ShowOnlyLinesWithActualCost = false;
+        viewModel.ShowCostThisMonthOnly = false;
+        viewModel.ShowOnlyLinesWithRemainingForecast = false;
+        viewModel.SelectedMonthlyVarianceFilter = "All";
+        viewModel.SelectedBudgetVarianceFilter = "All";
     }
 
     private static MenuItem CreateQuickFilterToggle(string header, bool isChecked, Action<bool> apply)
@@ -1170,6 +1242,7 @@ public partial class MainWindow
         _spreadsheetPreviousCurrentCells.TryGetValue(grid, out var previousCell);
         var currentCell = grid.CurrentCell;
         _spreadsheetPreviousCurrentCells[grid] = currentCell;
+        EnsureCurrentCellSelected(grid);
         QueueSpreadsheetSelectionUpdate(grid, [previousCell.Item, currentCell.Item, GetGridRowContext(grid)]);
     }
 
@@ -1216,7 +1289,11 @@ public partial class MainWindow
             selectedColumns.Add(selectedCell.Column);
         }
 
-        var fullySelectedRowItems = new HashSet<object>(grid.SelectedItems.Cast<object>(), ReferenceEqualityComparer.Instance);
+        var fullySelectedRowItems = new HashSet<object>(
+            selectedColumnsByItem
+                .Where(entry => entry.Value.Count >= columnPositions.Count && columnPositions.Count > 0)
+                .Select(entry => entry.Key),
+            ReferenceEqualityComparer.Instance);
         var currentRowContext = GetGridRowContext(grid);
         var currentCell = grid.CurrentCell;
         var fillHandleCell = GetFillHandleCell(grid, fullySelectedRowItems);
@@ -1465,7 +1542,7 @@ public partial class MainWindow
             return;
         }
 
-        var anchorCell = GetSelectionOriginClearAnchorCell(grid, selectedCells);
+        var anchorCell = GetCurrentClearAnchorCell(grid) ?? GetSelectionOriginClearAnchorCell(grid, selectedCells);
         var anchorItem = anchorCell?.Item;
         var anchorColumn = anchorCell?.Column;
         var cells = selectedCells
@@ -1568,6 +1645,17 @@ public partial class MainWindow
                    && cell.Item is not null
                    && cell.Column is not null
                    && CanClearGridCell(grid, cell.Item, cell.Column)));
+    }
+
+    private DataGridCellInfo? GetCurrentClearAnchorCell(DataGrid grid)
+    {
+        if (!TryGetCurrentSpreadsheetCell(grid, out var item, out var column)
+            || !CanClearGridCell(grid, item, column))
+        {
+            return null;
+        }
+
+        return new DataGridCellInfo(item, column);
     }
 
     private void PasteIntoGrid(DataGrid grid)

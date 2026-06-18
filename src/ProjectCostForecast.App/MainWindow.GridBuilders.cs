@@ -76,6 +76,8 @@ public partial class MainWindow
         QueueSynchronizeManagementResourceGrids();
         ApplyForecastColumnHighlightState();
         QueueRebuildForecastYearBands();
+        QueueRefreshForecastGroupHeaderPresenters();
+        QueueSpreadsheetSelectionUpdate(ForecastLinesGrid, refreshAllVisuals: true);
         QueueApplyCurrentWorkspaceViewColumnState();
         RefreshForecastGridStatePills();
     }
@@ -590,10 +592,10 @@ public partial class MainWindow
                 IsReadOnly = columnDefinition.IsTotal || !columnDefinition.IsEditable,
                 CellStyle = CreateForecastMonthCellStyle(columnDefinition)
             };
-            column.CellTemplate = CreateForecastMonthDisplayTemplate(columnDefinition);
+            column.CellTemplate = CreateForecastMonthDisplayTemplate(columnDefinition, viewModel.ShowForecastZeroAsBlank);
             if (!columnDefinition.IsTotal && columnDefinition.IsEditable)
             {
-                column.CellEditingTemplate = CreateForecastMonthEditingTemplate(columnDefinition);
+                column.CellEditingTemplate = CreateForecastMonthEditingTemplate(columnDefinition, viewModel.ShowForecastZeroAsBlank);
             }
 
             AddForecastGridColumn(grid, freezeCandidates, column, GetForecastFreezeColumnKey(columnDefinition));
@@ -1390,13 +1392,17 @@ public partial class MainWindow
         };
     }
 
-    private static DataTemplate CreateForecastMonthDisplayTemplate(ForecastMonthColumnDefinition columnDefinition)
+    private static DataTemplate CreateForecastMonthDisplayTemplate(ForecastMonthColumnDefinition columnDefinition, bool showZeroAsBlank)
     {
         var template = new DataTemplate();
         var grid = new FrameworkElementFactory(typeof(Grid));
 
         var text = new FrameworkElementFactory(typeof(TextBlock));
-        text.SetBinding(TextBlock.TextProperty, new Binding($"[{columnDefinition.Key}]") { Converter = AccountingConverter });
+        text.SetBinding(TextBlock.TextProperty, new Binding($"[{columnDefinition.Key}]")
+        {
+            Converter = AccountingConverter,
+            ConverterParameter = showZeroAsBlank && !columnDefinition.IsTotal ? "BlankZero" : null
+        });
         text.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
         text.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Right);
         text.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
@@ -1410,7 +1416,7 @@ public partial class MainWindow
         return template;
     }
 
-    private DataTemplate CreateForecastMonthEditingTemplate(ForecastMonthColumnDefinition columnDefinition)
+    private DataTemplate CreateForecastMonthEditingTemplate(ForecastMonthColumnDefinition columnDefinition, bool showZeroAsBlank)
     {
         var template = new DataTemplate();
         var grid = new FrameworkElementFactory(typeof(Grid));
@@ -1421,7 +1427,8 @@ public partial class MainWindow
             Mode = BindingMode.TwoWay,
             UpdateSourceTrigger = UpdateSourceTrigger.LostFocus,
             StringFormat = "{0:F0}",
-            Converter = ForecastAmountTextConverter.Instance
+            Converter = ForecastAmountTextConverter.Instance,
+            ConverterParameter = showZeroAsBlank ? "BlankZero" : null
         });
         textBox.SetValue(Control.BorderThicknessProperty, new Thickness(0));
         textBox.SetValue(Control.BackgroundProperty, Brushes.Transparent);
@@ -1504,6 +1511,7 @@ public partial class MainWindow
             foreach (var column in grid.Columns)
             {
                 EnsureColumnPresentation(column);
+                TrackWorkspaceColumnStateWidth(column);
             }
         }
 

@@ -292,28 +292,46 @@ finally
 viewModel.ActiveWorkspaceKey = "Resources";
 var defaultResourceView = viewModel.SelectedWorkspaceView!;
 viewModel.SetSelectedWorkspaceHiddenColumnKeys(["Units", "Amount"]);
+viewModel.SetSelectedWorkspaceColumnLayouts([
+    new WorkspaceColumnLayout { Key = "Resource", Width = 215, DisplayIndex = 0 },
+    new WorkspaceColumnLayout { Key = "Amount", Width = 124, DisplayIndex = 1 }
+]);
 AssertTrue(defaultResourceView.HiddenColumnKeys.SequenceEqual(["Amount", "Units"], StringComparer.OrdinalIgnoreCase), "Workspace view stores its hidden column list");
+AssertEqual(215d, defaultResourceView.ColumnLayouts.Single(layout => layout.Key == "Resource").Width, "Workspace view stores column width");
+AssertEqual(1, defaultResourceView.ColumnLayouts.Single(layout => layout.Key == "Amount").DisplayIndex, "Workspace view stores column order");
 viewModel.AddWorkspaceViewCommand.Execute(null);
 var customResourceView = viewModel.SelectedWorkspaceView!;
 AssertTrue(customResourceView.HiddenColumnKeys.SequenceEqual(defaultResourceView.HiddenColumnKeys, StringComparer.OrdinalIgnoreCase), "New workspace view inherits the current column layout");
+AssertTrue(customResourceView.ColumnLayouts.Select(layout => layout.Key).SequenceEqual(defaultResourceView.ColumnLayouts.Select(layout => layout.Key), StringComparer.OrdinalIgnoreCase), "New workspace view inherits column order and widths");
 viewModel.SetSelectedWorkspaceHiddenColumnKeys(["Tasks"]);
+viewModel.SetSelectedWorkspaceColumnLayouts([
+    new WorkspaceColumnLayout { Key = "Tasks", Width = 301, DisplayIndex = 0 }
+]);
 viewModel.SelectedWorkspaceView = defaultResourceView;
 AssertTrue(defaultResourceView.HiddenColumnKeys.SequenceEqual(["Amount", "Units"], StringComparer.OrdinalIgnoreCase), "Original workspace view keeps its own hidden columns");
+AssertTrue(defaultResourceView.ColumnLayouts.Any(layout => layout.Key == "Resource" && Math.Abs(layout.Width - 215d) < 0.01), "Original workspace view keeps its own column layout");
 viewModel.SelectedWorkspaceView = customResourceView;
 AssertTrue(customResourceView.HiddenColumnKeys.SequenceEqual(["Tasks"], StringComparer.OrdinalIgnoreCase), "Custom workspace view keeps an independent hidden column layout");
+AssertTrue(customResourceView.ColumnLayouts.Any(layout => layout.Key == "Tasks" && Math.Abs(layout.Width - 301d) < 0.01), "Custom workspace view keeps an independent column width");
 
 viewModel.ActiveWorkspaceKey = "CTC Forecast";
 var defaultForecastView = viewModel.SelectedWorkspaceView!;
 viewModel.GroupForecastLinesByTask = true;
+viewModel.SetSelectedForecastShowZeroAsBlank(false);
 AssertTrue(defaultForecastView.GroupForecastLinesByTask, "Forecast view stores group by task per view");
+AssertTrue(!defaultForecastView.ShowZeroAsBlank, "Forecast view stores show-zero-as-blank per view");
 viewModel.AddWorkspaceViewCommand.Execute(null);
 var customForecastView = viewModel.SelectedWorkspaceView!;
 AssertTrue(customForecastView.GroupForecastLinesByTask, "New forecast view inherits group by task from its source view");
+AssertTrue(!customForecastView.ShowZeroAsBlank, "New forecast view inherits show-zero-as-blank from its source view");
 viewModel.GroupForecastLinesByTask = false;
+viewModel.SetSelectedForecastShowZeroAsBlank(true);
 viewModel.SelectedWorkspaceView = defaultForecastView;
 AssertTrue(viewModel.GroupForecastLinesByTask, "Returning to the original forecast view restores its grouping state");
+AssertTrue(!viewModel.ShowForecastZeroAsBlank, "Returning to the original forecast view restores zero display state");
 viewModel.SelectedWorkspaceView = customForecastView;
 AssertTrue(!viewModel.GroupForecastLinesByTask, "New forecast view keeps an independent grouping state");
+AssertTrue(viewModel.ShowForecastZeroAsBlank, "New forecast view keeps an independent zero display state");
 
 viewModel.ActiveDetailWorkspaceKey = "Ledger Costs";
 var defaultLedgerCostView = viewModel.SelectedDetailWorkspaceView!;
