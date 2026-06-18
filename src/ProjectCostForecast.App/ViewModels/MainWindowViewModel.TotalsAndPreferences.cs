@@ -364,6 +364,18 @@ public sealed partial class MainWindowViewModel
         _suppressPreferenceSave = true;
         try
         {
+            var preferredKpiKeys = (_userPreferences.KpiPillKeys ?? [])
+                .Where(key => KpiOptions.Any(option => string.Equals(option.Key, key, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+            if (preferredKpiKeys.Count > 0)
+            {
+                KpiPills.Clear();
+                foreach (var key in preferredKpiKeys)
+                {
+                    AddKpiPill(key);
+                }
+            }
+
             ShowOnlyLinesWithActualCost = _userPreferences.ShowOnlyLinesWithActualCost;
             ShowCostThisMonthOnly = _userPreferences.ShowCostThisMonthOnly;
             ShowOnlyLinesWithRemainingForecast = _userPreferences.ShowOnlyLinesWithRemainingForecast;
@@ -449,6 +461,7 @@ public sealed partial class MainWindowViewModel
         _userPreferences.ShowVarianceIndicators = ShowVarianceIndicators;
         _userPreferences.SelectedCategorySortOptionKey = SelectedCategorySortOption?.Key ?? "Alphabetical";
         _userPreferences.SelectedLedgerChartRangeKey = SelectedLedgerChartRangeOption?.Key ?? "Last24";
+        _userPreferences.KpiPillKeys = KpiPills.Select(pill => pill.Key).ToList();
         _userPreferencesService.Save(_userPreferences);
     }
 

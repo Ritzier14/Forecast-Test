@@ -894,19 +894,21 @@ public partial class MainWindow
     private static Style CreateNumericTextStyle()
     {
         var style = new Style(typeof(TextBlock));
+        style.Setters.Add(new Setter(TextBlock.FontSizeProperty, 11.0));
         style.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Right));
         style.Setters.Add(new Setter(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
         style.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
-        style.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(4, 3, 6, 3)));
+        style.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(6, 2, 8, 2)));
         return style;
     }
 
     private static Style CreatePlainTextStyle(double leftPadding = 4)
     {
         var style = new Style(typeof(TextBlock));
+        style.Setters.Add(new Setter(TextBlock.FontSizeProperty, 11.0));
         style.Setters.Add(new Setter(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
         style.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
-        style.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(leftPadding, 3, 4, 3)));
+        style.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(leftPadding, 2, 6, 2)));
         style.Setters.Add(new Setter(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis));
         return style;
     }
@@ -914,7 +916,8 @@ public partial class MainWindow
     private static Style CreateEditingTextStyle()
     {
         var style = new Style(typeof(TextBox));
-        style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(4, 3, 4, 3)));
+        style.Setters.Add(new Setter(Control.FontSizeProperty, 11.0));
+        style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(6, 2, 6, 2)));
         style.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
         return style;
     }
@@ -987,7 +990,8 @@ public partial class MainWindow
         textBox.SetValue(TextBoxBase.SelectionTextBrushProperty, BrushFactory.Frozen(0x0F, 0x17, 0x2A));
         textBox.SetValue(Control.BorderThicknessProperty, new Thickness(0));
         textBox.SetValue(Control.BackgroundProperty, Brushes.Transparent);
-        textBox.SetValue(Control.PaddingProperty, new Thickness(leftPadding, 3, 4, 3));
+        textBox.SetValue(Control.FontSizeProperty, 11.0);
+        textBox.SetValue(Control.PaddingProperty, new Thickness(leftPadding, 2, 6, 2));
         textBox.SetValue(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center);
         textBox.SetValue(TextBox.TextWrappingProperty, TextWrapping.NoWrap);
         template.VisualTree = textBox;
@@ -1008,7 +1012,8 @@ public partial class MainWindow
         textBox.SetValue(TextBox.TagProperty, "SelectableReadOnlyForecastText");
         textBox.SetValue(TextBoxBase.SelectionBrushProperty, BrushFactory.Frozen(0xBF, 0xDB, 0xFE));
         textBox.SetValue(TextBoxBase.SelectionTextBrushProperty, BrushFactory.Frozen(0x0F, 0x17, 0x2A));
-        textBox.SetValue(Control.PaddingProperty, new Thickness(4, 3, 4, 3));
+        textBox.SetValue(Control.FontSizeProperty, 11.0);
+        textBox.SetValue(Control.PaddingProperty, new Thickness(6, 2, 6, 2));
         textBox.SetValue(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center);
         template.VisualTree = textBox;
         return template;

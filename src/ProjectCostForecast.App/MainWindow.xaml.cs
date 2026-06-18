@@ -89,6 +89,7 @@ public partial class MainWindow : Window
     private bool _ledgerChartScrollQueued;
     private bool _workspaceViewColumnStateQueued;
     private bool _detailWorkspaceViewColumnStateQueued;
+    private bool _forecastGroupsExpanded = true;
     private bool _applyingWorkspaceColumnState;
     private readonly HashSet<DataGrid> _workspaceColumnStateTrackedGrids = [];
     private readonly HashSet<DataGridColumn> _workspaceColumnStateTrackedColumns = [];
@@ -138,6 +139,7 @@ public partial class MainWindow : Window
             QueueApplyCurrentDetailWorkspaceViewColumnState();
             QueueScrollLedgerChartToEnd();
             RefreshForecastGridStatePills();
+            UpdateForecastGroupToggleVisual();
             ForecastGridHost.SizeChanged += ForecastGridHost_SizeChanged;
             QueueReportForecastGridFirstDraw();
         };
@@ -156,6 +158,7 @@ public partial class MainWindow : Window
             QueueApplyCurrentWorkspaceViewColumnState();
             QueueApplyCurrentDetailWorkspaceViewColumnState();
             RefreshForecastGridStatePills();
+            UpdateForecastGroupToggleVisual();
             QueueScrollLedgerChartToEnd();
         };
     }
@@ -239,11 +242,37 @@ public partial class MainWindow : Window
     private void ExpandForecastGroups_Click(object sender, RoutedEventArgs e)
     {
         SetForecastGroupExpansion(ForecastLinesGrid, true);
+        _forecastGroupsExpanded = true;
+        UpdateForecastGroupToggleVisual();
     }
 
     private void CollapseForecastGroups_Click(object sender, RoutedEventArgs e)
     {
         SetForecastGroupExpansion(ForecastLinesGrid, false);
+        _forecastGroupsExpanded = false;
+        UpdateForecastGroupToggleVisual();
+    }
+
+    private void ToggleForecastGroups_Click(object sender, RoutedEventArgs e)
+    {
+        _forecastGroupsExpanded = !_forecastGroupsExpanded;
+        SetForecastGroupExpansion(ForecastLinesGrid, _forecastGroupsExpanded);
+        UpdateForecastGroupToggleVisual();
+    }
+
+    private void UpdateForecastGroupToggleVisual()
+    {
+        if (ForecastGroupToggleIcon is null || ForecastGroupToggleButton is null)
+        {
+            return;
+        }
+
+        var fileName = _forecastGroupsExpanded ? "ic_collapse_20.png" : "ic_expand_all_16.png";
+        ForecastGroupToggleIcon.Source = new System.Windows.Media.Imaging.BitmapImage(
+            new Uri($"pack://application:,,,/Assets/Icons/png/{fileName}", UriKind.Absolute));
+        ForecastGroupToggleButton.ToolTip = _forecastGroupsExpanded
+            ? "Collapse all task groups"
+            : "Expand all task groups";
     }
 
     private static void SetForecastGroupExpansion(DependencyObject root, bool isExpanded)

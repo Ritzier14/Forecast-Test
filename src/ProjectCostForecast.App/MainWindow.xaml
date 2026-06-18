@@ -504,7 +504,7 @@
                     </Rectangle>
                 </Grid>
             </Border>
-            <Border Grid.Row="0" MinHeight="104" Padding="22,12" BorderBrush="#E5EAF3" BorderThickness="0,0,0,1">
+            <Border Grid.Row="0" MinHeight="104" Padding="22,12">
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <StackPanel VerticalAlignment="Center">
@@ -546,13 +546,14 @@
                                     <MenuItem Header="New month" Command="{Binding NewMonthCommand}" />
                                 </ContextMenu>
                             </Button.ContextMenu>
-                            <TextBlock Text="▼"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"
-                                       Foreground="#1463F3"
-                                       Margin="0,-1,0,0"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center" />
+                            <Path Data="M 5 8 L 10 13 L 15 8"
+                                  Stroke="#1463F3"
+                                  StrokeThickness="1.7"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center" />
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -647,33 +648,40 @@
                                                DockPanel.Dock="Top"
                                                Margin="8,0,0,8"
                                                Visibility="Collapsed" />
-                                    <Border DockPanel.Dock="Top" Height="32" Background="White" BorderBrush="#DCE4EE" BorderThickness="1,1,1,0" CornerRadius="10,10,0,0" Padding="5,2">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                                <Button Click="CollapseForecastGroups_Click" Width="28" Height="28" Background="Transparent" BorderThickness="0" Padding="0" Margin="0" ToolTip="Collapse all task groups">
-                                                    <Image Source="/Assets/Icons/png/ic_collapse_20.png" Width="14" Height="14" />
-                                                </Button>
-                                                <Button Click="ExpandForecastGroups_Click" Width="28" Height="28" Background="Transparent" BorderThickness="0" Padding="0" Margin="6,0,0,0" ToolTip="Expand all task groups">
-                                                    <Image Source="/Assets/Icons/png/ic_expand_all_16.png" Width="19" Height="19" />
-                                                </Button>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
                                     <Grid x:Name="ForecastGridHost">
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="32" />
                                             <RowDefinition Height="*" />
                                         </Grid.RowDefinitions>
+                                        <Border Grid.Row="0"
+                                                Background="White"
+                                                BorderBrush="#DCE4EE"
+                                                BorderThickness="1,1,1,0"
+                                                CornerRadius="10,10,0,0" />
                                         <Canvas x:Name="ForecastYearBandCanvas" Grid.Row="0" ClipToBounds="True" IsHitTestVisible="False" Panel.ZIndex="10" />
+                                        <Button Grid.Row="0"
+                                                x:Name="ForecastGroupToggleButton"
+                                                Width="24"
+                                                Height="24"
+                                                Margin="6,0,0,0"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Padding="0"
+                                                Panel.ZIndex="20"
+                                                Click="ToggleForecastGroups_Click"
+                                                ToolTip="Collapse all task groups">
+                                            <Image x:Name="ForecastGroupToggleIcon"
+                                                   Source="/Assets/Icons/png/ic_collapse_20.png"
+                                                   Width="14"
+                                                   Height="14" />
+                                        </Button>
                                         <DataGrid x:Name="ForecastLinesGrid"
                                                   Grid.Row="1"
                                                   ItemsSource="{Binding ForecastLinesView}"
                                                   IsReadOnly="False"
-                                                  RowHeight="32"
+                                                  RowHeight="30"
                                                   ColumnHeaderHeight="42"
                                                   Background="White"
                                                   BorderBrush="#E1E7F0"

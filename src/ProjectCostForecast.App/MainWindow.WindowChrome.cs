@@ -45,56 +45,72 @@ public partial class MainWindow
             return;
         }
 
-        var menu = new ContextMenu();
-        var selected = viewModel.GetSelectedKpi(pillId);
-        foreach (var option in viewModel.KpiOptions)
-        {
-            var item = new MenuItem
-            {
-                Header = option.Name,
-                IsCheckable = true,
-                IsChecked = string.Equals(selected?.Key, option.Key, StringComparison.OrdinalIgnoreCase)
-            };
-            item.Click += (_, _) => viewModel.SetKpiSelection(pillId, option.Key);
-            menu.Items.Add(item);
-        }
-
-        menu.Items.Add(new Separator());
-        var removeItem = new MenuItem
-        {
-            Header = "Remove pill"
-        };
-        removeItem.Click += (_, _) => viewModel.RemoveKpiPill(pillId);
-        menu.Items.Add(removeItem);
-
-        element.ContextMenu = menu;
-        menu.IsOpen = true;
+        OpenKpiContextMenu(element, viewModel, pillId);
         e.Handled = true;
     }
 
     private void KpiStrip_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (_kpiRightDragging || DataContext is not MainWindowViewModel viewModel)
+        if (_kpiRightDragging || DataContext is not MainWindowViewModel viewModel || sender is not FrameworkElement element)
         {
             return;
         }
 
+        OpenKpiContextMenu(element, viewModel, pillId: null);
+        e.Handled = true;
+    }
+
+    private void OpenKpiContextMenu(FrameworkElement element, MainWindowViewModel viewModel, int? pillId)
+    {
+        var menu = BuildKpiContextMenu(viewModel, pillId);
+        menu.PlacementTarget = element;
+        menu.Placement = PlacementMode.MousePoint;
+        element.ContextMenu = menu;
+        menu.IsOpen = true;
+    }
+
+    private ContextMenu BuildKpiContextMenu(MainWindowViewModel viewModel, int? pillId)
+    {
         var menu = new ContextMenu();
-        var addMenu = new MenuItem { Header = "Add pill" };
+        var selected = pillId.HasValue ? viewModel.GetSelectedKpi(pillId.Value) : null;
         foreach (var option in viewModel.KpiOptions)
         {
-            var item = new MenuItem { Header = option.Name };
-            item.Click += (_, _) => viewModel.AddKpiPill(option.Key);
-            addMenu.Items.Add(item);
+            var isActive = viewModel.IsKpiPillActive(option.Key);
+            var item = new MenuItem
+            {
+                Header = option.Name,
+                IsCheckable = true,
+                IsChecked = isActive,
+                FontWeight = string.Equals(selected?.Key, option.Key, StringComparison.OrdinalIgnoreCase)
+                    ? FontWeights.SemiBold
+                    : FontWeights.Normal
+            };
+            item.Click += (_, _) =>
+            {
+                if (pillId.HasValue)
+                {
+                    viewModel.SetKpiSelection(pillId.Value, option.Key);
+                    return;
+                }
+
+                viewModel.SetKpiPillActive(option.Key, !isActive);
+            };
+            menu.Items.Add(item);
         }
 
-        menu.Items.Add(addMenu);
-        if (sender is FrameworkElement element)
+        if (pillId.HasValue)
         {
-            element.ContextMenu = menu;
-            menu.IsOpen = true;
-            e.Handled = true;
+            menu.Items.Add(new Separator());
+            var removeItem = new MenuItem
+            {
+                Header = "Remove pill",
+                IsEnabled = viewModel.KpiPills.Count > 1
+            };
+            removeItem.Click += (_, _) => viewModel.RemoveKpiPill(pillId.Value);
+            menu.Items.Add(removeItem);
         }
+
+        return menu;
     }
 
     private void KpiScrollViewer_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)

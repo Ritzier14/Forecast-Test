@@ -263,7 +263,7 @@
             <Setter Property="SelectionUnit" Value="CellOrRowHeader" />
             <Setter Property="RowHeaderWidth" Value="0" />
             <Setter Property="RowHeight" Value="28" />
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontSize" Value="11" />
             <Setter Property="SnapsToDevicePixels" Value="True" />
             <Setter Property="UseLayoutRounding" Value="True" />
             <Setter Property="Template">
@@ -359,8 +359,9 @@
         <Style TargetType="DataGridColumnHeader">
             <Setter Property="Background" Value="#EAF0F8" />
             <Setter Property="Foreground" Value="#0F172A" />
+            <Setter Property="FontSize" Value="13" />
             <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="Padding" Value="10,5" />
             <Setter Property="SnapsToDevicePixels" Value="True" />
             <Setter Property="UseLayoutRounding" Value="True" />
             <Setter Property="BorderBrush" Value="{StaticResource GridLineBrush}" />
@@ -465,6 +466,7 @@
             <Setter Property="SnapsToDevicePixels" Value="True" />
             <Setter Property="UseLayoutRounding" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="FontSize" Value="11" />
             <Setter Property="BorderBrush" Value="{StaticResource GridLineBrush}" />
             <Setter Property="BorderThickness" Value="0,0,1,1" />
             <Setter Property="Background" Value="{Binding Column.(models:GridColumnPresentationState.ColumnBackground), RelativeSource={RelativeSource Self}}" />

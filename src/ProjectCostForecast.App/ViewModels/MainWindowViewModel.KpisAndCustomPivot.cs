@@ -31,6 +31,7 @@ public sealed partial class MainWindowViewModel
 
         KpiPills.Add(pill);
         RefreshKpiPill(pill);
+        SaveUserPreferences();
     }
 
     public void RemoveKpiPill(int pillId)
@@ -44,6 +45,7 @@ public sealed partial class MainWindowViewModel
         if (pill is not null)
         {
             KpiPills.Remove(pill);
+            SaveUserPreferences();
         }
     }
 
@@ -58,6 +60,45 @@ public sealed partial class MainWindowViewModel
 
         pill.Key = option.Key;
         RefreshKpiPill(pill);
+        SaveUserPreferences();
+    }
+
+    public bool IsKpiPillActive(string key)
+    {
+        return KpiPills.Any(item => string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public void SetKpiPillActive(string key, bool isActive)
+    {
+        if (isActive)
+        {
+            if (!IsKpiPillActive(key))
+            {
+                AddKpiPill(key);
+            }
+
+            return;
+        }
+
+        var matchingPills = KpiPills
+            .Where(item => string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (matchingPills.Count == 0)
+        {
+            return;
+        }
+
+        if (KpiPills.Count == matchingPills.Count && matchingPills.Count > 0)
+        {
+            return;
+        }
+
+        foreach (var pill in matchingPills)
+        {
+            KpiPills.Remove(pill);
+        }
+
+        SaveUserPreferences();
     }
 
     public KpiOption? GetSelectedKpi(int pillId)

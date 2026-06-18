@@ -1590,7 +1590,7 @@ public partial class MainWindow
 
     private static DataGridCellInfo? GetSelectionOriginCell(DataGrid grid, IEnumerable<DataGridCellInfo> selectedCells)
     {
-        var origin = selectedCells
+        var origin = NormalizeSelectedCellInfos(grid, selectedCells)
             .Where(cell => cell.Item is not null && cell.Column is not null)
             .Select(cell => new
             {
@@ -1611,7 +1611,7 @@ public partial class MainWindow
 
     private static DataGridCellInfo? GetSelectionOriginWritableCell(DataGrid grid, IEnumerable<DataGridCellInfo> selectedCells)
     {
-        var origin = selectedCells
+        var origin = NormalizeSelectedCellInfos(grid, selectedCells)
             .Where(cell => cell.IsValid
                 && cell.Item is not null
                 && cell.Column is not null
@@ -2041,9 +2041,7 @@ public partial class MainWindow
 
     private List<SelectedGridCell> GetOrderedSelectedCells(DataGrid grid)
     {
-        var selectedCells = grid.SelectedCells
-            .Where(cell => cell.IsValid && cell.Item is not null && cell.Column is not null)
-            .ToList();
+        var selectedCells = NormalizeSelectedCellInfos(grid, grid.SelectedCells);
         var selectedItems = selectedCells
             .Select(cell => cell.Item)
             .Distinct(ReferenceEqualityComparer.Instance)
@@ -2074,6 +2072,57 @@ public partial class MainWindow
             .Where(cell => cell.RowIndex >= 0 && cell.ColumnIndex >= 0)
             .OrderBy(cell => cell.RowIndex)
             .ThenBy(cell => cell.ColumnIndex)
+            .ToList();
+    }
+
+    private static List<DataGridCellInfo> NormalizeSelectedCellInfos(DataGrid grid, IEnumerable<DataGridCellInfo> selectedCells)
+    {
+        var visibleColumns = grid.Columns
+            .Where(column => column.Visibility == Visibility.Visible)
+            .ToList();
+        var normalizedCells = selectedCells
+            .Where(cell => cell.IsValid
+                && cell.Item is not null
+                && cell.Column is not null
+                && visibleColumns.Contains(cell.Column))
+            .ToList();
+        if (normalizedCells.Count == 0 || visibleColumns.Count == 0)
+        {
+            return normalizedCells;
+        }
+
+        var selectedColumnsByItem = new Dictionary<object, HashSet<DataGridColumn>>(ReferenceEqualityComparer.Instance);
+        foreach (var cell in normalizedCells)
+        {
+            if (!selectedColumnsByItem.TryGetValue(cell.Item, out var selectedColumns))
+            {
+                selectedColumns = [];
+                selectedColumnsByItem[cell.Item] = selectedColumns;
+            }
+
+            selectedColumns.Add(cell.Column);
+        }
+
+        var partialSelections = selectedColumnsByItem
+            .Where(entry => entry.Value.Count < visibleColumns.Count)
+            .ToList();
+        if (partialSelections.Count == 0 || partialSelections.Count == selectedColumnsByItem.Count)
+        {
+            return normalizedCells;
+        }
+
+        var intendedColumns = partialSelections
+            .SelectMany(entry => entry.Value)
+            .Distinct()
+            .ToHashSet();
+        if (intendedColumns.Count == 0)
+        {
+            return normalizedCells;
+        }
+
+        return normalizedCells
+            .Where(cell => selectedColumnsByItem.TryGetValue(cell.Item, out var rowColumns)
+                && (rowColumns.Count < visibleColumns.Count || intendedColumns.Contains(cell.Column)))
             .ToList();
     }
 

@@ -21,4 +21,5 @@ public sealed class AppUserPreferences
     public bool ShowVarianceIndicators { get; set; }
     public string SelectedCategorySortOptionKey { get; set; } = "Alphabetical";
     public string SelectedLedgerChartRangeKey { get; set; } = "Last24";
+    public List<string> KpiPillKeys { get; set; } = [];
 }
