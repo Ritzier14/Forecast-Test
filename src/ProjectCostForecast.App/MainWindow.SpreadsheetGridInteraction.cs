@@ -1269,9 +1269,16 @@ public partial class MainWindow
         }
         finally
         {
-            foreach (var line in changedForecastLines)
+            if (viewModel is not null)
             {
-                line.NotifyMonthForecastValuesChanged();
+                viewModel.RecalculateForecastLinesForSpreadsheetEdit(changedForecastLines);
+            }
+            else
+            {
+                foreach (var line in changedForecastLines)
+                {
+                    line.NotifyMonthForecastValuesChanged();
+                }
             }
 
             CommitSpreadsheetChanges(grid, cleared, action, viewModel, rebuildFilterLists);
@@ -1387,9 +1394,16 @@ public partial class MainWindow
         }
         finally
         {
-            foreach (var line in changedForecastLines)
+            if (viewModel is not null)
             {
-                line.NotifyMonthForecastValuesChanged();
+                viewModel.RecalculateForecastLinesForSpreadsheetEdit(changedForecastLines);
+            }
+            else
+            {
+                foreach (var line in changedForecastLines)
+                {
+                    line.NotifyMonthForecastValuesChanged();
+                }
             }
 
             CommitSpreadsheetChanges(grid, written, $"Pasted {written} cells", viewModel, rebuildFilterLists);

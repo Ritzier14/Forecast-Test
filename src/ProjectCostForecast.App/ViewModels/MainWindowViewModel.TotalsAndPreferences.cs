@@ -35,6 +35,11 @@ public sealed partial class MainWindowViewModel
         }
 
         _forecastLineByMonthlyForecast.TryGetValue(forecast, out var line);
+        if (line is not null)
+        {
+            RecalculateForecastLinesForSpreadsheetEdit([line]);
+        }
+
         AddAuditEvent(new AuditEvent
         {
             EntityType = "MonthlyForecast",
@@ -95,6 +100,32 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(TransactionCount));
         OnPropertyChanged(nameof(ForecastLineCount));
         CommandManager.InvalidateRequerySuggested();
+    }
+
+    public void RecalculateForecastLinesForSpreadsheetEdit(IEnumerable<ForecastLine> lines)
+    {
+        var changedLines = new List<ForecastLine>();
+        foreach (var line in lines)
+        {
+            if (line is not null && !changedLines.Any(existing => ReferenceEquals(existing, line)))
+            {
+                changedLines.Add(line);
+            }
+        }
+
+        if (changedLines.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var line in changedLines)
+        {
+            _calculationService.RecalculateForecastLine(line, _dataset.Transactions, _dataset.Header.CurrentPeriod);
+        }
+
+        _dataset.CategorySummaries = _calculationService.RecalculateCategorySummaries(_dataset.ForecastLines);
+        ReplaceCollection(CategorySummaries, _dataset.CategorySummaries);
+        NotifyTotalsChanged();
     }
 
     private void NotifyTotalsChanged()
