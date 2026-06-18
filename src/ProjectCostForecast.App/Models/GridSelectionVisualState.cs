@@ -28,6 +28,12 @@ public static class GridSelectionVisualState
         typeof(GridSelectionVisualState),
         new FrameworkPropertyMetadata(false));
 
+    public static readonly DependencyProperty IsFillHandleCellProperty = DependencyProperty.RegisterAttached(
+        "IsFillHandleCell",
+        typeof(bool),
+        typeof(GridSelectionVisualState),
+        new FrameworkPropertyMetadata(false));
+
     public static readonly DependencyProperty IsReadOnlyCellProperty = DependencyProperty.RegisterAttached(
         "IsReadOnlyCell",
         typeof(bool),
@@ -51,6 +57,12 @@ public static class GridSelectionVisualState
 
     public static bool GetIsCellSelected(DependencyObject element) =>
         (bool)element.GetValue(IsCellSelectedProperty);
+
+    public static void SetIsFillHandleCell(DependencyObject element, bool value) =>
+        element.SetValue(IsFillHandleCellProperty, value);
+
+    public static bool GetIsFillHandleCell(DependencyObject element) =>
+        (bool)element.GetValue(IsFillHandleCellProperty);
 
     public static void SetIsReadOnlyCell(DependencyObject element, bool value) =>
         element.SetValue(IsReadOnlyCellProperty, value);

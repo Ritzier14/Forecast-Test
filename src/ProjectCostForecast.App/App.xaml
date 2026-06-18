@@ -502,6 +502,16 @@
                                     Background="#80FDBA74"
                                     Visibility="Collapsed"
                                     IsHitTestVisible="False" />
+                            <Border x:Name="FillHandle"
+                                    Width="7"
+                                    Height="7"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Bottom"
+                                    Background="#F59E0B"
+                                    BorderBrush="White"
+                                    BorderThickness="1"
+                                    Visibility="Collapsed"
+                                    IsHitTestVisible="False" />
                             <ContentPresenter Margin="{TemplateBinding Padding}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -538,6 +548,9 @@
                             </Trigger>
                             <Trigger Property="models:GridSelectionVisualState.IsCellSelected" Value="True">
                                 <Setter TargetName="SelectionFill" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="models:GridSelectionVisualState.IsFillHandleCell" Value="True">
+                                <Setter TargetName="FillHandle" Property="Visibility" Value="Visible" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>

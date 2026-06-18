@@ -203,8 +203,30 @@ public sealed partial class MainWindowViewModel
             var pendingRebuild = _pendingSpreadsheetRebuildFilterLists;
             _pendingSpreadsheetRefreshStatus = string.Empty;
             _pendingSpreadsheetRebuildFilterLists = false;
-            RecalculateAndRefresh(markDirty: true, reason: pendingStatus, pendingRebuild);
+            if (pendingRebuild)
+            {
+                RecalculateAndRefresh(markDirty: true, reason: pendingStatus, pendingRebuild);
+            }
+            else
+            {
+                RefreshSpreadsheetEditDependents(pendingStatus);
+            }
         }, DispatcherPriority.ApplicationIdle);
+    }
+
+    private void RefreshSpreadsheetEditDependents(string status)
+    {
+        SyncDatasetFromCollections();
+        ApplyClosedForecastPeriodRule();
+        _calculationService.Recalculate(_dataset);
+        ReplaceCollection(CategorySummaries, _dataset.CategorySummaries);
+        RebuildMonthlyPivotTables();
+        RebuildCustomPivot();
+        RebuildMonthlyReport();
+        RefreshValidation(syncDataset: false);
+        NotifyTotalsChanged();
+        IsDirty = true;
+        StatusText = $"{status}. {ValidationIssueCount} validation issue(s).";
     }
 
     private void RecalculateTotals()

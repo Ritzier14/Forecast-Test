@@ -388,7 +388,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
                     _selectedResourceSummary = null;
                     OnPropertyChanged(nameof(SelectedResourceSummary));
                 }
-                NotifyLedgerChanged();
+                QueueLedgerChanged();
                 CommandManager.InvalidateRequerySuggested();
             }
         }
@@ -406,7 +406,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
                     _selectedForecastLine = null;
                     OnPropertyChanged(nameof(SelectedForecastLine));
                 }
-                NotifyLedgerChanged();
+                QueueLedgerChanged();
             }
         }
     }

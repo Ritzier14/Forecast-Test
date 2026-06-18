@@ -89,10 +89,14 @@ public partial class MainWindow
             if (_spreadsheetAttachedGrids.Add(grid))
             {
                 grid.PreviewMouseLeftButtonDown += SpreadsheetGrid_PreviewMouseLeftButtonDown;
+                grid.PreviewMouseLeftButtonUp += SpreadsheetGrid_PreviewMouseLeftButtonUp;
+                grid.MouseMove += SpreadsheetGrid_MouseMove;
                 grid.PreviewMouseRightButtonUp += SpreadsheetGrid_PreviewMouseRightButtonUp;
                 grid.MouseDoubleClick += SpreadsheetGrid_MouseDoubleClick;
                 grid.PreviewKeyDown += SpreadsheetGrid_PreviewKeyDown;
                 grid.PreviewTextInput += SpreadsheetGrid_PreviewTextInput;
+                grid.BeginningEdit += SpreadsheetGrid_BeginningEdit;
+                grid.CellEditEnding += SpreadsheetGrid_CellEditEnding;
                 grid.SelectedCellsChanged += SpreadsheetGrid_SelectedCellsChanged;
                 grid.CurrentCellChanged += SpreadsheetGrid_CurrentCellChanged;
                 grid.LoadingRow += SpreadsheetGrid_LoadingRow;
@@ -136,10 +140,14 @@ public partial class MainWindow
             return;
         }
 
-        // A focused TextBox means a cell editor is active; its own editing keys must win for
-        // normal text entry and navigation.
         if (sourceTextBox is not null)
         {
+            if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Enter && FindParent<DataGridCell>(sourceTextBox) is not null)
+            {
+                FillSelectedCellsFromValue(grid, sourceTextBox.Text, "Filled");
+                e.Handled = true;
+            }
+
             return;
         }
 
@@ -172,6 +180,21 @@ public partial class MainWindow
             PasteIntoGrid(grid);
             e.Handled = true;
         }
+        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Z)
+        {
+            UndoSpreadsheetEdit();
+            e.Handled = true;
+        }
+        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Y)
+        {
+            RedoSpreadsheetEdit();
+            e.Handled = true;
+        }
+        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Enter)
+        {
+            FillSelectedCellsFromCurrent(grid);
+            e.Handled = true;
+        }
         else if (Keyboard.Modifiers is ModifierKeys.None or ModifierKeys.Shift
                  && e.Key is Key.Enter or Key.Tab or Key.Home or Key.End or Key.Left or Key.Right or Key.Up or Key.Down)
         {
@@ -199,15 +222,33 @@ public partial class MainWindow
             return;
         }
 
-        if (grid.CurrentCell is not { IsValid: true } currentCell
-            || currentCell.Item is null
-            || currentCell.Column is null
-            || !CanWriteGridCell(grid, currentCell.Item, currentCell.Column))
+        var editCell = grid.SelectedCells.Count > 1
+            ? GetSelectionOriginWritableCell(grid, grid.SelectedCells)
+            : null;
+        var editItem = editCell?.Item;
+        var editColumn = editCell?.Column;
+
+        if (editCell is null)
+        {
+            if (grid.CurrentCell is not { IsValid: true } currentCell
+                || currentCell.Item is null
+                || currentCell.Column is null)
+            {
+                return;
+            }
+
+            editItem = currentCell.Item;
+            editColumn = currentCell.Column;
+        }
+
+        if (editItem is null
+            || editColumn is null
+            || !CanWriteGridCell(grid, editItem, editColumn))
         {
             return;
         }
 
-        BeginSpreadsheetCellEdit(grid, currentCell.Item, currentCell.Column, e.Text, replaceText: true);
+        BeginSpreadsheetCellEdit(grid, editItem, editColumn, e.Text, replaceText: true);
         e.Handled = true;
     }
 
@@ -244,6 +285,55 @@ public partial class MainWindow
         }
 
         e.Handled = true;
+    }
+
+    private void SpreadsheetGrid_BeginningEdit(object? sender, DataGridBeginningEditEventArgs e)
+    {
+        if (sender is not DataGrid grid || e.Row.Item is null || e.Column is null || !CanWriteGridCell(grid, e.Row.Item, e.Column))
+        {
+            return;
+        }
+
+        _spreadsheetEditSnapshots[grid] = new SpreadsheetEditSnapshot(
+            grid,
+            e.Row.Item,
+            e.Column,
+            FormatGridCellValue(GetGridCellValue(e.Row.Item, e.Column)));
+    }
+
+    private void SpreadsheetGrid_CellEditEnding(object? sender, DataGridCellEditEndingEventArgs e)
+    {
+        if (sender is not DataGrid grid)
+        {
+            return;
+        }
+
+        if (e.EditAction != DataGridEditAction.Commit)
+        {
+            _spreadsheetEditSnapshots.Remove(grid);
+            return;
+        }
+
+        if (!_spreadsheetEditSnapshots.TryGetValue(grid, out var snapshot)
+            || !ReferenceEquals(snapshot.Item, e.Row.Item)
+            || !ReferenceEquals(snapshot.Column, e.Column))
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(() =>
+        {
+            _spreadsheetEditSnapshots.Remove(grid);
+            var after = FormatGridCellValue(GetGridCellValue(snapshot.Item, snapshot.Column));
+            if (string.Equals(snapshot.BeforeText, after, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            RegisterSpreadsheetUndoBatch(
+                "Cell edit",
+                [new SpreadsheetCellEdit(snapshot.Item, snapshot.Column, snapshot.BeforeText, after)]);
+        }, System.Windows.Threading.DispatcherPriority.Background);
     }
 
     private void SpreadsheetGrid_Loaded(object sender, RoutedEventArgs e)
@@ -508,6 +598,18 @@ public partial class MainWindow
             return;
         }
 
+        if (IsSpreadsheetFillHandleHit(grid, cell, e.GetPosition(cell)))
+        {
+            _spreadsheetFillDrag = new SpreadsheetFillDrag(
+                grid,
+                cell.DataContext,
+                cell.Column,
+                FormatGridCellValue(GetGridCellValue(cell.DataContext, cell.Column)));
+            grid.CaptureMouse();
+            e.Handled = true;
+            return;
+        }
+
         if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != ModifierKeys.None)
         {
             PreserveGridRowContextThroughCellSelection(grid);
@@ -519,6 +621,104 @@ public partial class MainWindow
         if (IsManagementResourceGrid(grid) && CanWriteGridCell(grid, cell.DataContext, cell.Column))
         {
             Dispatcher.BeginInvoke(() => BeginSpreadsheetCellEdit(grid, cell.DataContext, cell.Column, null, replaceText: false), System.Windows.Threading.DispatcherPriority.Input);
+        }
+    }
+
+    private void SpreadsheetGrid_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_spreadsheetFillDrag is not { } drag || sender is not DataGrid grid || !ReferenceEquals(grid, drag.Grid))
+        {
+            return;
+        }
+
+        if (e.LeftButton != MouseButtonState.Pressed)
+        {
+            CompleteSpreadsheetFillDrag(applyFill: false);
+            return;
+        }
+
+        if (grid.InputHitTest(e.GetPosition(grid)) is DependencyObject source
+            && FindParent<DataGridCell>(source) is { } targetCell)
+        {
+            SelectSpreadsheetRange(grid, drag.SourceItem, drag.SourceColumn, targetCell.DataContext, targetCell.Column);
+            e.Handled = true;
+        }
+    }
+
+    private void SpreadsheetGrid_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_spreadsheetFillDrag is not { } drag || sender is not DataGrid grid || !ReferenceEquals(grid, drag.Grid))
+        {
+            return;
+        }
+
+        CompleteSpreadsheetFillDrag(applyFill: true);
+        e.Handled = true;
+    }
+
+    private bool IsSpreadsheetFillHandleHit(DataGrid grid, DataGridCell cell, Point point)
+    {
+        if (!grid.CurrentCell.IsValid
+            || !ReferenceEquals(grid.CurrentCell.Item, cell.DataContext)
+            || !ReferenceEquals(grid.CurrentCell.Column, cell.Column)
+            || !CanWriteGridCell(grid, cell.DataContext, cell.Column))
+        {
+            return false;
+        }
+
+        const double handleSize = 9;
+        return point.X >= Math.Max(0, cell.ActualWidth - handleSize)
+            && point.Y >= Math.Max(0, cell.ActualHeight - handleSize);
+    }
+
+    private void SelectSpreadsheetRange(DataGrid grid, object startItem, DataGridColumn startColumn, object endItem, DataGridColumn endColumn)
+    {
+        var visibleItems = grid.Items
+            .Cast<object>()
+            .Where(item => item != CollectionView.NewItemPlaceholder)
+            .ToList();
+        var visibleColumns = grid.Columns
+            .Where(column => column.Visibility == Visibility.Visible)
+            .OrderBy(column => column.DisplayIndex)
+            .ToList();
+        var startRow = visibleItems.IndexOf(startItem);
+        var endRow = visibleItems.IndexOf(endItem);
+        var startColumnIndex = visibleColumns.IndexOf(startColumn);
+        var endColumnIndex = visibleColumns.IndexOf(endColumn);
+        if (startRow < 0 || endRow < 0 || startColumnIndex < 0 || endColumnIndex < 0)
+        {
+            return;
+        }
+
+        grid.SelectedCells.Clear();
+        for (var rowIndex = Math.Min(startRow, endRow); rowIndex <= Math.Max(startRow, endRow); rowIndex++)
+        {
+            for (var columnIndex = Math.Min(startColumnIndex, endColumnIndex); columnIndex <= Math.Max(startColumnIndex, endColumnIndex); columnIndex++)
+            {
+                grid.SelectedCells.Add(new DataGridCellInfo(visibleItems[rowIndex], visibleColumns[columnIndex]));
+            }
+        }
+
+        QueueSpreadsheetSelectionUpdate(grid, refreshAllVisuals: true);
+    }
+
+    private void CompleteSpreadsheetFillDrag(bool applyFill)
+    {
+        var drag = _spreadsheetFillDrag;
+        _spreadsheetFillDrag = null;
+        if (drag is null)
+        {
+            return;
+        }
+
+        if (drag.Grid.IsMouseCaptured)
+        {
+            drag.Grid.ReleaseMouseCapture();
+        }
+
+        if (applyFill)
+        {
+            FillSelectedCellsFromValue(drag.Grid, drag.SourceText, "Drag-filled");
         }
     }
 
@@ -1019,6 +1219,7 @@ public partial class MainWindow
         var fullySelectedRowItems = new HashSet<object>(grid.SelectedItems.Cast<object>(), ReferenceEqualityComparer.Instance);
         var currentRowContext = GetGridRowContext(grid);
         var currentCell = grid.CurrentCell;
+        var fillHandleCell = GetFillHandleCell(grid, fullySelectedRowItems);
 
         foreach (var cell in EnumerateSelectionRefreshCells(grid, affectedItems))
         {
@@ -1052,7 +1253,35 @@ public partial class MainWindow
             GridSelectionVisualState.SetIsCellSelected(
                 cell,
                 (isInCellSelection && item is not null && !fullySelectedRowItems.Contains(item)) || isCurrentCell);
+            var isFillHandleCell = fillHandleCell is { } handleCell
+                && ReferenceEquals(handleCell.Item, item)
+                && ReferenceEquals(handleCell.Column, column);
+            GridSelectionVisualState.SetIsFillHandleCell(cell, isFillHandleCell);
         }
+    }
+
+    private static DataGridCellInfo? GetFillHandleCell(DataGrid grid, ISet<object> fullySelectedRowItems)
+    {
+        var selectedCells = grid.SelectedCells
+            .Where(cell => cell.IsValid
+                && cell.Item is not null
+                && cell.Column is not null
+                && !fullySelectedRowItems.Contains(cell.Item))
+            .Select(cell => new
+            {
+                cell.Item,
+                cell.Column,
+                RowIndex = grid.Items.IndexOf(cell.Item),
+                ColumnIndex = cell.Column.DisplayIndex
+            })
+            .Where(cell => cell.RowIndex >= 0 && cell.ColumnIndex >= 0)
+            .OrderByDescending(cell => cell.RowIndex)
+            .ThenByDescending(cell => cell.ColumnIndex)
+            .FirstOrDefault();
+
+        return selectedCells is null
+            ? null
+            : new DataGridCellInfo(selectedCells.Item, selectedCells.Column);
     }
 
     private static IEnumerable<DataGridCell> EnumerateSelectionRefreshCells(DataGrid grid, ISet<object>? affectedItems)
@@ -1228,7 +1457,6 @@ public partial class MainWindow
 
     private void ClearSelectedGridCells(DataGrid grid, string action)
     {
-        TryGetCurrentSpreadsheetCell(grid, out var anchorItem, out var anchorColumn);
         var selectedCells = grid.SelectedCells
             .Where(cell => cell.IsValid && cell.Item is not null && cell.Column is not null)
             .ToList();
@@ -1237,8 +1465,11 @@ public partial class MainWindow
             return;
         }
 
+        var anchorCell = GetSelectionOriginClearAnchorCell(grid, selectedCells);
+        var anchorItem = anchorCell?.Item;
+        var anchorColumn = anchorCell?.Column;
         var cells = selectedCells
-            .Where(cell => CanWriteGridCell(grid, cell.Item!, cell.Column!))
+            .Where(cell => CanClearGridCell(grid, cell.Item!, cell.Column!))
             .ToList();
         if (cells.Count == 0)
         {
@@ -1251,54 +1482,92 @@ public partial class MainWindow
         }
 
         var viewModel = DataContext as MainWindowViewModel;
-        var changedForecastLines = new HashSet<ForecastLine>(ReferenceEqualityComparer.Instance);
-        viewModel?.BeginSpreadsheetEditBatch();
-        var cleared = 0;
-        var rebuildFilterLists = false;
-        try
-        {
-            using var refreshDeferral = grid.Items.DeferRefresh();
-            foreach (var cell in cells)
-            {
-                if (TrySetGridCellValue(grid, cell.Item, cell.Column, string.Empty, changedForecastLines))
-                {
-                    cleared++;
-                    rebuildFilterLists |= !IsMonthlyForecastValueCell(cell.Item, cell.Column);
-                }
-            }
-        }
-        finally
+        var edits = cells
+            .Select(cell => CreateSpreadsheetCellEdit(grid, cell.Item!, cell.Column!, string.Empty))
+            .OfType<SpreadsheetCellEdit>()
+            .ToList();
+        if (edits.Count == 0)
         {
             if (viewModel is not null)
             {
-                viewModel.RecalculateForecastLinesForSpreadsheetEdit(changedForecastLines);
-            }
-            else
-            {
-                foreach (var line in changedForecastLines)
-                {
-                    line.NotifyMonthForecastValuesChanged();
-                }
+                viewModel.StatusText = $"{action} made no changes.";
             }
 
-            CommitSpreadsheetChanges(grid, cleared, action, viewModel, rebuildFilterLists);
-            if (cleared > 0
-                && anchorItem is not null
-                && anchorColumn is not null
-                && grid.Items.Contains(anchorItem))
-            {
-                QueueRestoreSpreadsheetCellFocus(grid, anchorItem, anchorColumn);
-            }
-            else
-            {
-                QueueSpreadsheetSelectionUpdate(grid);
-            }
-
-            if (IsManagementResourceGrid(grid))
-            {
-                QueueSynchronizeManagementResourceGrids();
-            }
+            return;
         }
+
+        var cleared = ApplySpreadsheetCellEdits(grid, edits, action, registerUndo: true, out var invalidCount);
+        if (invalidCount > 0 && viewModel is not null)
+        {
+            viewModel.StatusText = $"{action} skipped {invalidCount:N0} invalid cell(s).";
+        }
+
+        if (cleared > 0
+            && anchorItem is not null
+            && anchorColumn is not null
+            && grid.Items.Contains(anchorItem))
+        {
+            QueueRestoreSpreadsheetCellFocus(grid, anchorItem, anchorColumn);
+        }
+    }
+
+    private static DataGridCellInfo? GetSelectionOriginCell(DataGrid grid, IEnumerable<DataGridCellInfo> selectedCells)
+    {
+        var origin = selectedCells
+            .Where(cell => cell.Item is not null && cell.Column is not null)
+            .Select(cell => new
+            {
+                cell.Item,
+                cell.Column,
+                RowIndex = grid.Items.IndexOf(cell.Item),
+                ColumnIndex = cell.Column.DisplayIndex
+            })
+            .Where(cell => cell.RowIndex >= 0 && cell.ColumnIndex >= 0)
+            .OrderBy(cell => cell.RowIndex)
+            .ThenBy(cell => cell.ColumnIndex)
+            .FirstOrDefault();
+
+        return origin is null
+            ? null
+            : new DataGridCellInfo(origin.Item, origin.Column);
+    }
+
+    private static DataGridCellInfo? GetSelectionOriginWritableCell(DataGrid grid, IEnumerable<DataGridCellInfo> selectedCells)
+    {
+        var origin = selectedCells
+            .Where(cell => cell.IsValid
+                && cell.Item is not null
+                && cell.Column is not null
+                && CanWriteGridCell(grid, cell.Item, cell.Column))
+            .Select(cell => new
+            {
+                cell.Item,
+                cell.Column,
+                RowIndex = grid.Items.IndexOf(cell.Item),
+                ColumnIndex = cell.Column.DisplayIndex
+            })
+            .Where(cell => cell.RowIndex >= 0 && cell.ColumnIndex >= 0)
+            .OrderBy(cell => cell.RowIndex)
+            .ThenBy(cell => cell.ColumnIndex)
+            .FirstOrDefault();
+
+        return origin is null
+            ? null
+            : new DataGridCellInfo(origin.Item, origin.Column);
+    }
+
+    private static DataGridCellInfo? GetSelectionOriginClearAnchorCell(DataGrid grid, IReadOnlyCollection<DataGridCellInfo> selectedCells)
+    {
+        return GetSelectionOriginCell(grid, selectedCells.Where(cell =>
+                   cell.IsValid
+                   && cell.Item is not null
+                   && cell.Column is not null
+                   && IsForecastValueClearCell(cell.Item, cell.Column)))
+               ?? GetSelectionOriginCell(grid, selectedCells.Where(cell =>
+                   cell.IsValid
+                   && cell.Item is not null
+                   && cell.Column is not null
+                   && CanClearGridCell(grid, cell.Item, cell.Column)));
     }
 
     private void PasteIntoGrid(DataGrid grid)
@@ -1354,109 +1623,173 @@ public partial class MainWindow
             return;
         }
 
-        if (HasBlockedPasteTarget(grid, values, startRowIndex, startColumnIndex, visibleItems, visibleColumns))
+        var pasteTargets = new List<(object Item, DataGridColumn Column, string Text)>();
+        var protectedCount = 0;
+        if (values.Count == 1 && values[0].Count == 1 && grid.SelectedCells.Count > 1)
+        {
+            foreach (var cell in GetOrderedSelectedCells(grid))
+            {
+                pasteTargets.Add((cell.Item, cell.Column, values[0][0]));
+            }
+        }
+        else
+        {
+            for (var rowOffset = 0; rowOffset < values.Count; rowOffset++)
+            {
+                for (var columnOffset = 0; columnOffset < values[rowOffset].Count; columnOffset++)
+                {
+                    var rowIndex = startRowIndex + rowOffset;
+                    var columnIndex = startColumnIndex + columnOffset;
+                    if (rowIndex >= visibleItems.Count || columnIndex >= visibleColumns.Count)
+                    {
+                        protectedCount++;
+                        continue;
+                    }
+
+                    pasteTargets.Add((visibleItems[rowIndex], visibleColumns[columnIndex], values[rowOffset][columnOffset]));
+                }
+            }
+        }
+
+        var edits = new List<SpreadsheetCellEdit>();
+        var invalidCount = 0;
+        foreach (var target in pasteTargets)
+        {
+            if (!CanWriteGridCell(grid, target.Item, target.Column))
+            {
+                protectedCount++;
+                continue;
+            }
+
+            if (!CanConvertGridCellValue(target.Item, target.Column, target.Text))
+            {
+                invalidCount++;
+                continue;
+            }
+
+            if (CreateSpreadsheetCellEdit(grid, target.Item, target.Column, target.Text) is { } edit)
+            {
+                edits.Add(edit);
+            }
+        }
+
+        if (protectedCount > 0)
+        {
+            var result = MessageBox.Show(
+                this,
+                $"Paste includes {protectedCount:N0} locked, calculated, read-only or out-of-range cell(s). Paste into editable cells only?",
+                "Paste protected cells",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (result != MessageBoxResult.Yes)
+            {
+                if (viewModel is not null)
+                {
+                    viewModel.StatusText = "Paste cancelled.";
+                }
+
+                return;
+            }
+        }
+
+        if (edits.Count == 0)
         {
             if (viewModel is not null)
             {
-                viewModel.StatusText = "Paste blocked because the target range includes locked or read-only cells.";
+                viewModel.StatusText = invalidCount > 0
+                    ? $"Paste skipped {invalidCount:N0} invalid value(s)."
+                    : "Paste made no changes.";
             }
 
             return;
         }
 
-        var changedForecastLines = new HashSet<ForecastLine>(ReferenceEqualityComparer.Instance);
-        viewModel?.BeginSpreadsheetEditBatch();
-        var written = 0;
-        var rebuildFilterLists = false;
-        try
+        var written = ApplySpreadsheetCellEdits(grid, edits, $"Pasted {edits.Count} cells", registerUndo: true, out var applyInvalidCount);
+        invalidCount += applyInvalidCount;
+        if (viewModel is not null)
         {
-            using var refreshDeferral = grid.Items.DeferRefresh();
-            written = SpreadsheetClipboardService.Apply(
-                values,
-                startRowIndex,
-                startColumnIndex,
-                (rowIndex, columnIndex) =>
-                {
-                    return rowIndex < itemCount
-                        && columnIndex < visibleColumns.Count
-                        && CanWriteGridCell(grid, visibleItems[rowIndex], visibleColumns[columnIndex]);
-                },
-                (rowIndex, columnIndex, text) =>
-                {
-                    var item = visibleItems[rowIndex];
-                    if (!TrySetGridCellValue(grid, item, visibleColumns[columnIndex], text, changedForecastLines))
-                    {
-                        return;
-                    }
-
-                    rebuildFilterLists |= !IsMonthlyForecastValueCell(item, visibleColumns[columnIndex]);
-                });
-        }
-        finally
-        {
-            if (viewModel is not null)
-            {
-                viewModel.RecalculateForecastLinesForSpreadsheetEdit(changedForecastLines);
-            }
-            else
-            {
-                foreach (var line in changedForecastLines)
-                {
-                    line.NotifyMonthForecastValuesChanged();
-                }
-            }
-
-            CommitSpreadsheetChanges(grid, written, $"Pasted {written} cells", viewModel, rebuildFilterLists);
-            QueueSpreadsheetSelectionUpdate(grid);
-            if (IsManagementResourceGrid(grid))
-            {
-                QueueSynchronizeManagementResourceGrids();
-            }
+            viewModel.StatusText = protectedCount == 0 && invalidCount == 0
+                ? $"Pasted {written:N0} cell(s)."
+                : $"Pasted {written:N0} cell(s). Skipped {protectedCount:N0} protected/out-of-range and {invalidCount:N0} invalid cell(s).";
         }
     }
 
-    private bool TryRejectProtectedSelectionEdit(DataGrid grid, IReadOnlyCollection<DataGridCellInfo> cells, string action)
+    private void FillSelectedCellsFromCurrent(DataGrid grid)
     {
-        if (!cells.Any(cell => !CanWriteGridCell(grid, cell.Item!, cell.Column!)))
+        var sourceCell = grid.SelectedCells.Count > 1
+            ? GetSelectionOriginWritableCell(grid, grid.SelectedCells)
+            : null;
+        var sourceItem = sourceCell?.Item;
+        var sourceColumn = sourceCell?.Column;
+        if (sourceCell is null && !TryGetCurrentSpreadsheetCell(grid, out sourceItem, out sourceColumn))
         {
-            return false;
+            return;
         }
 
+        if (sourceItem is null || sourceColumn is null)
+        {
+            return;
+        }
+
+        var sourceText = FormatGridCellValue(GetGridCellValue(sourceItem, sourceColumn));
+        FillSelectedCellsFromValue(grid, sourceText, "Filled");
+    }
+
+    private void FillSelectedCellsFromValue(DataGrid grid, string sourceText, string action)
+    {
+        if (grid.SelectedCells.Count <= 1)
+        {
+            if (DataContext is MainWindowViewModel singleCellViewModel)
+            {
+                singleCellViewModel.StatusText = $"{action} needs a multi-cell selection.";
+            }
+
+            return;
+        }
+
+        var protectedCount = 0;
+        var invalidCount = 0;
+        var edits = new List<SpreadsheetCellEdit>();
+        foreach (var cell in GetOrderedSelectedCells(grid))
+        {
+            if (!CanWriteGridCell(grid, cell.Item, cell.Column))
+            {
+                protectedCount++;
+                continue;
+            }
+
+            if (!CanConvertGridCellValue(cell.Item, cell.Column, sourceText))
+            {
+                invalidCount++;
+                continue;
+            }
+
+            if (CreateSpreadsheetCellEdit(grid, cell.Item, cell.Column, sourceText) is { } edit)
+            {
+                edits.Add(edit);
+            }
+        }
+
+        if (edits.Count == 0)
+        {
+            if (DataContext is MainWindowViewModel noChangeViewModel)
+            {
+                noChangeViewModel.StatusText = protectedCount == 0 && invalidCount == 0
+                    ? $"{action} made no changes."
+                    : $"{action} skipped {protectedCount:N0} protected and {invalidCount:N0} invalid cell(s).";
+            }
+
+            return;
+        }
+
+        var applied = ApplySpreadsheetCellEdits(grid, edits, $"{action} {edits.Count} cells", registerUndo: true, out var applyInvalidCount);
+        invalidCount += applyInvalidCount;
         if (DataContext is MainWindowViewModel viewModel)
         {
-            viewModel.StatusText = $"{action} blocked because the selection includes locked or read-only cells.";
+            viewModel.StatusText = protectedCount == 0 && invalidCount == 0
+                ? $"{action} {applied:N0} cell(s)."
+                : $"{action} {applied:N0} cell(s). Skipped {protectedCount:N0} protected and {invalidCount:N0} invalid cell(s).";
         }
-
-        return true;
-    }
-
-    private static bool HasBlockedPasteTarget(
-        DataGrid grid,
-        IReadOnlyList<IReadOnlyList<string>> values,
-        int startRowIndex,
-        int startColumnIndex,
-        IReadOnlyList<object> visibleItems,
-        IReadOnlyList<DataGridColumn> visibleColumns)
-    {
-        for (var rowOffset = 0; rowOffset < values.Count; rowOffset++)
-        {
-            for (var columnOffset = 0; columnOffset < values[rowOffset].Count; columnOffset++)
-            {
-                var rowIndex = startRowIndex + rowOffset;
-                var columnIndex = startColumnIndex + columnOffset;
-                if (rowIndex >= visibleItems.Count || columnIndex >= visibleColumns.Count)
-                {
-                    return true;
-                }
-
-                if (!CanWriteGridCell(grid, visibleItems[rowIndex], visibleColumns[columnIndex]))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     private static void CommitSpreadsheetChanges(
@@ -1473,6 +1806,142 @@ public partial class MainWindow
         }
 
         viewModel?.EndSpreadsheetEditBatch(status, changedCount > 0, rebuildFilterLists);
+    }
+
+    private int ApplySpreadsheetCellEdits(
+        DataGrid grid,
+        IReadOnlyList<SpreadsheetCellEdit> edits,
+        string status,
+        bool registerUndo,
+        out int invalidCount)
+    {
+        invalidCount = 0;
+        if (edits.Count == 0)
+        {
+            return 0;
+        }
+
+        var viewModel = DataContext as MainWindowViewModel;
+        var changedForecastLines = new HashSet<ForecastLine>(ReferenceEqualityComparer.Instance);
+        var applied = new List<SpreadsheetCellEdit>();
+        var rebuildFilterLists = false;
+        viewModel?.BeginSpreadsheetEditBatch();
+        try
+        {
+            foreach (var edit in edits)
+            {
+                if (!CanWriteGridCell(grid, edit.Item, edit.Column))
+                {
+                    continue;
+                }
+
+                if (!CanConvertGridCellValue(edit.Item, edit.Column, edit.AfterText)
+                    || !TrySetGridCellValue(grid, edit.Item, edit.Column, edit.AfterText, changedForecastLines))
+                {
+                    invalidCount++;
+                    continue;
+                }
+
+                applied.Add(edit);
+                rebuildFilterLists |= !IsMonthlyForecastValueCell(edit.Item, edit.Column);
+            }
+        }
+        finally
+        {
+            if (viewModel is not null)
+            {
+                viewModel.RecalculateForecastLinesForSpreadsheetEdit(changedForecastLines);
+            }
+            else
+            {
+                foreach (var line in changedForecastLines)
+                {
+                    line.NotifyMonthForecastValuesChanged();
+                }
+            }
+
+            CommitSpreadsheetChanges(grid, applied.Count, status, viewModel, rebuildFilterLists);
+            QueueSpreadsheetSelectionUpdate(grid);
+            if (IsManagementResourceGrid(grid))
+            {
+                QueueSynchronizeManagementResourceGrids();
+            }
+        }
+
+        if (registerUndo && applied.Count > 0)
+        {
+            RegisterSpreadsheetUndoBatch(status, applied);
+        }
+
+        return applied.Count;
+    }
+
+    private void RegisterSpreadsheetUndoBatch(string action, IReadOnlyList<SpreadsheetCellEdit> edits)
+    {
+        if (edits.Count == 0)
+        {
+            return;
+        }
+
+        _spreadsheetUndoStack.Push(new SpreadsheetUndoBatch(action, edits.ToList()));
+        _spreadsheetRedoStack.Clear();
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.StatusText = $"{action}. Undo available with Ctrl+Z.";
+        }
+    }
+
+    private void UndoSpreadsheetEdit()
+    {
+        if (!_spreadsheetUndoStack.TryPop(out var batch))
+        {
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                viewModel.StatusText = "Nothing to undo.";
+            }
+
+            return;
+        }
+
+        var undoEdits = batch.Edits
+            .Select(edit => new SpreadsheetCellEdit(edit.Item, edit.Column, edit.AfterText, edit.BeforeText))
+            .ToList();
+        var grid = FindSpreadsheetGridForEdit(batch.Edits[0]);
+        if (grid is null)
+        {
+            return;
+        }
+
+        ApplySpreadsheetCellEdits(grid, undoEdits, $"Undo {batch.Action}", registerUndo: false, out _);
+        _spreadsheetRedoStack.Push(batch);
+    }
+
+    private void RedoSpreadsheetEdit()
+    {
+        if (!_spreadsheetRedoStack.TryPop(out var batch))
+        {
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                viewModel.StatusText = "Nothing to redo.";
+            }
+
+            return;
+        }
+
+        var grid = FindSpreadsheetGridForEdit(batch.Edits[0]);
+        if (grid is null)
+        {
+            return;
+        }
+
+        ApplySpreadsheetCellEdits(grid, batch.Edits, $"Redo {batch.Action}", registerUndo: false, out _);
+        _spreadsheetUndoStack.Push(batch);
+    }
+
+    private DataGrid? FindSpreadsheetGridForEdit(SpreadsheetCellEdit edit)
+    {
+        return _spreadsheetAttachedGrids.FirstOrDefault(grid =>
+            grid.Items.Contains(edit.Item) && grid.Columns.Contains(edit.Column));
     }
 
     private static bool IsMonthlyForecastValueCell(object item, DataGridColumn column)
@@ -1546,6 +2015,21 @@ public partial class MainWindow
         return GetSpreadsheetColumnBindingPath(column) is not null;
     }
 
+    private static bool CanClearGridCell(DataGrid grid, object item, DataGridColumn column)
+    {
+        if (!CanWriteGridCell(grid, item, column))
+        {
+            return false;
+        }
+
+        return item is not ForecastLine || IsForecastValueClearCell(item, column);
+    }
+
+    private static bool IsForecastValueClearCell(object item, DataGridColumn column)
+    {
+        return item is ForecastLine && column.Header is ForecastMonthColumnDefinition monthColumn && monthColumn.IsEditable && !monthColumn.IsTotal;
+    }
+
     private static bool TrySetGridCellValue(
         DataGrid grid,
         object item,
@@ -1580,6 +2064,45 @@ public partial class MainWindow
 
         var path = GetSpreadsheetColumnBindingPath(column);
         return path is not null && TrySetPropertyPathValue(item, path, text);
+    }
+
+    private static bool CanConvertGridCellValue(object item, DataGridColumn column, string text)
+    {
+        if (item is ForecastLine && column.Header is ForecastMonthColumnDefinition)
+        {
+            return SpreadsheetClipboardService.TryConvert(text, typeof(decimal), out _);
+        }
+
+        var path = GetSpreadsheetColumnBindingPath(column);
+        if (path is null)
+        {
+            return false;
+        }
+
+        if (path.StartsWith('[') && path.EndsWith(']'))
+        {
+            var indexer = GetStringIndexer(item.GetType());
+            return indexer?.CanWrite == true
+                && SpreadsheetClipboardService.TryConvert(text, indexer.PropertyType, out _);
+        }
+
+        var properties = GetPropertyPath(item.GetType(), path);
+        return properties is { Length: > 0 }
+            && properties[^1].CanWrite
+            && SpreadsheetClipboardService.TryConvert(text, properties[^1].PropertyType, out _);
+    }
+
+    private SpreadsheetCellEdit? CreateSpreadsheetCellEdit(DataGrid grid, object item, DataGridColumn column, string afterText)
+    {
+        if (!CanWriteGridCell(grid, item, column) || !CanConvertGridCellValue(item, column, afterText))
+        {
+            return null;
+        }
+
+        var beforeText = FormatGridCellValue(GetGridCellValue(item, column));
+        return string.Equals(beforeText, afterText, StringComparison.Ordinal)
+            ? null
+            : new SpreadsheetCellEdit(item, column, beforeText, afterText);
     }
 
     private static object? GetGridCellValue(object item, DataGridColumn column)
@@ -1720,6 +2243,14 @@ public partial class MainWindow
             _ => value.ToString() ?? string.Empty
         };
     }
+
+    private sealed record SpreadsheetCellEdit(object Item, DataGridColumn Column, string BeforeText, string AfterText);
+
+    private sealed record SpreadsheetUndoBatch(string Action, List<SpreadsheetCellEdit> Edits);
+
+    private sealed record SpreadsheetEditSnapshot(DataGrid Grid, object Item, DataGridColumn Column, string BeforeText);
+
+    private sealed record SpreadsheetFillDrag(DataGrid Grid, object SourceItem, DataGridColumn SourceColumn, string SourceText);
 
     private sealed record SelectedGridCell(int RowIndex, int ColumnIndex, object Item, DataGridColumn Column);
 }

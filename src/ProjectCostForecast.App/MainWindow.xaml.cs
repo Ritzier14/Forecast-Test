@@ -97,6 +97,10 @@ public partial class MainWindow : Window
     private readonly Dictionary<DataGrid, HashSet<object>> _spreadsheetSelectionVisualPendingItems = [];
     private readonly HashSet<DataGrid> _spreadsheetSelectionVisualFullRefresh = [];
     private readonly Dictionary<DataGrid, DataGridCellInfo> _spreadsheetPreviousCurrentCells = [];
+    private readonly Dictionary<DataGrid, SpreadsheetEditSnapshot> _spreadsheetEditSnapshots = [];
+    private readonly Stack<SpreadsheetUndoBatch> _spreadsheetUndoStack = [];
+    private readonly Stack<SpreadsheetUndoBatch> _spreadsheetRedoStack = [];
+    private SpreadsheetFillDrag? _spreadsheetFillDrag;
     private readonly HashSet<ForecastGroupHeaderPresenter> _forecastGroupHeaderPresenters = [];
     private readonly Dictionary<int, double> _managementResourceColumnWidths = [];
     private readonly HashSet<DataGridColumn> _trackedManagementResourceColumns = [];
