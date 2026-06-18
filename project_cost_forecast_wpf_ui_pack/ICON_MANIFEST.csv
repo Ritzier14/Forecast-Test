@@ -1,0 +1,46 @@
+file,svg,size_px,default_color,usage
+Assets/Icons/png/ic_app_logo_32.png,Assets/Icons/svg/ic_app_logo_32.svg,32,#2563EB,top-left app logo in the mini rail and brand header
+Assets/Icons/png/ic_nav_home_20.png,Assets/Icons/svg/ic_nav_home_20.svg,20,#64748B,left main nav: Overview/Home
+Assets/Icons/png/ic_nav_forecasts_20.png,Assets/Icons/svg/ic_nav_forecasts_20.svg,20,#2563EB,left main nav: Forecasts selected
+Assets/Icons/png/ic_nav_reports_20.png,Assets/Icons/svg/ic_nav_reports_20.svg,20,#64748B,left main nav: Reports
+Assets/Icons/png/ic_nav_resources_20.png,Assets/Icons/svg/ic_nav_resources_20.svg,20,#64748B,left main nav: Resources
+Assets/Icons/png/ic_nav_settings_20.png,Assets/Icons/svg/ic_nav_settings_20.svg,20,#64748B,left bottom Settings
+Assets/Icons/png/ic_collapse_20.png,Assets/Icons/svg/ic_collapse_20.svg,20,#64748B,left bottom Collapse
+Assets/Icons/png/ic_view_grid_16.png,Assets/Icons/svg/ic_view_grid_16.svg,16,#334155,Views dropdown and Default/Scenario items
+Assets/Icons/png/ic_chevron_down_16.png,Assets/Icons/svg/ic_chevron_down_16.svg,16,#334155,all dropdown buttons and expanded groups
+Assets/Icons/png/ic_chevron_right_16.png,Assets/Icons/svg/ic_chevron_right_16.svg,16,#334155,collapsed groups / tree chevrons
+Assets/Icons/png/ic_close_16.png,Assets/Icons/svg/ic_close_16.svg,16,#64748B,Resource Drilldown close button
+Assets/Icons/png/ic_calendar_18.png,Assets/Icons/svg/ic_calendar_18.svg,18,#334155,Current period pill
+Assets/Icons/png/ic_metric_planned_cost_28.png,Assets/Icons/svg/ic_metric_planned_cost_28.svg,28,#7C3AED,Planned Cost metric card
+Assets/Icons/png/ic_metric_cost_to_date_28.png,Assets/Icons/svg/ic_metric_cost_to_date_28.svg,28,#16A34A,Planned Cost to Date metric card
+Assets/Icons/png/ic_metric_forecast_at_completion_28.png,Assets/Icons/svg/ic_metric_forecast_at_completion_28.svg,28,#2563EB,Forecast at Completion metric card
+Assets/Icons/png/ic_metric_forecast_variance_28.png,Assets/Icons/svg/ic_metric_forecast_variance_28.svg,28,#EF4444,Forecast Variance metric card
+Assets/Icons/png/ic_metric_variance_percent_28.png,Assets/Icons/svg/ic_metric_variance_percent_28.svg,28,#F97316,Variance % metric card
+Assets/Icons/png/ic_metric_budget_remaining_28.png,Assets/Icons/svg/ic_metric_budget_remaining_28.svg,28,#0F766E,Budget Remaining metric card
+Assets/Icons/png/ic_tab_forecast_16.png,Assets/Icons/svg/ic_tab_forecast_16.svg,16,#2563EB,Forecast tab
+Assets/Icons/png/ic_tab_resources_16.png,Assets/Icons/svg/ic_tab_resources_16.svg,16,#64748B,Resources tab
+Assets/Icons/png/ic_tab_raw_transactions_16.png,Assets/Icons/svg/ic_tab_raw_transactions_16.svg,16,#64748B,Raw Transactions tab
+Assets/Icons/png/ic_tab_summary_16.png,Assets/Icons/svg/ic_tab_summary_16.svg,16,#64748B,Summary tab
+Assets/Icons/png/ic_tab_monthly_report_16.png,Assets/Icons/svg/ic_tab_monthly_report_16.svg,16,#64748B,Monthly Report tab
+Assets/Icons/png/ic_tab_pivot_builder_16.png,Assets/Icons/svg/ic_tab_pivot_builder_16.svg,16,#64748B,Pivot Builder tab
+Assets/Icons/png/ic_tab_contingency_16.png,Assets/Icons/svg/ic_tab_contingency_16.svg,16,#64748B,Contingency tab
+Assets/Icons/png/ic_tab_audit_16.png,Assets/Icons/svg/ic_tab_audit_16.svg,16,#64748B,Audit tab
+Assets/Icons/png/ic_filter_16.png,Assets/Icons/svg/ic_filter_16.svg,16,#334155,Filters button and filter headings
+Assets/Icons/png/ic_save_view_16.png,Assets/Icons/svg/ic_save_view_16.svg,16,#334155,Save View button
+Assets/Icons/png/ic_export_16.png,Assets/Icons/svg/ic_export_16.svg,16,#334155,Export button
+Assets/Icons/png/ic_refresh_16.png,Assets/Icons/svg/ic_refresh_16.svg,16,#FFFFFF,Refresh button inside blue primary button
+Assets/Icons/png/ic_expand_all_16.png,Assets/Icons/svg/ic_expand_all_16.svg,16,#2563EB,Expand all button
+Assets/Icons/png/ic_group_by_16.png,Assets/Icons/svg/ic_group_by_16.svg,16,#334155,Group by dropdown
+Assets/Icons/png/ic_category_project_management_20.png,Assets/Icons/svg/ic_category_project_management_20.svg,20,#2563EB,Project Management group row
+Assets/Icons/png/ic_category_internal_staff_20.png,Assets/Icons/svg/ic_category_internal_staff_20.svg,20,#16A34A,Internal Staff Costs group row
+Assets/Icons/png/ic_category_design_consultants_20.png,Assets/Icons/svg/ic_category_design_consultants_20.svg,20,#7C3AED,Design Consultants group row
+Assets/Icons/png/ic_category_contractors_20.png,Assets/Icons/svg/ic_category_contractors_20.svg,20,#F97316,Contractors group row
+Assets/Icons/png/ic_category_compliance_20.png,Assets/Icons/svg/ic_category_compliance_20.svg,20,#0891B2,Compliance group row
+Assets/Icons/png/ic_category_closeout_20.png,Assets/Icons/svg/ic_category_closeout_20.svg,20,#EC4899,Close Out group row
+Assets/Icons/png/ic_badge_validation_ok_16.png,Assets/Icons/svg/ic_badge_validation_ok_16.svg,16,#16A34A,All data validated label / no validation issues
+Assets/Icons/png/ic_user_avatar_placeholder_20.png,Assets/Icons/svg/ic_user_avatar_placeholder_20.svg,20,#64748B,default resource/user row icon if avatars are not loaded
+Assets/Icons/png/ic_download_details_16.png,Assets/Icons/svg/ic_download_details_16.svg,16,#2563EB,Export details button in resource drilldown
+
+bg_header_lake_soft_1600x220.png,background,1600x220,Assets/Backgrounds/bg_header_lake_soft_1600x220.png,HeaderHero background image behind title and KPI cards
+bg_header_lake_soft_3200x440.png,background,3200x440,Assets/Backgrounds/bg_header_lake_soft_3200x440.png,High-DPI header background image
+bg_header_gradient_1600x220.png,background,1600x220,Assets/Backgrounds/bg_header_gradient_1600x220.png,Non-photo fallback header background

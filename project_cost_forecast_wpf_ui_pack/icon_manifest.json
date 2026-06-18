@@ -1,0 +1,289 @@
+[
+  {
+    "file": "Assets/Icons/png/ic_app_logo_32.png",
+    "svg": "Assets/Icons/svg/ic_app_logo_32.svg",
+    "size_px": 32,
+    "default_color": "#2563EB",
+    "usage": "top-left app logo in the mini rail and brand header"
+  },
+  {
+    "file": "Assets/Icons/png/ic_nav_home_20.png",
+    "svg": "Assets/Icons/svg/ic_nav_home_20.svg",
+    "size_px": 20,
+    "default_color": "#64748B",
+    "usage": "left main nav: Overview/Home"
+  },
+  {
+    "file": "Assets/Icons/png/ic_nav_forecasts_20.png",
+    "svg": "Assets/Icons/svg/ic_nav_forecasts_20.svg",
+    "size_px": 20,
+    "default_color": "#2563EB",
+    "usage": "left main nav: Forecasts selected"
+  },
+  {
+    "file": "Assets/Icons/png/ic_nav_reports_20.png",
+    "svg": "Assets/Icons/svg/ic_nav_reports_20.svg",
+    "size_px": 20,
+    "default_color": "#64748B",
+    "usage": "left main nav: Reports"
+  },
+  {
+    "file": "Assets/Icons/png/ic_nav_resources_20.png",
+    "svg": "Assets/Icons/svg/ic_nav_resources_20.svg",
+    "size_px": 20,
+    "default_color": "#64748B",
+    "usage": "left main nav: Resources"
+  },
+  {
+    "file": "Assets/Icons/png/ic_nav_settings_20.png",
+    "svg": "Assets/Icons/svg/ic_nav_settings_20.svg",
+    "size_px": 20,
+    "default_color": "#64748B",
+    "usage": "left bottom Settings"
+  },
+  {
+    "file": "Assets/Icons/png/ic_collapse_20.png",
+    "svg": "Assets/Icons/svg/ic_collapse_20.svg",
+    "size_px": 20,
+    "default_color": "#64748B",
+    "usage": "left bottom Collapse"
+  },
+  {
+    "file": "Assets/Icons/png/ic_view_grid_16.png",
+    "svg": "Assets/Icons/svg/ic_view_grid_16.svg",
+    "size_px": 16,
+    "default_color": "#334155",
+    "usage": "Views dropdown and Default/Scenario items"
+  },
+  {
+    "file": "Assets/Icons/png/ic_chevron_down_16.png",
+    "svg": "Assets/Icons/svg/ic_chevron_down_16.svg",
+    "size_px": 16,
+    "default_color": "#334155",
+    "usage": "all dropdown buttons and expanded groups"
+  },
+  {
+    "file": "Assets/Icons/png/ic_chevron_right_16.png",
+    "svg": "Assets/Icons/svg/ic_chevron_right_16.svg",
+    "size_px": 16,
+    "default_color": "#334155",
+    "usage": "collapsed groups / tree chevrons"
+  },
+  {
+    "file": "Assets/Icons/png/ic_close_16.png",
+    "svg": "Assets/Icons/svg/ic_close_16.svg",
+    "size_px": 16,
+    "default_color": "#64748B",
+    "usage": "Resource Drilldown close button"
+  },
+  {
+    "file": "Assets/Icons/png/ic_calendar_18.png",
+    "svg": "Assets/Icons/svg/ic_calendar_18.svg",
+    "size_px": 18,
+    "default_color": "#334155",
+    "usage": "Current period pill"
+  },
+  {
+    "file": "Assets/Icons/png/ic_metric_planned_cost_28.png",
+    "svg": "Assets/Icons/svg/ic_metric_planned_cost_28.svg",
+    "size_px": 28,
+    "default_color": "#7C3AED",
+    "usage": "Planned Cost metric card"
+  },
+  {
+    "file": "Assets/Icons/png/ic_metric_cost_to_date_28.png",
+    "svg": "Assets/Icons/svg/ic_metric_cost_to_date_28.svg",
+    "size_px": 28,
+    "default_color": "#16A34A",
+    "usage": "Planned Cost to Date metric card"
+  },
+  {
+    "file": "Assets/Icons/png/ic_metric_forecast_at_completion_28.png",
+    "svg": "Assets/Icons/svg/ic_metric_forecast_at_completion_28.svg",
+    "size_px": 28,
+    "default_color": "#2563EB",
+    "usage": "Forecast at Completion metric card"
+  },
+  {
+    "file": "Assets/Icons/png/ic_metric_forecast_variance_28.png",
+    "svg": "Assets/Icons/svg/ic_metric_forecast_variance_28.svg",
+    "size_px": 28,
+    "default_color": "#EF4444",
+    "usage": "Forecast Variance metric card"
+  },
+  {
+    "file": "Assets/Icons/png/ic_metric_variance_percent_28.png",
+    "svg": "Assets/Icons/svg/ic_metric_variance_percent_28.svg",
+    "size_px": 28,
+    "default_color": "#F97316",
+    "usage": "Variance % metric card"
+  },
+  {
+    "file": "Assets/Icons/png/ic_metric_budget_remaining_28.png",
+    "svg": "Assets/Icons/svg/ic_metric_budget_remaining_28.svg",
+    "size_px": 28,
+    "default_color": "#0F766E",
+    "usage": "Budget Remaining metric card"
+  },
+  {
+    "file": "Assets/Icons/png/ic_tab_forecast_16.png",
+    "svg": "Assets/Icons/svg/ic_tab_forecast_16.svg",
+    "size_px": 16,
+    "default_color": "#2563EB",
+    "usage": "Forecast tab"
+  },
+  {
+    "file": "Assets/Icons/png/ic_tab_resources_16.png",
+    "svg": "Assets/Icons/svg/ic_tab_resources_16.svg",
+    "size_px": 16,
+    "default_color": "#64748B",
+    "usage": "Resources tab"
+  },
+  {
+    "file": "Assets/Icons/png/ic_tab_raw_transactions_16.png",
+    "svg": "Assets/Icons/svg/ic_tab_raw_transactions_16.svg",
+    "size_px": 16,
+    "default_color": "#64748B",
+    "usage": "Raw Transactions tab"
+  },
+  {
+    "file": "Assets/Icons/png/ic_tab_summary_16.png",
+    "svg": "Assets/Icons/svg/ic_tab_summary_16.svg",
+    "size_px": 16,
+    "default_color": "#64748B",
+    "usage": "Summary tab"
+  },
+  {
+    "file": "Assets/Icons/png/ic_tab_monthly_report_16.png",
+    "svg": "Assets/Icons/svg/ic_tab_monthly_report_16.svg",
+    "size_px": 16,
+    "default_color": "#64748B",
+    "usage": "Monthly Report tab"
+  },
+  {
+    "file": "Assets/Icons/png/ic_tab_pivot_builder_16.png",
+    "svg": "Assets/Icons/svg/ic_tab_pivot_builder_16.svg",
+    "size_px": 16,
+    "default_color": "#64748B",
+    "usage": "Pivot Builder tab"
+  },
+  {
+    "file": "Assets/Icons/png/ic_tab_contingency_16.png",
+    "svg": "Assets/Icons/svg/ic_tab_contingency_16.svg",
+    "size_px": 16,
+    "default_color": "#64748B",
+    "usage": "Contingency tab"
+  },
+  {
+    "file": "Assets/Icons/png/ic_tab_audit_16.png",
+    "svg": "Assets/Icons/svg/ic_tab_audit_16.svg",
+    "size_px": 16,
+    "default_color": "#64748B",
+    "usage": "Audit tab"
+  },
+  {
+    "file": "Assets/Icons/png/ic_filter_16.png",
+    "svg": "Assets/Icons/svg/ic_filter_16.svg",
+    "size_px": 16,
+    "default_color": "#334155",
+    "usage": "Filters button and filter headings"
+  },
+  {
+    "file": "Assets/Icons/png/ic_save_view_16.png",
+    "svg": "Assets/Icons/svg/ic_save_view_16.svg",
+    "size_px": 16,
+    "default_color": "#334155",
+    "usage": "Save View button"
+  },
+  {
+    "file": "Assets/Icons/png/ic_export_16.png",
+    "svg": "Assets/Icons/svg/ic_export_16.svg",
+    "size_px": 16,
+    "default_color": "#334155",
+    "usage": "Export button"
+  },
+  {
+    "file": "Assets/Icons/png/ic_refresh_16.png",
+    "svg": "Assets/Icons/svg/ic_refresh_16.svg",
+    "size_px": 16,
+    "default_color": "#FFFFFF",
+    "usage": "Refresh button inside blue primary button"
+  },
+  {
+    "file": "Assets/Icons/png/ic_expand_all_16.png",
+    "svg": "Assets/Icons/svg/ic_expand_all_16.svg",
+    "size_px": 16,
+    "default_color": "#2563EB",
+    "usage": "Expand all button"
+  },
+  {
+    "file": "Assets/Icons/png/ic_group_by_16.png",
+    "svg": "Assets/Icons/svg/ic_group_by_16.svg",
+    "size_px": 16,
+    "default_color": "#334155",
+    "usage": "Group by dropdown"
+  },
+  {
+    "file": "Assets/Icons/png/ic_category_project_management_20.png",
+    "svg": "Assets/Icons/svg/ic_category_project_management_20.svg",
+    "size_px": 20,
+    "default_color": "#2563EB",
+    "usage": "Project Management group row"
+  },
+  {
+    "file": "Assets/Icons/png/ic_category_internal_staff_20.png",
+    "svg": "Assets/Icons/svg/ic_category_internal_staff_20.svg",
+    "size_px": 20,
+    "default_color": "#16A34A",
+    "usage": "Internal Staff Costs group row"
+  },
+  {
+    "file": "Assets/Icons/png/ic_category_design_consultants_20.png",
+    "svg": "Assets/Icons/svg/ic_category_design_consultants_20.svg",
+    "size_px": 20,
+    "default_color": "#7C3AED",
+    "usage": "Design Consultants group row"
+  },
+  {
+    "file": "Assets/Icons/png/ic_category_contractors_20.png",
+    "svg": "Assets/Icons/svg/ic_category_contractors_20.svg",
+    "size_px": 20,
+    "default_color": "#F97316",
+    "usage": "Contractors group row"
+  },
+  {
+    "file": "Assets/Icons/png/ic_category_compliance_20.png",
+    "svg": "Assets/Icons/svg/ic_category_compliance_20.svg",
+    "size_px": 20,
+    "default_color": "#0891B2",
+    "usage": "Compliance group row"
+  },
+  {
+    "file": "Assets/Icons/png/ic_category_closeout_20.png",
+    "svg": "Assets/Icons/svg/ic_category_closeout_20.svg",
+    "size_px": 20,
+    "default_color": "#EC4899",
+    "usage": "Close Out group row"
+  },
+  {
+    "file": "Assets/Icons/png/ic_badge_validation_ok_16.png",
+    "svg": "Assets/Icons/svg/ic_badge_validation_ok_16.svg",
+    "size_px": 16,
+    "default_color": "#16A34A",
+    "usage": "All data validated label / no validation issues"
+  },
+  {
+    "file": "Assets/Icons/png/ic_user_avatar_placeholder_20.png",
+    "svg": "Assets/Icons/svg/ic_user_avatar_placeholder_20.svg",
+    "size_px": 20,
+    "default_color": "#64748B",
+    "usage": "default resource/user row icon if avatars are not loaded"
+  },
+  {
+    "file": "Assets/Icons/png/ic_download_details_16.png",
+    "svg": "Assets/Icons/svg/ic_download_details_16.svg",
+    "size_px": 16,
+    "default_color": "#2563EB",
+    "usage": "Export details button in resource drilldown"
+  }
+]

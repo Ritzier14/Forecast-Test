@@ -1,0 +1,545 @@
+Sheets:
+{'name': 'CTC', 'sheetId': '1', 'rid': 'rId1', 'path': 'xl/worksheets/sheet1.xml'}
+{'name': 'Report', 'sheetId': '11', 'rid': 'rId2', 'path': 'xl/worksheets/sheet2.xml'}
+{'name': 'Contingency', 'sheetId': '6', 'rid': 'rId3', 'path': 'xl/worksheets/sheet3.xml'}
+{'name': 'Piviot Table', 'sheetId': '4', 'rid': 'rId4', 'path': 'xl/worksheets/sheet4.xml'}
+{'name': 'Forecast Accuracy', 'sheetId': '7', 'rid': 'rId5', 'path': 'xl/worksheets/sheet5.xml'}
+{'name': 'Financial Report', 'sheetId': '5', 'rid': 'rId6', 'path': 'xl/worksheets/sheet6.xml'}
+{'name': 'Check', 'sheetId': '3', 'rid': 'rId7', 'path': 'xl/worksheets/sheet7.xml'}
+{'name': 'Raw Data Entry', 'sheetId': '2', 'rid': 'rId8', 'path': 'xl/worksheets/sheet8.xml'}
+
+== CTC dim A1:BS125 nonblank 2726 formulas 1904 merges 41 dvalid 0 condfmt 13 tables []
+  L10 = EDATE(K10,1) cached: 46054
+  M10 = EDATE(L10,1) cached: 46082
+  N10 =  cached: 46113
+  E11 = SUM(E13:E75) cached: 27695
+  AY11 = SUM(AY13:AY75) cached: 4265995.3114944
+  D13 = MATCH(A13,_xlfn.UNIQUE($A$13:$A$75),0) cached: 1
+  E13 = SUMIFS('Raw Data Entry'!$G:$G,'Raw Data Entry'!$B:$B,$A13,'Raw Data Entry'!$V:$V,$B13) cached: 200
+  F13 = BD13 cached: 0
+  G13 = BA13 cached: 0
+  H13 = SUMIFS('Raw Data Entry'!$G:$G,'Raw Data Entry'!$B:$B,$A13,'Raw Data Entry'!$V:$V,$B13,'Raw Data Entry'!$A:$A,$B$3) cached: 0
+  I13 = AZ13 cached: 0
+  J13 = BB13 cached: 0
+  AU13 = SUM(K13:AT13) cached: 0
+  AV13 = E13 cached: 200
+
+== Report dim B2:K77 nonblank 218 formulas 129 merges 61 dvalid 0 condfmt 5 tables ['xl/tables/table1.xml']
+  D4 = CTC!B3 cached: 26-09
+  D10 = IF(SUMIFS('Raw Data Entry'!$G$2:$G$4964,'Raw Data Entry'!$A$2:$A$4964,"*"&SUBSTITUTE(TRIM(SUBSTITUTE(D$9,CHAR(160),"")),"FY","")&"-*")=0,"-",SUMIFS('Raw Data Entry'!$G$2:$G$4964,'Raw Data Entry'!$A$2:$A$4964,"*"&SUBSTITUTE(TRIM(SUBSTITUTE(D$9,CHAR(160),"")),"FY","")&"-*")) cached: 27695
+  G10 = SUM(D10:E10) cached: 27695
+  D11 = SUM(CTC!K11:P11) cached: 279308.64
+  E11 = CTC!Q76 cached: 1508914.8517368
+  F11 = CTC!AC76 cached: 2450076.8197575994
+  G11 = SUM(D11:F11) cached: 4238300.311494399
+  J11 = SUM(Contingency!C3:C21) cached: 0
+  D12 = SUM(D10:D11) cached: 307003.64
+  E12 = SUM(E10:E11) cached: 1508914.8517368
+  F12 = SUM(F10:F11) cached: 2450076.8197575994
+  G12 = SUM(D12:F12) cached: 4265995.311494399
+  J12 = SUM(Contingency!E3:E21) cached: 0
+  G13 = SUM(D13:F13) cached: 933563.56
+
+== Contingency dim B1:G20 nonblank 41 formulas 17 merges 0 dvalid 0 condfmt 0 tables []
+  D4 = D3-C4 cached: 0
+  D5 = D4-C5 cached: 0
+  D6 =  cached: 0
+
+== Piviot Table dim A1:H12 nonblank 56 formulas 0 merges 0 dvalid 0 condfmt 0 tables []
+
+== Forecast Accuracy dim B2:E25 nonblank 69 formulas 6 merges 0 dvalid 0 condfmt 0 tables ['xl/tables/table2.xml']
+  E20 = Table1[[#This Row],[Actuals]]/Table1[[#This Row],[Forecast]] cached: 2.148597833935018
+
+== Financial Report dim A1:H57 nonblank 186 formulas 100 merges 5 dvalid 0 condfmt 1 tables []
+  A10 = _xlfn._xlws.SORT(_xlfn.UNIQUE(_xlfn._xlws.FILTER(CTC!$C$11:$C$77,(CTC!$C$11:$C$77<>"")*(CTC!$A$11:$A$77<>"")))) cached: Close Out
+  B10 = SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$A10) cached: 46000
+  C10 = SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$A10) cached: 0
+  D10 = SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$A10) cached: 46000
+  E10 = SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$A10) cached: 46000
+  F10 = SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$A10) cached: 0
+  G10 = SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$A10) cached: 46000
+  H10 = SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$A10) cached: 0
+  B11 = SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$A11) cached: 54710
+  C11 = SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$A11) cached: 0
+  D11 = SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$A11) cached: 54710
+  E11 = SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$A11) cached: 54710
+  F11 = SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$A11) cached: 0
+  G11 = SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$A11) cached: 54710
+
+== Check dim A1:B6 nonblank 12 formulas 1 merges 0 dvalid 0 condfmt 0 tables []
+  A2 = _xlfn.LET(
+    _xlpm.tasks,'Raw Data Entry'!$B$2:$B$4923,
+    _xlpm.names,TRIM('Raw Data Entry'!$V$2:$V$4923),
+    _xlfn._xlws.SORT(_xlfn.UNIQUE(_xlfn._xlws.FILTER(_xlfn.HSTACK(_xlpm.tasks,_xlpm.names),(_xlpm.tasks<>"")*(_xlpm.names<>""))))
+) cached: WA57102001
+
+== Raw Data Entry dim A1:V1112 nonblank 1278 formulas 0 merges 0 dvalid 0 condfmt 0 tables []
+
+Tables:
+xl/tables/table1.xml Table16 Table16 C9:G14 ['As at current period', '\xa0FY26\xa0', '\xa0FY27\xa0', '\xa0FY28', '\xa0Totals (FY26 onwards)\xa0']
+xl/tables/table2.xml Table1 Table1 B2:E25 ['Month', 'Forecast', 'Actuals', '%']
+
+Defined names:
+{'name': '_xlnm._FilterDatabase', 'localSheetId': '0', 'hidden': '1'} CTC!$A$9:$BG$76
+{'name': '_xlnm._FilterDatabase', 'localSheetId': '7', 'hidden': '1'} 'Raw Data Entry'!$A$1:$V$1112
+{'name': '_xlpm.names', 'hidden': '1', 'xlm': '1'} #NAME?
+{'name': '_xlpm.tasks', 'hidden': '1', 'xlm': '1'} #NAME?
+{'name': 'Checklist'} _xlfn.ANCHORARRAY(Check!$A$2)
+{'name': '_xlnm.Print_Area', 'localSheetId': '0'} CTC!$A$1:$BG$123
+{'name': '_xlnm.Print_Area', 'localSheetId': '1'} Report!$B$2:$K$77
+
+Raw headers ['FY-Period', 'Task Number', 'Period', 'Doc Date', 'Units', 'Unit Rate', 'Amount', 'Cost Ledger', 'Cost Account', 'Project Code', 'Parent Project Code', 'Resource Code', 'Resource Description', 'Source', 'PO Number', 'PO Comments', 'Supplier Name', 'Narrative 1', 'Narrative 2', 'Narrative 3', 'Who', 'Manual Name']
+Raw row count 63
+Amount total 27695
+Units total 139
+
+Top Task Number
+  'WA57102001' 44
+  'WA57102002' 19
+
+Top Resource Description
+  'Stanley Drake' 39
+  'Scott Ryan' 14
+  'Gregory Parkin' 5
+  'Contractors Payments' 4
+  'Daniel Robert Drummond' 1
+
+Top Resource Code
+  '10732' 39
+  '10664' 14
+  '10593' 5
+  '255' 4
+  '10992' 1
+
+Top Project Code
+  'WA571' 63
+
+Top Source
+  'TC' 59
+  'AP' 4
+
+Top FY-Period
+  '26-08' 25
+  '26-09' 22
+  '26-07' 12
+  '26-06' 3
+  '26-04' 1
+
+Resource summaries
+Stanley Drake {'rows': 39, 'amount': 15000, 'units': 100, 'codes': ['10732'], 'tasks': ['WA57102001'], 'periods': ['26-07', '26-08', '26-09'], 'sources': ['TC']}
+Contractors Payments {'rows': 4, 'amount': 7420, 'units': 4, 'codes': ['255'], 'tasks': ['WA57102001'], 'periods': ['26-06', '26-07', '26-08', '26-09'], 'sources': ['AP']}
+Scott Ryan {'rows': 14, 'amount': 3875, 'units': 25, 'codes': ['10664'], 'tasks': ['WA57102002'], 'periods': ['26-06', '26-07', '26-08', '26-09'], 'sources': ['TC']}
+Gregory Parkin {'rows': 5, 'amount': 1200, 'units': 8, 'codes': ['10593'], 'tasks': ['WA57102002'], 'periods': ['26-07', '26-08'], 'sources': ['TC']}
+Daniel Robert Drummond {'rows': 1, 'amount': 200, 'units': 2, 'codes': ['10992'], 'tasks': ['WA57102001'], 'periods': ['26-04'], 'sources': ['TC']}
+
+CTC row 9 headers:
+[(1, 'Task'), (2, 'Who'), (3, 'Project Code'), (4, 'Format helper'), (5, 'Cost  to date \n(B)'), (6, 'Total budget variance \n(J)'), (7, 'Planned cost Vs Budget\n(F)'), (8, 'Total Cost for month '), (9, 'Last Month Forecast'), (10, 'Var Actual vs forecast (MO)'), (11, '26-07'), (12, '26-08'), (13, '26-09'), (14, '26-10'), (15, '26-11'), (16, '26-12'), (17, '27-01'), (18, '27-02'), (19, '27-03'), (20, '27-04'), (21, '27-05'), (22, '27-06'), (23, '27-07'), (24, '27-08'), (25, '27-09'), (26, '27-10'), (27, '27-11'), (28, '27-12'), (29, '28-01'), (30, '28-02'), (31, '28-03'), (32, '28-04'), (33, '28-05'), (34, '28-06'), (35, '28-07'), (36, '28-08'), (37, '28-09'), (38, '28-10'), (39, '28-11'), (40, '28-12'), (41, '29-01'), (42, '29-02'), (43, '29-03'), (44, '29-04'), (45, '29-05'), (46, '29-06'), (47, 'TOTAL Forecast (CTC)'), (48, 'Cost to Date (CTD)'), (49, 'Planed cost (FCC)'), (50, 'Month Forecast'), (51, 'Planned Cost'), (52, 'Forecast'), (53, 'Planned Cost'), (54, 'Forecast'), (55, 'Budget'), (56, 'Total budget variance '), (57, 'Month forecast variance '), (58, 'Month Budget Variance'), (59, 'Total Budget Variance')]
+CTC row 10 dates:
+[('A', None, None), ('B', None, None), ('C', None, None), ('D', None, None), ('E', None, None), ('F', None, None), ('G', None, None), ('H', None, None), ('I', None, None), ('J', None, None), ('K', 46023, '2026-01-01'), ('L', 46054, '2026-02-01'), ('M', 46082, '2026-03-01'), ('N', 46113, '2026-04-01'), ('O', 46143, '2026-05-01'), ('P', 46174, '2026-06-01'), ('Q', 46204, '2026-07-01'), ('R', 46235, '2026-08-01'), ('S', 46266, '2026-09-01'), ('T', 46296, '2026-10-01'), ('U', 46327, '2026-11-01'), ('V', 46357, '2026-12-01'), ('W', 46388, '2027-01-01'), ('X', 46419, '2027-02-01'), ('Y', 46447, '2027-03-01'), ('Z', 46478, '2027-04-01'), ('AA', 46508, '2027-05-01'), ('AB', 46539, '2027-06-01'), ('AC', 46569, '2027-07-01'), ('AD', 46600, '2027-08-01'), ('AE', 46631, '2027-09-01'), ('AF', 46661, '2027-10-01'), ('AG', 46692, '2027-11-01'), ('AH', 46722, '2027-12-01'), ('AI', 46753, '2028-01-01'), ('AJ', 46784, '2028-02-01'), ('AK', 46813, '2028-03-01'), ('AL', 46844, '2028-04-01'), ('AM', 46874, '2028-05-01'), ('AN', 46905, '2028-06-01'), ('AO', 46935, '2028-07-01'), ('AP', 46966, '2028-08-01'), ('AQ', 46997, '2028-09-01'), ('AR', 47027, '2028-10-01'), ('AS', 47058, '2028-11-01'), ('AT', 47088, '2028-12-01'), ('AU', 'A', 'A'), ('AV', 'B', 'B'), ('AW', 'C = A+B', 'C = A+B'), ('AX', None, None), ('AY', 'D', 'D'), ('AZ', 'E', 'E'), ('BA', 'F = D - C', 'F = D - C'), ('BB', 'G', 'G'), ('BC', 'H', 'H'), ('BD', 'J = H - C', 'J = H - C'), ('BE', 'Comments on G', 'Comments on G'), ('BF', 'Comments H', 'Comments H'), ('BG', 'Comments on J', 'Comments on J')]
+
+CTC row sample 13:
+A13 val= WA57102001 formula= None
+B13 val= Daniel Robert Drummond formula= None
+C13 val= Project Management formula= None
+D13 val= 1 formula= MATCH(A13,_xlfn.UNIQUE($A$13:$A$75),0)
+E13 val= 200 formula= SUMIFS('Raw Data Entry'!$G:$G,'Raw Data Entry'!$B:$B,$A13,'Raw Data Entry'!$V:$V,$B13)
+F13 val= 0 formula= BD13
+G13 val= 0 formula= BA13
+H13 val= 0 formula= SUMIFS('Raw Data Entry'!$G:$G,'Raw Data Entry'!$B:$B,$A13,'Raw Data Entry'!$V:$V,$B13,'Raw Data Entry'!$A:$A,$B$3)
+I13 val= 0 formula= AZ13
+J13 val= 0 formula= BB13
+AU13 val= 0 formula= SUM(K13:AT13)
+AV13 val= 200 formula= E13
+AW13 val= 200 formula= SUM(AU13:AV13)
+AX13 val= 0 formula= None
+AY13 val= 200 formula= None
+AZ13 val= 0 formula= None
+BA13 val= 0 formula= AY13-AW13
+BB13 val= 0 formula= AZ13-H13
+BC13 val= 200 formula= None
+BD13 val= 0 formula= BC13-AW13
+
+CTC rows 13-50 first 10 cols:
+13 ['WA57102001', 'Daniel Robert Drummond', 'Project Management', 1, 200, 0, 0, 0, 0, 0]
+14 ['WA57102001', 'Flex Projects L', 'Project Management', 1, 7420, 0, 0, 280, 4060, 3780]
+15 ['WA57102001', 'Stanley Drake', 'Project Management', 1, 15000, 0, 0, 5100, 8400, 3300]
+16 ['WA57102001', 'Sidonia', 'Project Management', 1, 0, 0, 0, 0, 0, 0]
+17 ['WA57102001', 'Scott', 'Project Management', 1, 0, 0, 0, 0, 0, 0]
+18 ['WA57102001', 'Gordon', 'Project Management', 1, 0, 0, 0, 0, 0, 0]
+19 ['WA57102002', 'Rachelle ', 'Internal Staff Costs', 2, 0, 0, 0, 0, 0, 0]
+20 ['WA57102002', 'Ben', 'Internal Staff Costs', 2, 0, 0, 0, 0, 0, 0]
+21 ['WA57102002', 'Graeme ', 'Internal Staff Costs', 2, 0, 0, 0, 0, 0, 0]
+22 ['WA57102002', 'Jess', 'Internal Staff Costs', 2, 0, 0, 0, 0, 0, 0]
+23 ['WA57102002', 'Daniel', 'Internal Staff Costs', 2, 0, 0, 0, 0, 0, 0]
+24 ['WA57102002', 'Gregory Parkin', 'Internal Staff Costs', 2, 1200, 0, 0, 0, 150, 150]
+25 ['WA57102002', 'Scott Ryan', 'Internal Staff Costs', 2, 3875, 0, 0, 310, 775, 465]
+26 ['WA57102003', 'Beca', 'Design Consultants', 3, 0, 0, 0, 0, 0, 0]
+27 ['WA57102003', 'Beca - Pipeline detail desgin', 'Design Consultants', 3, 0, 0, 0, 0, 0, 0]
+28 ['WA57102005', 'Meghan', 'Compliance', 4, 0, 0, 0, 0, 0, 0]
+29 ['WA57102005', 'TRC consents', 'Compliance', 4, 0, 0, 0, 0, 0, 0]
+30 ['WA57102005', 'NPDC Consents', 'Compliance', 4, 0, 0, 0, 0, 0, 0]
+31 ['WA57103001', 'Sidonia', 'Project Management', 5, 0, 0, 0, 0, 0, 0]
+32 ['WA57103001', 'Scott', 'Project Management', 5, 0, 0, 0, 0, 0, 0]
+33 ['WA57103001', 'Simon', 'Project Management', 5, 0, 0, 0, 0, 0, 0]
+34 ['WA57103001', 'Daniel ', 'Project Management', 5, 0, 0, 0, 0, 0, 0]
+35 ['WA57103001', 'Gordon', 'Project Management', 5, 0, 0, 0, 0, 0, 0]
+36 ['WA57103002', 'Rachelle ', 'Internal Staff Costs', 6, 0, 0, 0, 0, 0, 0]
+37 ['WA57103002', 'Ben', 'Internal Staff Costs', 6, 0, 0, 0, 0, 0, 0]
+38 ['WA57103002', 'Graeme ', 'Internal Staff Costs', 6, 0, 0, 0, 0, 0, 0]
+39 ['WA57103002', 'Jess', 'Internal Staff Costs', 6, 0, 0, 0, 0, 0, 0]
+40 ['WA57103002', 'greg', 'Internal Staff Costs', 6, 0, 0, 0, 0, 0, 0]
+41 ['WA57103003', 'Beca', 'Design Consultants', 7, 0, 0, 0, 0, 0, 0]
+42 ['WA57103004', 'Ecolocal support ( defishing and reporting)', 'Compliance', 8, 0, 0, 0, 0, 0, 0]
+43 ['WA57103007', 'Headcontractor', 'Construction', 9, 0, 0, 0, 0, 0, 0]
+44 ['WA57103007', 'Pipecovering contractor', 'Construction', 9, 0, 0, 0, 0, 0, 0]
+45 ['WA57103007', 'Geotech contractor', 'Construction', 9, 0, 0, 0, 0, 0, 0]
+46 ['WA57103009', 'Iwi engagement', 'Iwi Engagement', 10, 0, 0, 0, 0, 0, 0]
+47 ['WA57104001', 'William Monk', 'Close Out', 11, 0, 0, 0, 0, 0, 0]
+48 ['WA57104002', 'Sundry materials', 'Close Out', 12, 0, 0, 0, 0, 0, 0]
+49 ['WA57100000', 'Project Contingency (P50)', 'Contigency', 13, 0, 0, 0, 0, 0, 0]
+50 [None, None, None, '#N/A', 0, 0, 0, 0, 0, 0]
+
+Formula dump Report
+D4 CTC!B3 => 26-09
+D10 IF(SUMIFS('Raw Data Entry'!$G$2:$G$4964,'Raw Data Entry'!$A$2:$A$4964,"*"&SUBSTITUTE(TRIM(SUBSTITUTE(D$9,CHAR(160),"")),"FY","")&"-*")=0,"-",SUMIFS('Raw Data Entry'!$G$2:$G$4964,'Raw Data Entry'!$A$2:$A$4964,"*"&SUBSTITUTE(TRIM(SUBSTITUTE(D$9,CHAR(160),"")),"FY","")&"-*")) => 27695
+G10 SUM(D10:E10) => 27695
+D11 SUM(CTC!K11:P11) => 279308.64
+E11 CTC!Q76 => 1508914.8517368
+F11 CTC!AC76 => 2450076.8197575994
+G11 SUM(D11:F11) => 4238300.311494399
+J11 SUM(Contingency!C3:C21) => 0
+D12 SUM(D10:D11) => 307003.64
+E12 SUM(E10:E11) => 1508914.8517368
+F12 SUM(F10:F11) => 2450076.8197575994
+G12 SUM(D12:F12) => 4265995.311494399
+J12 SUM(Contingency!E3:E21) => 0
+G13 SUM(D13:F13) => 933563.56
+J13 J10-J11-J12 => 772444.2641824001
+D14 D13-D12 => 144959.91999999998
+E14 E13-E12 => -1027314.8517368
+F14 F13-F12 => -2450076.8197575994
+G14 SUM(D14:F14) => -3332431.7514943993
+C22 _xlfn._xlws.SORT(_xlfn.UNIQUE(_xlfn._xlws.FILTER(CTC!$C$11:$C$81,(CTC!$C$11:$C$81<>"")*(CTC!$A$11:$A$81<>"")))) => Close Out
+D22 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$C22) => 46000
+E22 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$C22) => 0
+F22 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$C22) => 46000
+G22 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$C22) => 46000
+H22 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C22) => 0
+I22 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$C22) => 46000
+J22 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C22) => 0
+D23 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$C23) => 54710
+E23 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$C23) => 0
+F23 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$C23) => 54710
+G23 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$C23) => 54710
+H23 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C23) => 0
+I23 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$C23) => 54710
+J23 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C23) => 0
+D24 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$C24) => 2256446.037312
+E24 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$C24) => 0
+F24 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$C24) => 2256446.037312
+G24 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$C24) => 2256446.037312
+H24 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C24) => 0
+I24 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$C24) => 2256446.037312
+J24 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C24) => 0
+D25 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$C25) => 772444.2641824001
+E25 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$C25) => 0
+F25 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$C25) => 772444.2641824001
+G25 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$C25) => 772444.2641824001
+H25 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C25) => 0
+I25 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$C25) => 772444.2641824001
+J25 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C25) => 0
+D26 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$C26) => 390000
+E26 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$C26) => 0
+F26 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$C26) => 390000
+G26 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$C26) => 390000
+H26 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C26) => 0
+I26 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$C26) => 390000
+J26 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C26) => 0
+D27 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$C27) => 28700
+E27 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$C27) => 5075
+F27 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$C27) => 33775
+G27 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$C27) => 33775
+H27 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C27) => 0
+I27 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$C27) => 33775
+J27 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C27) => 0
+D28 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$C28) => 38180.01
+E28 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$C28) => 0
+F28 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$C28) => 38180.01
+G28 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$C28) => 38180.01
+H28 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C28) => 0
+I28 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$C28) => 38180.01
+J28 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C28) => 0
+D29 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$C29) => 651820
+E29 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$C29) => 22620
+F29 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$C29) => 674440
+G29 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$C29) => 674440
+H29 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C29) => 0
+I29 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$C29) => 674440
+J29 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C29) => 0
+D30 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$C30) => 0
+E30 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$C30) => 0
+F30 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$C30) => 0
+G30 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$C30) => 0
+H30 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C30) => 0
+I30 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$C30) => 0
+J30 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C30) => 0
+D31 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$C31) => 0
+E31 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$C31) => 0
+F31 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$C31) => 0
+G31 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$C31) => 0
+H31 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C31) => 0
+I31 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$C31) => 0
+J31 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C31) => 0
+D32 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$C32) => 0
+E32 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$C32) => 0
+F32 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$C32) => 0
+G32 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$C32) => 0
+H32 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C32) => 0
+I32 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$C32) => 0
+J32 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C32) => 0
+D33 SUM(D22:D32) => 4238300.3114944
+E33  => 27695
+F33  => 4265995.3114944
+G33  => 4265995.3114944
+H33  => 0
+I33  => 4265995.3114944
+J33  => 0
+C39 _xlfn._xlws.SORT(_xlfn.UNIQUE(_xlfn._xlws.FILTER(CTC!$C$11:$C$77,(CTC!$C$11:$C$77<>"")*(CTC!$A$11:$A$77<>"")))) => Close Out
+D39 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C39) => 0
+E39 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C39) => 0
+D40 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C40) => 0
+E40 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C40) => 0
+D41 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C41) => 0
+E41 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C41) => 0
+D42 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C42) => 0
+E42 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C42) => 0
+D43 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C43) => 0
+E43 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C43) => 0
+D44 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C44) => 0
+E44 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C44) => 0
+D45 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C45) => 0
+E45 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$C45) => 0
+D46 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$C46) => 0
+
+Formula dump Contingency
+D4 D3-C4 => 0
+D5 D4-C5 => 0
+D6  => 0
+D7  => 0
+D8  => 0
+D9  => 0
+D10  => 0
+D11  => 0
+D12  => 0
+D13  => 0
+D14  => 0
+D15  => 0
+D16  => 0
+D17  => 0
+D18  => 0
+D19  => 0
+D20  => 0
+
+Formula dump Forecast Accuracy
+E20 Table1[[#This Row],[Actuals]]/Table1[[#This Row],[Forecast]] => 2.148597833935018
+E21 Table1[[#This Row],[Actuals]]/Table1[[#This Row],[Forecast]] => 0.43496596066565807
+E22 Table1[[#This Row],[Actuals]]/Table1[[#This Row],[Forecast]] => 0.9764447581356659
+E23 Table1[[#This Row],[Actuals]]/Table1[[#This Row],[Forecast]] => 0.23752036946645136
+E24 Table1[[#This Row],[Actuals]]/Table1[[#This Row],[Forecast]] => 0.09841293703290095
+E25 Table1[[#This Row],[Actuals]]/Table1[[#This Row],[Forecast]] => 1.8623633843365144
+
+Formula dump Financial Report
+A10 _xlfn._xlws.SORT(_xlfn.UNIQUE(_xlfn._xlws.FILTER(CTC!$C$11:$C$77,(CTC!$C$11:$C$77<>"")*(CTC!$A$11:$A$77<>"")))) => Close Out
+B10 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$A10) => 46000
+C10 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$A10) => 0
+D10 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$A10) => 46000
+E10 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$A10) => 46000
+F10 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$A10) => 0
+G10 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$A10) => 46000
+H10 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$A10) => 0
+B11 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$A11) => 54710
+C11 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$A11) => 0
+D11 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$A11) => 54710
+E11 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$A11) => 54710
+F11 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$A11) => 0
+G11 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$A11) => 54710
+H11 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$A11) => 0
+B12 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$A12) => 2256446.037312
+C12 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$A12) => 0
+D12 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$A12) => 2256446.037312
+E12 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$A12) => 2256446.037312
+F12 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$A12) => 0
+G12 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$A12) => 2256446.037312
+H12 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$A12) => 0
+B13 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$A13) => 772444.2641824001
+C13 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$A13) => 0
+D13 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$A13) => 772444.2641824001
+E13 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$A13) => 772444.2641824001
+F13 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$A13) => 0
+G13 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$A13) => 772444.2641824001
+H13 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$A13) => 0
+B14 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$A14) => 390000
+C14 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$A14) => 0
+D14 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$A14) => 390000
+E14 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$A14) => 390000
+F14 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$A14) => 0
+G14 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$A14) => 390000
+H14 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$A14) => 0
+B15 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$A15) => 28700
+C15 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$A15) => 5075
+D15 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$A15) => 33775
+E15 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$A15) => 33775
+F15 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$A15) => 0
+G15 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$A15) => 33775
+H15 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$A15) => 0
+B16 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$A16) => 38180.01
+C16 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$A16) => 0
+D16 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$A16) => 38180.01
+E16 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$A16) => 38180.01
+F16 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$A16) => 0
+G16 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$A16) => 38180.01
+H16 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$A16) => 0
+B17 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$A17) => 651820
+C17 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$A17) => 22620
+D17 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$A17) => 674440
+E17 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$A17) => 674440
+F17 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$A17) => 0
+G17 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$A17) => 674440
+H17 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$A17) => 0
+B18 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$A18) => 0
+C18 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$A18) => 0
+D18 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$A18) => 0
+E18 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$A18) => 0
+F18 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$A18) => 0
+G18 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$A18) => 0
+H18 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$A18) => 0
+B19 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$A19) => 0
+C19 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$A19) => 0
+D19 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$A19) => 0
+E19 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$A19) => 0
+F19 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$A19) => 0
+G19 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$A19) => 0
+H19 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$A19) => 0
+B20 SUMIFS(CTC!$AU$11:$AU$77,CTC!$C$11:$C$77,$A20) => 0
+C20 SUMIFS(CTC!$AV$11:$AV$77,CTC!$C$11:$C$77,$A20) => 0
+D20 SUMIFS(CTC!$AW$11:$AW$77,CTC!$C$11:$C$77,$A20) => 0
+E20 SUMIFS(CTC!$BC$11:$BC$77,CTC!$C$11:$C$77,$A20) => 0
+F20 SUMIFS(CTC!$BD$11:$BD$77,CTC!$C$11:$C$77,$A20) => 0
+G20 SUMIFS(CTC!$AY$11:$AY$77,CTC!$C$11:$C$77,$A20) => 0
+H20 SUMIFS(CTC!$BA$11:$BA$77,CTC!$C$11:$C$77,$A20) => 0
+B21 SUM(B10:B20) => 4238300.3114944
+C21 SUM(C10:C20) => 27695
+D21  => 4265995.3114944
+E21  => 4265995.3114944
+F21  => 0
+G21  => 4265995.3114944
+H21 SUM(H10:H20) => 0
+C28 IF(SUMIFS('Raw Data Entry'!$G$2:$G$4964,'Raw Data Entry'!$A$2:$A$4964,"*"&SUBSTITUTE(TRIM(SUBSTITUTE(C$27,CHAR(160),"")),"FY","")&"-*")=0,"-",SUMIFS('Raw Data Entry'!$G$2:$G$4964,'Raw Data Entry'!$A$2:$A$4964,"*"&SUBSTITUTE(TRIM(SUBSTITUTE(C$27,CHAR(160),"")),"FY","")&"-*")) => 27695
+E28 SUM(B28:B28) => 0
+C29 SUM(CTC!K11:P11) => 279308.64
+D29 SUM(CTC!Q11:AB11) => 1508914.8517368
+E29 SUM(B29:B29) => 0
+C30 SUM(C28:C29) => 307003.64
+D30 SUM(D28:D29) => 1508914.8517368
+E30 SUM(B30:B30) => 0
+E31 SUM(B31:B31) => 0
+C32 C31-C30 => 1432995.8900000001
+D32 D31-D30 => 1257313.6282632
+E32 SUM(B32:B32) => 0
+H51 H50-H52 => 537225
+H52 Contingency!E20 => 0
+H53 SUM(Contingency!F3:F20) => 0
+
+Pivot cache fields
+{'name': 'FY-Period', 'numFmtId': '0'}
+{'name': 'Task Number', 'numFmtId': '0'}
+{'name': 'Period', 'numFmtId': '0'}
+{'name': 'Doc Date', 'numFmtId': '0'}
+{'name': 'Units', 'numFmtId': '0'}
+{'name': 'Unit Rate', 'numFmtId': '0'}
+{'name': 'Amount', 'numFmtId': '0'}
+{'name': 'Cost Ledger', 'numFmtId': '0'}
+{'name': 'Cost Account', 'numFmtId': '0'}
+{'name': 'Project Code', 'numFmtId': '0'}
+{'name': 'Parent Project Code', 'numFmtId': '0'}
+{'name': 'Resource Code', 'numFmtId': '0'}
+{'name': 'Resource Description', 'numFmtId': '0'}
+{'name': 'Source', 'numFmtId': '0'}
+{'name': 'PO Number', 'numFmtId': '0'}
+{'name': 'PO Comments', 'numFmtId': '0'}
+{'name': 'Supplier Name', 'numFmtId': '0'}
+{'name': 'Narrative 1', 'numFmtId': '0'}
+{'name': 'Narrative 2', 'numFmtId': '0'}
+{'name': 'Narrative 3', 'numFmtId': '0'}
+{'name': 'Who', 'numFmtId': '0'}
+{'name': 'Manual Name', 'numFmtId': '0'}
+{'name': 'FY', 'numFmtId': '0'}
+{'name': 'ECM Link', 'numFmtId': '0'}
+
+Pivot table
+rowFields <ns0:rowFields xmlns:ns0="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="2"><ns0:field x="1" /><ns0:field x="21" /></ns0:rowFields>
+colFields <ns0:colFields xmlns:ns0="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1"><ns0:field x="0" /></ns0:colFields>
+dataFields <ns0:dataFields xmlns:ns0="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1"><ns0:dataField name="Sum of Amount" fld="6" baseField="0" baseItem="0" /></ns0:dataFields>
+pivotFields <ns0:pivotFields xmlns:ns0="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="24"><ns0:pivotField axis="axisCol" showAll="0"><ns0:items count="75"><ns0:item m="1" x="7" /><ns0:item m="1" x="8" /><ns0:item m="1" x="9" /><ns0:item m="1" x="10" /><ns0:item m="1" x="11" /><ns0:item m="1" x="12" /><ns0:item m="1" x="13" /><ns0:item m="1" x="14" /><ns0:item m="1" x="15" /><ns0:item m="1" x="16" /><ns0:item m="1" x="17" /><ns0:item m="1" x="18" /><ns0:item m="1" x="19" /><ns0:item m="1" x="20" /><ns0:item m="1" x="21" /><ns0:item m="1" x="22" /><ns0:item m="1" x="23" /><ns0:item m="1" x="24" /><ns0:item m="1" x="25" /><ns0:item m="1" x="26" /><ns0:item m="1" x="27" /><ns0:item m="1" x="28" /><ns0:item m="1" x="29" /><ns0:item m="1" x="30" /><ns0:item m="1" x="31" /><ns0:item m="1" x="32" /><ns0:item m="1" x="33" /><ns0:item m="1" x="34" /><ns0:item m="1" x="35" /><ns0:item m="1" x="36" /><ns0:item m="1" x="37" /><ns0:item m="1" x="38" /><ns0:item m="1" x="39" /><ns0:item m="1"
+
+Drawing/VML/Controls snippets
+--- xl/drawings/drawing1.xml ---
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><mc:Choice xmlns:a14="http://schemas.microsoft.com/office/drawing/2010/main" Requires="a14"><xdr:twoCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>76200</xdr:colOff><xdr:row>3</xdr:row><xdr:rowOff>177800</xdr:rowOff></xdr:from><xdr:to><xdr:col>0</xdr:col><xdr:colOff>1327150</xdr:colOff><xdr:row>5</xdr:row><xdr:rowOff>190500</xdr:rowOff></xdr:to><xdr:sp macro="" textlink=""><xdr:nvSpPr><xdr:cNvPr id="1025" name="Button 1" hidden="1"><a:extLst><a:ext uri="{63B3BB69-23CF-44E3-9099-C40C66FF867C}"><a14:compatExt spid="_x0000_s1025"/></a:ext><a:ext uri="{FF2B5EF4-FFF2-40B4-BE49-F238E27FC236}"><a16:creationId xmlns:a16="http://schemas.microsoft.com/office/drawing/2014/main" id="{00000000-0008-0000-0000-000001040000}"/></a:ext></a:extLst></xdr:cNvPr><xdr:cNvSpPr/></xdr:nvSpPr><xdr:spPr bwMode="auto"><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln w="9525"><a:miter lim="800000"/><a:headEnd/><a:tailEnd/></a:ln></xdr:spPr><xdr:txBody><a:bodyPr vertOverflow="clip" wrap="square" lIns="45720" tIns="45720" rIns="45720" bIns="45720" anchor="ctr" upright="1"/><a:lstStyle/><a:p><a:pPr algn="ctr" rtl="0"><a:defRPr sz="1000"/></a:pPr><a:r><a:rPr lang="en-NZ" sz="1400" b="0" i="0" u="none" strike="noStrike" baseline="0"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:latin typeface="Calibri"/><a:ea typeface="Calibri"/><a:cs typeface="Calibri"/></a:rPr><a:t>Fix Formatting</a:t></a:r></a:p></xdr:txBody></xdr:sp><xdr:clientData fPrintsWithSheet="0"/></xdr:twoCellAnchor></mc:Choice><mc:Fallback/></mc:AlternateContent><mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><mc:Choice xmlns:a14="http://schemas.microsoft.com/office/drawing/2010/main" Requires="a14"><xdr:twoCellAnchor><xdr:from><xdr:col>1</xdr:col><xdr:colOff>63500</xdr:colOff><xdr:row>3</xdr:row><xdr:rowOff>190500</xdr:rowOff></xdr:from><xdr:to><xdr:col>1</xdr:col><xdr:colOff>1314450</xdr:colOff><xdr:row>5</xdr:row><xdr:rowOff>203200</xdr:rowOff></xdr:to><xdr:sp macro="" textlink=""><xdr:nvSpPr><xdr:cNvPr id="1026" name="Button 2" hidden="1"><a:extLst><a:ext uri="{63B3BB69-23CF-44E3-9099-C40C66FF867C}"><a14:compatExt spid="_x0000_s1026"/></a:ext><a:ext uri="{FF2B5EF4-FFF2-40B4-BE49-F238E27FC236}"><a16:creationId xmlns:a16="http://schemas.microsoft.com/office/drawing/2014/main" id="{00000000-0008-0000-0000-000002040000}"/></a:ext></a:extLst></xdr:cNvPr><xdr:cNvSpPr/></xdr:nvSpPr><xdr:spPr bwMode="auto"><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln w="9525"><a:miter lim="800000"/><a:headEnd/><a:tailEnd/></a:ln></xdr:spPr><xdr:txBody><a:bodyPr vertOverflow="clip" wrap="square" lIns="45720" tIns="45720" rIns="45720" bIns="45720" anchor="ctr" upright="1"/><a:lstStyle/><a:p><a:pPr algn="ctr" rtl="0"><a:defRPr sz="1000"/></a:pPr><a:r><a:rPr lang="en-NZ" sz="1400" b="0" i="0" u="none" strike="noStrike" baseline="0"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:latin typeface="Calibri"/><a:ea typeface="Calibri"/><a:cs typeface="Calibri"/></a:rPr><a:t>Add New row Above</a:t></a:r></a:p><a:p><a:pPr algn="ctr" rtl="0"><a:defRPr sz="1000"/></a:pPr><a:endParaRPr lang="en-NZ" sz="1400" b="0" i="0" u="none" strike="noStrike" baseline="0"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:latin typeface="Calibri"/><a:ea typeface="Calibri"/><a:cs typeface="Calibri"/></a:endParaRPr></a:p></xdr:txBody></xdr:sp><xdr:clientData fPrintsWithSheet="0"/></xdr:twoCellAnchor></mc:Choice><mc:Fallback/></mc:AlternateContent></xdr:wsDr>
+--- xl/drawings/vmlDrawing1.vml ---
+<xml xmlns:v="urn:schemas-microsoft-com:vml"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel">
+ <o:shapelayout v:ext="edit">
+  <o:idmap v:ext="edit" data="1"/>
+ </o:shapelayout><v:shapetype id="_x0000_t201" coordsize="21600,21600" o:spt="201"
+  path="m,l,21600r21600,l21600,xe">
+  <v:stroke joinstyle="miter"/>
+  <v:path shadowok="f" o:extrusionok="f" strokeok="f" fillok="f" o:connecttype="rect"/>
+  <o:lock v:ext="edit" shapetype="t"/>
+ </v:shapetype><v:shape id="_x0000_s1025" type="#_x0000_t201" style='position:absolute;
+  margin-left:6pt;margin-top:65pt;width:98.5pt;height:43pt;z-index:1;
+  mso-wrap-style:tight' o:button="t" fillcolor="buttonFace [67]" strokecolor="windowText [64]"
+  o:insetmode="auto">
+  <v:fill color2="buttonFace [67]" o:detectmouseclick="t"/>
+  <o:lock v:ext="edit" rotation="t"/>
+  <v:textbox style='mso-direction-alt:auto' o:singleclick="f">
+   <div style='text-align:center'><font face="Calibri" size="280"
+   color="#000000">Fix Formatting</font></div>
+  </v:textbox>
+  <x:ClientData ObjectType="Button">
+   <x:Anchor>
+    0, 12, 3, 28, 0, 209, 5, 30</x:Anchor>
+   <x:PrintObject>False</x:PrintObject>
+   <x:AutoFill>False</x:AutoFill>
+   <x:FmlaMacro>[0]!FixFormattingFromRow12</x:FmlaMacro>
+   <x:TextHAlign>Center</x:TextHAlign>
+   <x:TextVAlign>Center</x:TextVAlign>
+  </x:ClientData>
+ </v:shape><v:shape id="_x0000_s1026" type="#_x0000_t201" style='position:absolute;
+  margin-left:121.5pt;margin-top:66pt;width:98.5pt;height:43pt;z-index:2;
+  mso-wrap-style:tight' o:button="t" fillcolor="buttonFace [67]" strokecolor="windowText [64]"
+  o:insetmode="auto">
+  <v:fill color2="buttonFace [67]" o:detectmouseclick="t"/>
+  <o:lock v:ext="edit" rotation="t"/>
+  <v:textbox style='mso-direction-alt:auto' o:singleclick="f">
+   <div style='text-align:center'><font face="Calibri" size="280"
+   color="#000000">Add New row Above<br />
+      </font></div>
+  </v:textbox>
+  <x:ClientData ObjectType="Button">
+   <x:Anchor>
+    1, 10, 3, 30, 1, 207, 5, 32</x:Anchor>
+   <x:PrintObject>False</x:PrintObject>
+   <x:AutoFill>False</x:AutoFill>
+   <x:FmlaMacro>[0]!InsertRelativeRow</x:FmlaMacro>
+   <x:TextHAlign>Center</x:TextHAlign>
+   <x:TextVAlign>Center</x:TextVAlign>
+  </x:ClientData>
+ </v:shape></xml>
+--- xl/ctrlProps/ctrlProp1.xml ---
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<formControlPr xmlns="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" objectType="Button" lockText="1"/>
+--- xl/ctrlProps/ctrlProp2.xml ---
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<formControlPr xmlns="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" objectType="Button" lockText="1"/>

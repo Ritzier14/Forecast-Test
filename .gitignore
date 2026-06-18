@@ -1,0 +1,35 @@
+# Build output
+bin/
+obj/
+artifacts/
+**/bin/
+**/obj/
+**/artifacts/
+
+# Visual Studio / VS Code local state
+.vs/
+.vscode/
+.claude/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Local backups / working scratch
+.backup_overhaul/
+
+# Test and coverage output
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+~$*
+
+# OS files
+.DS_Store
+Thumbs.db
