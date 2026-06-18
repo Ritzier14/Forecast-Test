@@ -113,19 +113,37 @@ public partial class MainWindow
 
     private void SpreadsheetGrid_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        // A focused TextBox means a cell editor is active; its own editing keys must win.
-        if (sender is not DataGrid grid || e.OriginalSource is TextBox)
+        if (sender is not DataGrid grid)
         {
             return;
         }
 
+        var sourceTextBox = e.OriginalSource as TextBox;
         if (Keyboard.Modifiers == ModifierKeys.None && e.Key is Key.Delete or Key.Back)
         {
+            // Delete/Backspace should clear the active spreadsheet selection even when focus is
+            // still sitting inside the inline TextBox editor after a cell edit.
+            if (sourceTextBox is not null && FindParent<DataGridCell>(sourceTextBox) is null)
+            {
+                return;
+            }
+
+            grid.CommitEdit(DataGridEditingUnit.Cell, true);
+            grid.CommitEdit(DataGridEditingUnit.Row, true);
             EnsureCurrentCellSelected(grid);
             ClearSelectedGridCells(grid, e.Key == Key.Back ? "Cleared" : "Deleted");
             e.Handled = true;
+            return;
         }
-        else if (Keyboard.Modifiers == ModifierKeys.None && e.Key == Key.F2)
+
+        // A focused TextBox means a cell editor is active; its own editing keys must win for
+        // normal text entry and navigation.
+        if (sourceTextBox is not null)
+        {
+            return;
+        }
+
+        if (Keyboard.Modifiers == ModifierKeys.None && e.Key == Key.F2)
         {
             if (TryGetCurrentSpreadsheetCell(grid, out var item, out var column) && CanWriteGridCell(grid, item, column))
             {
