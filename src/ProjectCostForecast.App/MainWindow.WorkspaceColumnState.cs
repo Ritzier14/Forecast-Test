@@ -88,7 +88,9 @@ public partial class MainWindow
                 || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowMonthNameAboveFiscalPeriod), StringComparison.Ordinal)
                 || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedCtcMonthForecastYear), StringComparison.Ordinal)
                 || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowForecastZeroAsBlank), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowVarianceIndicators), StringComparison.Ordinal))
+                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowVarianceIndicators), StringComparison.Ordinal)
+                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowCurrencySymbols), StringComparison.Ordinal)
+                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ForecastMonthMillionDecimals), StringComparison.Ordinal))
             {
                 RebuildForecastGridColumns();
             }
@@ -133,6 +135,11 @@ public partial class MainWindow
                 || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedScheduleActivity), StringComparison.Ordinal))
             {
                 Dispatcher.BeginInvoke(RefreshCurrentRowVisuals, DispatcherPriority.Render);
+            }
+
+            if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.WorkspaceTabIconVersion), StringComparison.Ordinal))
+            {
+                RefreshWorkspaceTabIcons();
             }
 
             if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.LedgerChartCanvasWidth), StringComparison.Ordinal)
@@ -202,10 +209,22 @@ public partial class MainWindow
             return;
         }
 
+        var hiddenKeys = viewModel.GetSelectedWorkspaceHiddenColumnKeys();
+        var layouts = viewModel.GetSelectedWorkspaceColumnLayouts();
+        if (WorkspaceColumnStateMatches(grid, hiddenKeys, layouts))
+        {
+            if (ReferenceEquals(grid, ForecastLinesGrid))
+            {
+                ApplyForecastFreezeBoundaryForCurrentColumns();
+            }
+
+            return;
+        }
+
+        var migratedWidths = false;
         _applyingWorkspaceColumnState = true;
         try
         {
-            var hiddenKeys = viewModel.GetSelectedWorkspaceHiddenColumnKeys();
             foreach (var column in grid.Columns)
             {
                 var key = GetColumnPersistenceKey(column);
@@ -219,7 +238,7 @@ public partial class MainWindow
                     : Visibility.Visible;
             }
 
-            ApplyColumnLayouts(grid, viewModel.GetSelectedWorkspaceColumnLayouts());
+            migratedWidths = ApplyColumnLayouts(grid, layouts);
         }
         finally
         {
@@ -235,6 +254,11 @@ public partial class MainWindow
         if (ReferenceEquals(grid, ForecastLinesGrid))
         {
             ApplyForecastFreezeBoundaryForCurrentColumns();
+        }
+
+        if (migratedWidths)
+        {
+            CaptureCurrentWorkspaceViewColumnState();
         }
     }
 
@@ -271,10 +295,17 @@ public partial class MainWindow
             return;
         }
 
+        var hiddenKeys = viewModel.GetSelectedDetailWorkspaceHiddenColumnKeys();
+        var layouts = viewModel.GetSelectedDetailWorkspaceColumnLayouts();
+        if (WorkspaceColumnStateMatches(grid, hiddenKeys, layouts))
+        {
+            return;
+        }
+
+        var migratedWidths = false;
         _applyingWorkspaceColumnState = true;
         try
         {
-            var hiddenKeys = viewModel.GetSelectedDetailWorkspaceHiddenColumnKeys();
             foreach (var column in grid.Columns)
             {
                 var key = GetColumnPersistenceKey(column);
@@ -288,7 +319,7 @@ public partial class MainWindow
                     : Visibility.Visible;
             }
 
-            ApplyColumnLayouts(grid, viewModel.GetSelectedDetailWorkspaceColumnLayouts());
+            migratedWidths = ApplyColumnLayouts(grid, layouts);
         }
         finally
         {
@@ -298,6 +329,11 @@ public partial class MainWindow
         if (grid.Columns.All(column => column.Visibility != Visibility.Visible))
         {
             grid.Columns[0].Visibility = Visibility.Visible;
+            CaptureCurrentDetailWorkspaceViewColumnState();
+        }
+
+        if (migratedWidths)
+        {
             CaptureCurrentDetailWorkspaceViewColumnState();
         }
     }
@@ -322,17 +358,18 @@ public partial class MainWindow
         viewModel.SetSelectedDetailWorkspaceColumnLayouts(CaptureColumnLayouts(grid));
     }
 
-    private static void ApplyColumnLayouts(DataGrid grid, IReadOnlyList<WorkspaceColumnLayout> layouts)
+    private static bool ApplyColumnLayouts(DataGrid grid, IReadOnlyList<WorkspaceColumnLayout> layouts)
     {
         if (layouts.Count == 0)
         {
-            return;
+            return false;
         }
 
         var layoutsByKey = layouts
             .Where(layout => !string.IsNullOrWhiteSpace(layout.Key))
             .GroupBy(layout => layout.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        var migratedWidth = false;
 
         foreach (var column in grid.Columns)
         {
@@ -344,7 +381,9 @@ public partial class MainWindow
                 continue;
             }
 
-            column.Width = new DataGridLength(Math.Max(column.MinWidth, layout.Width));
+            var appliedWidth = GetAppliedLayoutWidth(column, layout.Width);
+            migratedWidth |= Math.Abs(appliedWidth - Math.Max(column.MinWidth, layout.Width)) > 0.5;
+            column.Width = new DataGridLength(appliedWidth);
         }
 
         var orderedColumns = grid.Columns
@@ -362,6 +401,8 @@ public partial class MainWindow
                 item.Column.DisplayIndex = targetIndex;
             }
         }
+
+        return migratedWidth;
     }
 
     private static List<WorkspaceColumnLayout> CaptureColumnLayouts(DataGrid grid)
@@ -376,6 +417,85 @@ public partial class MainWindow
             .Where(layout => !string.IsNullOrWhiteSpace(layout.Key))
             .OrderBy(layout => layout.DisplayIndex)
             .ToList();
+    }
+
+    private static bool WorkspaceColumnStateMatches(DataGrid grid, IReadOnlyList<string> hiddenKeys, IReadOnlyList<WorkspaceColumnLayout> layouts)
+    {
+        var hiddenKeySet = hiddenKeys
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var column in grid.Columns)
+        {
+            var key = GetColumnPersistenceKey(column);
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                continue;
+            }
+
+            var shouldBeHidden = hiddenKeySet.Contains(key);
+            if ((column.Visibility != Visibility.Visible) != shouldBeHidden)
+            {
+                return false;
+            }
+        }
+
+        if (layouts.Count == 0)
+        {
+            return true;
+        }
+
+        var layoutsByKey = layouts
+            .Where(layout => !string.IsNullOrWhiteSpace(layout.Key))
+            .GroupBy(layout => layout.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var column in grid.Columns)
+        {
+            var key = GetColumnPersistenceKey(column);
+            if (string.IsNullOrWhiteSpace(key) || !layoutsByKey.TryGetValue(key, out var layout))
+            {
+                continue;
+            }
+
+            if (Math.Abs(column.Width.DisplayValue - GetAppliedLayoutWidth(column, layout.Width)) > 0.5
+                || column.DisplayIndex != layout.DisplayIndex)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static double GetAppliedLayoutWidth(DataGridColumn column, double savedWidth)
+    {
+        var appliedWidth = Math.Max(column.MinWidth, savedWidth);
+        if (column.Header is not ForecastMonthColumnDefinition monthColumn)
+        {
+            return appliedWidth;
+        }
+
+        var currentDefaultWidth = Math.Max(column.MinWidth, column.Width.DisplayValue);
+        if (Math.Abs(appliedWidth - currentDefaultWidth) <= 0.5)
+        {
+            return appliedWidth;
+        }
+
+        if (IsLegacyForecastAutoWidth(savedWidth, monthColumn.IsTotal))
+        {
+            return currentDefaultWidth;
+        }
+
+        return appliedWidth;
+    }
+
+    private static bool IsLegacyForecastAutoWidth(double width, bool isTotal)
+    {
+        var legacyWidths = isTotal
+            ? new[] { 120d, 104d }
+            : new[] { 112d, 86d };
+        return legacyWidths.Any(candidate => Math.Abs(candidate - width) <= 0.75);
     }
 
     private DataGrid? GetActiveWorkspaceGrid(MainWindowViewModel viewModel)

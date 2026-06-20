@@ -26,16 +26,16 @@
         <local:FormattedCommentConverter x:Key="FormattedComment" />
         <DataTemplate x:Key="ForecastMonthColumnHeaderTemplate">
             <Grid SnapsToDevicePixels="True">
-                <Border BorderBrush="{StaticResource GridLineBrush}" BorderThickness="0,0,1,1" Background="White" />
+                <Border BorderBrush="#DEE6EF" BorderThickness="0,1,1,1" Background="White" />
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Background="{Binding PrimaryBackground}" BorderBrush="{StaticResource GridLineBrush}" BorderThickness="0,0,0,1" Padding="4,4">
+                    <Border Grid.Row="0" Background="{Binding PrimaryBackground}" BorderBrush="#E4EAF2" BorderThickness="0,0,0,1" Padding="4,6,4,5">
                         <TextBlock Text="{Binding PrimaryLabel}" HorizontalAlignment="Center" FontWeight="Bold" FontStyle="Italic" />
                     </Border>
-                    <Border Grid.Row="1" Background="{Binding SecondaryBackground}" Padding="4,4">
+                    <Border Grid.Row="1" Background="{Binding SecondaryBackground}" BorderBrush="#E4EAF2" BorderThickness="0,0,0,1" Padding="4,5,4,6">
                         <TextBlock Text="{Binding SecondaryLabel}" HorizontalAlignment="Center" FontWeight="Bold" FontStyle="Italic" />
                     </Border>
                 </Grid>
@@ -52,44 +52,37 @@
             </Grid>
         </DataTemplate>
         <Style x:Key="WorkspaceViewPillItemStyle" TargetType="ListBoxItem">
-            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Margin" Value="0,0,18,0" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="MinHeight" Value="32" />
-            <Setter Property="Background" Value="#F8FAFC" />
-            <Setter Property="BorderBrush" Value="#D7E0EA" />
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="MinWidth" Value="118" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="Foreground" Value="#475569" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="PillBorder"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="16"
-                                Padding="11,5">
-                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
-                        </Border>
+                        <Grid Background="Transparent">
+                            <ContentPresenter Margin="0,7,0,9"
+                                              HorizontalAlignment="Stretch"
+                                              VerticalAlignment="Center" />
+                            <Border x:Name="ActiveUnderline"
+                                    Height="3"
+                                    Background="#3B82F6"
+                                    VerticalAlignment="Bottom"
+                                    Visibility="Collapsed" />
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="PillBorder" Property="Background" Value="#F1F5F9" />
-                                <Setter TargetName="PillBorder" Property="BorderBrush" Value="#C7D2DE" />
-                                <Setter Property="Foreground" Value="#334155" />
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="PillBorder" Property="Background" Value="#E4EFFD" />
-                                <Setter TargetName="PillBorder" Property="BorderBrush" Value="#9DBDE4" />
                                 <Setter Property="Foreground" Value="#1E3A5F" />
                             </Trigger>
-                            <MultiTrigger>
-                                <MultiTrigger.Conditions>
-                                    <Condition Property="IsSelected" Value="True" />
-                                    <Condition Property="IsMouseOver" Value="True" />
-                                </MultiTrigger.Conditions>
-                                <Setter TargetName="PillBorder" Property="Background" Value="#D9EAFD" />
-                                <Setter TargetName="PillBorder" Property="BorderBrush" Value="#86ACDA" />
-                            </MultiTrigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground" Value="#2563EB" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                                <Setter TargetName="ActiveUnderline" Property="Visibility" Value="Visible" />
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -97,7 +90,7 @@
         </Style>
 
         <DataTemplate x:Key="WorkspaceViewPillTemplate">
-            <Grid MinWidth="64" HorizontalAlignment="Left">
+            <Grid MinWidth="118" HorizontalAlignment="Left">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -105,7 +98,7 @@
                 <Border Grid.Column="0"
                         Width="16"
                         Height="14"
-                        Margin="0,0,7,0"
+                        Margin="0,0,8,0"
                         BorderBrush="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
                         BorderThickness="1.5"
                         CornerRadius="2"
@@ -127,6 +120,8 @@
                 </Border>
                 <TextBlock Grid.Column="1"
                            Text="{Binding Name}"
+                           Width="{Binding ElementName=WorkspaceViewEditor, Path=Width}"
+                           HorizontalAlignment="Left"
                            VerticalAlignment="Center"
                            FontSize="14"
                            FontWeight="SemiBold"
@@ -142,12 +137,14 @@
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
-                <TextBox Grid.Column="1"
-                         Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                <TextBox x:Name="WorkspaceViewEditor"
+                         Grid.Column="1"
+                         Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
                          MinWidth="0"
                          Padding="0"
                          Margin="0"
                          MinHeight="0"
+                         HorizontalAlignment="Left"
                          VerticalAlignment="Center"
                          VerticalContentAlignment="Center"
                          BorderThickness="0"
@@ -159,6 +156,7 @@
                          Loaded="WorkspaceViewName_Loaded"
                          IsVisibleChanged="WorkspaceViewName_IsVisibleChanged"
                          GotKeyboardFocus="WorkspaceViewName_GotKeyboardFocus"
+                         TextChanged="WorkspaceViewName_TextChanged"
                          LostFocus="WorkspaceViewName_LostFocus"
                          KeyDown="WorkspaceViewName_KeyDown">
                     <TextBox.Style>
@@ -180,6 +178,7 @@
             <Setter Property="Height" Value="30" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="2,0,0,0" />
+            <Setter Property="Focusable" Value="False" />
             <Setter Property="Background" Value="#F8FAFC" />
             <Setter Property="BorderBrush" Value="#D7E0EA" />
             <Setter Property="Foreground" Value="#64748B" />
@@ -236,13 +235,13 @@
         </Style>
 
         <Style x:Key="ForecastStatePillButtonStyle" TargetType="Button">
-            <Setter Property="MinHeight" Value="30" />
-            <Setter Property="Padding" Value="11,5" />
-            <Setter Property="Margin" Value="0,0,8,6" />
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="Padding" Value="8,3" />
+            <Setter Property="Margin" Value="0,0,6,6" />
             <Setter Property="Background" Value="#F2F1EE" />
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="Foreground" Value="#3F3B36" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
@@ -352,56 +351,140 @@
         </Style>
 
         <DataTemplate x:Key="WorkspaceViewStripTemplate">
-            <StackPanel Margin="8,4,0,10" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                <ListBox ItemsSource="{Binding CurrentWorkspaceViews}"
-                         SelectedItem="{Binding SelectedWorkspaceView, Mode=TwoWay}"
-                         ItemContainerStyle="{StaticResource WorkspaceViewPillItemStyle}"
-                         ItemTemplate="{StaticResource WorkspaceViewPillTemplate}"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         HorizontalContentAlignment="Stretch"
-                         VerticalContentAlignment="Center"
-                         PreviewMouseLeftButtonDown="WorkspaceViewTabs_PreviewMouseLeftButtonDown"
-                         PreviewMouseMove="WorkspaceViewTabs_PreviewMouseMove"
-                         PreviewMouseLeftButtonUp="WorkspaceViewTabs_PreviewMouseLeftButtonUp"
-                         MouseDoubleClick="WorkspaceViewTabControl_MouseDoubleClick"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                         ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                    <ListBox.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" />
-                        </ItemsPanelTemplate>
-                    </ListBox.ItemsPanel>
-                </ListBox>
-                <Button Content="+" Style="{StaticResource WorkspaceViewAddButtonStyle}" Command="{Binding AddWorkspaceViewCommand}" />
-            </StackPanel>
+            <Grid Margin="8,4,0,10">
+                <Border Height="1"
+                        Background="#DCE4EE"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentWorkspaceViews.Count}" Value="1">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Panel.ZIndex="1">
+                    <ListBox ItemsSource="{Binding CurrentWorkspaceViews}"
+                             SelectedItem="{Binding SelectedWorkspaceView, Mode=TwoWay}"
+                             ItemContainerStyle="{StaticResource WorkspaceViewPillItemStyle}"
+                             ItemTemplate="{StaticResource WorkspaceViewPillTemplate}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             HorizontalContentAlignment="Stretch"
+                             VerticalContentAlignment="Center"
+                             PreviewMouseLeftButtonDown="WorkspaceViewTabs_PreviewMouseLeftButtonDown"
+                             PreviewMouseMove="WorkspaceViewTabs_PreviewMouseMove"
+                             PreviewMouseLeftButtonUp="WorkspaceViewTabs_PreviewMouseLeftButtonUp"
+                             MouseDoubleClick="WorkspaceViewTabControl_MouseDoubleClick"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                    </ListBox>
+                    <Button Content="+"
+                            Style="{StaticResource WorkspaceViewAddButtonStyle}"
+                            Click="AddWorkspaceViewButton_Click" />
+                </StackPanel>
+            </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="DetailWorkspaceViewStripTemplate">
-            <StackPanel Margin="8,4,0,10" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                <ListBox ItemsSource="{Binding CurrentDetailWorkspaceViews}"
-                         SelectedItem="{Binding SelectedDetailWorkspaceView, Mode=TwoWay}"
-                         ItemContainerStyle="{StaticResource WorkspaceViewPillItemStyle}"
-                         ItemTemplate="{StaticResource WorkspaceViewPillTemplate}"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         HorizontalContentAlignment="Stretch"
-                         VerticalContentAlignment="Center"
-                         PreviewMouseLeftButtonDown="WorkspaceViewTabs_PreviewMouseLeftButtonDown"
-                         PreviewMouseMove="WorkspaceViewTabs_PreviewMouseMove"
-                         PreviewMouseLeftButtonUp="WorkspaceViewTabs_PreviewMouseLeftButtonUp"
-                         MouseDoubleClick="WorkspaceViewTabControl_MouseDoubleClick"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                         ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                    <ListBox.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" />
-                        </ItemsPanelTemplate>
-                    </ListBox.ItemsPanel>
-                </ListBox>
-                <Button Content="+" Style="{StaticResource WorkspaceViewAddButtonStyle}" Command="{Binding AddDetailWorkspaceViewCommand}" />
-            </StackPanel>
+            <Grid Margin="8,4,0,10">
+                <Border Height="1"
+                        Background="#DCE4EE"
+                        VerticalAlignment="Bottom">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentDetailWorkspaceViews.Count}" Value="1">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Panel.ZIndex="1">
+                    <ListBox ItemsSource="{Binding CurrentDetailWorkspaceViews}"
+                             SelectedItem="{Binding SelectedDetailWorkspaceView, Mode=TwoWay}"
+                             ItemContainerStyle="{StaticResource WorkspaceViewPillItemStyle}"
+                             ItemTemplate="{StaticResource WorkspaceViewPillTemplate}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             HorizontalContentAlignment="Stretch"
+                             VerticalContentAlignment="Center"
+                             PreviewMouseLeftButtonDown="WorkspaceViewTabs_PreviewMouseLeftButtonDown"
+                             PreviewMouseMove="WorkspaceViewTabs_PreviewMouseMove"
+                             PreviewMouseLeftButtonUp="WorkspaceViewTabs_PreviewMouseLeftButtonUp"
+                             MouseDoubleClick="WorkspaceViewTabControl_MouseDoubleClick"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                    </ListBox>
+                    <Button Content="+"
+                            Style="{StaticResource WorkspaceViewAddButtonStyle}"
+                            Click="AddDetailWorkspaceViewButton_Click" />
+                </StackPanel>
+            </Grid>
         </DataTemplate>
+
+        <Style x:Key="ForecastWorkspaceTabControlStyle" TargetType="TabControl" BasedOn="{StaticResource {x:Type TabControl}}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid KeyboardNavigation.TabNavigation="Local" SnapsToDevicePixels="True">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="96" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TabPanel Grid.Column="0"
+                                          Margin="0,0,0,1"
+                                          IsItemsHost="True"
+                                          Background="Transparent"
+                                          Panel.ZIndex="1" />
+                                <Border x:Name="HeaderUnderline"
+                                        Grid.ColumnSpan="3"
+                                        Height="1"
+                                        VerticalAlignment="Bottom"
+                                        Background="#DCE4EE"
+                                        Panel.ZIndex="0" />
+                            </Grid>
+                            <ContentPresenter Grid.Row="1"
+                                              Margin="{TemplateBinding Padding}"
+                                              ContentSource="SelectedContent" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <DataTrigger Binding="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Items.Count}" Value="1">
+                                <Setter TargetName="HeaderUnderline" Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid Background="#F7F9FC">
         <Grid.ColumnDefinitions>
@@ -565,40 +648,59 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Padding="0,6,0,10" Background="Transparent" MouseRightButtonUp="KpiStrip_MouseRightButtonUp">
-                <ScrollViewer x:Name="KpiScrollViewer" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" PreviewMouseRightButtonDown="KpiScrollViewer_PreviewMouseRightButtonDown" PreviewMouseMove="KpiScrollViewer_PreviewMouseMove" PreviewMouseRightButtonUp="KpiScrollViewer_PreviewMouseRightButtonUp">
-                    <ItemsControl ItemsSource="{Binding KpiPills}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Style="{StaticResource KpiCard}" Width="190" MouseRightButtonUp="KpiCard_MouseRightButtonUp" Tag="{Binding Id}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <Border Width="32" Height="32" CornerRadius="16" Background="#F2F6FF" VerticalAlignment="Top">
-                                            <Image Source="{Binding IconPath}" Width="22" Height="22" />
-                                        </Border>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                        <TextBlock Text="{Binding Name}" Foreground="{StaticResource MutedTextBrush}" FontSize="10" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding ValueText}" Foreground="#101735" FontSize="16" FontWeight="Bold" Margin="0,1,0,0" />
-                                        <TextBlock Text="{Binding ComparisonText}"
-                                                   Visibility="{Binding ComparisonVisibility}"
-                                                   Foreground="#7C3AED"
-                                                   FontSize="11"
-                                                   FontWeight="SemiBold"
-                                                   Margin="0,3,0,0"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding Subtext}" Foreground="{StaticResource MutedTextBrush}" FontSize="10" TextTrimming="CharacterEllipsis" />
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+            <Border Grid.Row="0"
+                    Padding="0,6,0,10"
+                    Background="Transparent"
+                    AllowDrop="True"
+                    MouseRightButtonUp="KpiStrip_MouseRightButtonUp"
+                    DragOver="KpiStrip_DragOver"
+                    DragLeave="KpiStrip_DragLeave"
+                    Drop="KpiStrip_Drop">
+                <Grid>
+                    <ScrollViewer x:Name="KpiScrollViewer" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" PreviewMouseRightButtonDown="KpiScrollViewer_PreviewMouseRightButtonDown" PreviewMouseMove="KpiScrollViewer_PreviewMouseMove" PreviewMouseRightButtonUp="KpiScrollViewer_PreviewMouseRightButtonUp">
+                        <ItemsControl x:Name="KpiItemsControl" ItemsSource="{Binding KpiPills}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource KpiCard}"
+                                            Width="190"
+                                            Tag="{Binding Id}"
+                                            AllowDrop="True"
+                                            MouseRightButtonUp="KpiCard_MouseRightButtonUp"
+                                            PreviewMouseLeftButtonDown="KpiCard_PreviewMouseLeftButtonDown"
+                                            PreviewMouseMove="KpiCard_PreviewMouseMove"
+                                            PreviewMouseLeftButtonUp="KpiCard_PreviewMouseLeftButtonUp"
+                                            DragOver="KpiCard_DragOver"
+                                            DragLeave="KpiCard_DragLeave"
+                                            Drop="KpiCard_Drop">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Border Width="32" Height="32" CornerRadius="16" Background="#F2F6FF" VerticalAlignment="Top">
+                                                <Image Source="{Binding IconSource}" Width="22" Height="22" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                            <TextBlock Text="{Binding Name}" Foreground="{StaticResource MutedTextBrush}" FontSize="10" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding ValueText}" Foreground="#101735" FontSize="16" FontWeight="Bold" Margin="0,1,0,0" />
+                                            <TextBlock Text="{Binding ComparisonText}"
+                                                       Visibility="{Binding ComparisonVisibility}"
+                                                       Foreground="#7C3AED"
+                                                       FontSize="11"
+                                                       FontWeight="SemiBold"
+                                                       Margin="0,3,0,0"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Subtext}" Foreground="{StaticResource MutedTextBrush}" FontSize="10" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
             </Border>
 
             <Grid Grid.Row="1" Background="#F7F9FC">
@@ -631,14 +733,22 @@
                         </Border>
 
                         <TabControl x:Name="WorkspaceTabControl"
+                                    Style="{StaticResource ForecastWorkspaceTabControlStyle}"
                                     PreviewMouseLeftButtonDown="WorkspaceTabs_PreviewMouseLeftButtonDown"
                                     PreviewMouseMove="WorkspaceTabs_PreviewMouseMove"
                                     PreviewMouseLeftButtonUp="WorkspaceTabs_PreviewMouseLeftButtonUp"
                                     SelectionChanged="WorkspaceTabControl_SelectionChanged">
                             <TabItem Tag="CTC Forecast">
                                 <TabItem.Header>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Image Source="/Assets/Icons/png/ic_tab_forecast_16.png" Width="16" Height="16" Margin="0,0,7,0" />
+                                    <StackPanel Orientation="Horizontal"
+                                                Tag="CTC Forecast"
+                                                MouseRightButtonUp="WorkspaceTabHeader_MouseRightButtonUp">
+                                        <Image x:Name="ForecastTabHeaderIcon"
+                                               Source="/Assets/Icons/png/ic_tab_forecast_16.png"
+                                               Width="16"
+                                               Height="16"
+                                               Margin="0,0,7,0"
+                                               Tag="CTC Forecast" />
                                         <TextBlock Text="Forecast" />
                                     </StackPanel>
                                 </TabItem.Header>
@@ -658,7 +768,7 @@
                                                 BorderBrush="#DCE4EE"
                                                 BorderThickness="1,1,1,0"
                                                 CornerRadius="10,10,0,0" />
-                                        <Canvas x:Name="ForecastYearBandCanvas" Grid.Row="0" ClipToBounds="True" IsHitTestVisible="False" Panel.ZIndex="10" />
+                                        <Canvas x:Name="ForecastYearBandCanvas" Grid.Row="0" ClipToBounds="True" IsHitTestVisible="True" Panel.ZIndex="10" />
                                         <Button Grid.Row="0"
                                                 x:Name="ForecastGroupToggleButton"
                                                 Width="24"
@@ -682,7 +792,7 @@
                                                   ItemsSource="{Binding ForecastLinesView}"
                                                   IsReadOnly="False"
                                                   RowHeight="30"
-                                                  ColumnHeaderHeight="42"
+                                                  ColumnHeaderHeight="48"
                                                   Background="White"
                                                   BorderBrush="#E1E7F0"
                                                   BorderThickness="1,0,1,0"
@@ -738,7 +848,7 @@
                             </TabItem>
 
                             <TabItem x:Name="ManagementResourcesTab" Tag="Resources">
-                                <TabItem.Header><StackPanel Orientation="Horizontal"><Image Source="/Assets/Icons/png/ic_tab_resources_16.png" Width="16" Height="16" Margin="0,0,7,0"/><TextBlock Text="Resources"/></StackPanel></TabItem.Header>
+                                <TabItem.Header><StackPanel Orientation="Horizontal" Tag="Resources" MouseRightButtonUp="WorkspaceTabHeader_MouseRightButtonUp"><Image x:Name="ResourcesTabHeaderIcon" Source="/Assets/Icons/png/ic_tab_resources_16.png" Width="16" Height="16" Margin="0,0,7,0" Tag="Resources"/><TextBlock Text="Resources"/></StackPanel></TabItem.Header>
                                 <Grid Margin="8">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
@@ -793,7 +903,7 @@
                             </TabItem>
 
                             <TabItem Tag="Raw Transactions">
-                                <TabItem.Header><StackPanel Orientation="Horizontal"><Image Source="/Assets/Icons/png/ic_tab_raw_transactions_16.png" Width="16" Height="16" Margin="0,0,7,0"/><TextBlock Text="Raw Transactions"/></StackPanel></TabItem.Header>
+                                <TabItem.Header><StackPanel Orientation="Horizontal" Tag="Raw Transactions" MouseRightButtonUp="WorkspaceTabHeader_MouseRightButtonUp"><Image x:Name="RawTransactionsTabHeaderIcon" Source="/Assets/Icons/png/ic_tab_raw_transactions_16.png" Width="16" Height="16" Margin="0,0,7,0" Tag="Raw Transactions"/><TextBlock Text="Raw Transactions"/></StackPanel></TabItem.Header>
                                 <DockPanel LastChildFill="True">
                                     <ContentControl DockPanel.Dock="Top" Content="{Binding}" ContentTemplate="{StaticResource WorkspaceViewStripTemplate}" />
                                     <Grid>
@@ -817,8 +927,8 @@
                                                 <DataGridTextColumn Header="Date" Binding="{Binding DocDate}" Width="100" />
                                                 <DataGridTextColumn Header="Resource" Binding="{Binding LedgerResourceName}" Width="200" />
                                                 <DataGridTextColumn Header="Units" Binding="{Binding Units, StringFormat={}{0:N2}}" Width="80" />
-                                                <DataGridTextColumn Header="Rate" Binding="{Binding UnitRate, StringFormat={}{0:C2}}" Width="85" />
-                                                <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat={}{0:C0}}" Width="95" />
+                                                <DataGridTextColumn Header="Rate" Binding="{Binding UnitRate, Converter={StaticResource AccountingNoDecimalsConverter}, ConverterParameter=Decimals:2}" Width="85" />
+                                                <DataGridTextColumn Header="Amount" Binding="{Binding Amount, Converter={StaticResource AccountingNoDecimalsConverter}}" Width="95" />
                                                 <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="70" />
                                                 <DataGridTextColumn Header="Resource Code" Binding="{Binding ResourceCode}" Width="105" />
                                                 <DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="150" />
@@ -849,7 +959,7 @@
                             </TabItem>
 
                             <TabItem Tag="Summary View">
-                                <TabItem.Header><StackPanel Orientation="Horizontal"><Image Source="/Assets/Icons/png/ic_tab_summary_16.png" Width="16" Height="16" Margin="0,0,7,0"/><TextBlock Text="Summary"/></StackPanel></TabItem.Header>
+                                <TabItem.Header><StackPanel Orientation="Horizontal" Tag="Summary View" MouseRightButtonUp="WorkspaceTabHeader_MouseRightButtonUp"><Image x:Name="SummaryTabHeaderIcon" Source="/Assets/Icons/png/ic_tab_summary_16.png" Width="16" Height="16" Margin="0,0,7,0" Tag="Summary View"/><TextBlock Text="Summary"/></StackPanel></TabItem.Header>
                                 <DockPanel LastChildFill="True">
                                     <ContentControl DockPanel.Dock="Top" Content="{Binding}" ContentTemplate="{StaticResource WorkspaceViewStripTemplate}" />
                                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
@@ -865,13 +975,13 @@
                                         <DataGrid.Style><Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding ShowSummaryViewByMonth}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></DataGrid.Style>
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Category" Binding="{Binding ProjectCode}" Width="190" />
-                                            <DataGridTextColumn Header="Total Forecast" Binding="{Binding TotalForecast, StringFormat={}{0:C0}}" Width="130" />
-                                            <DataGridTextColumn Header="Cost To Date" Binding="{Binding CostToDate, StringFormat={}{0:C0}}" Width="120" />
-                                            <DataGridTextColumn Header="Month Cost" Binding="{Binding CurrentMonthCost, StringFormat={}{0:C0}}" Width="120" />
-                                            <DataGridTextColumn Header="Planned Cost" Binding="{Binding PlannedCost, StringFormat={}{0:C0}}" Width="120" />
-                                            <DataGridTextColumn Header="Budget" Binding="{Binding Budget, StringFormat={}{0:C0}}" Width="120" />
-                                            <DataGridTextColumn Header="Budget Var" Binding="{Binding TotalBudgetVariance, StringFormat={}{0:C0}}" Width="120" />
-                                            <DataGridTextColumn Header="Month Var" Binding="{Binding MonthForecastVariance, StringFormat={}{0:C0}}" Width="120" />
+                                            <DataGridTextColumn Header="Total Forecast" Binding="{Binding TotalForecast, Converter={StaticResource AccountingNoDecimalsConverter}}" Width="130" />
+                                            <DataGridTextColumn Header="Cost To Date" Binding="{Binding CostToDate, Converter={StaticResource AccountingNoDecimalsConverter}}" Width="120" />
+                                            <DataGridTextColumn Header="Month Cost" Binding="{Binding CurrentMonthCost, Converter={StaticResource AccountingNoDecimalsConverter}}" Width="120" />
+                                            <DataGridTextColumn Header="Planned Cost" Binding="{Binding PlannedCost, Converter={StaticResource AccountingNoDecimalsConverter}}" Width="120" />
+                                            <DataGridTextColumn Header="Budget" Binding="{Binding Budget, Converter={StaticResource AccountingNoDecimalsConverter}}" Width="120" />
+                                            <DataGridTextColumn Header="Budget Var" Binding="{Binding TotalBudgetVariance, Converter={StaticResource AccountingNoDecimalsConverter}}" Width="120" />
+                                            <DataGridTextColumn Header="Month Var" Binding="{Binding MonthForecastVariance, Converter={StaticResource AccountingNoDecimalsConverter}}" Width="120" />
                                         </DataGrid.Columns>
                                     </DataGrid>
                                     <DataGrid x:Name="CategoryMonthlyPivotGrid" ItemsSource="{Binding CategoryMonthlyPivotRows}" Sorting="ColumnHighlightGrid_Sorting">
@@ -882,7 +992,7 @@
                             </TabItem>
 
                             <TabItem Tag="Monthly Report">
-                                <TabItem.Header><StackPanel Orientation="Horizontal"><Image Source="/Assets/Icons/png/ic_tab_monthly_report_16.png" Width="16" Height="16" Margin="0,0,7,0"/><TextBlock Text="Monthly Report"/></StackPanel></TabItem.Header>
+                                <TabItem.Header><StackPanel Orientation="Horizontal" Tag="Monthly Report" MouseRightButtonUp="WorkspaceTabHeader_MouseRightButtonUp"><Image x:Name="MonthlyReportTabHeaderIcon" Source="/Assets/Icons/png/ic_tab_monthly_report_16.png" Width="16" Height="16" Margin="0,0,7,0" Tag="Monthly Report"/><TextBlock Text="Monthly Report"/></StackPanel></TabItem.Header>
                                 <DockPanel LastChildFill="True">
                                 <ContentControl DockPanel.Dock="Top" Content="{Binding}" ContentTemplate="{StaticResource WorkspaceViewStripTemplate}" />
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -967,7 +1077,7 @@
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
                                                         <TextBlock Text="Total Project contingency" Margin="8,6" />
-                                                        <TextBlock Grid.Column="1" Text="{Binding ProjectContingencyTotal, StringFormat={}{0:C0}}" Margin="8,6" FontWeight="SemiBold" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding ProjectContingencyTotal, Converter={StaticResource AccountingNoDecimalsConverter}}" Margin="8,6" FontWeight="SemiBold" />
                                                     </Grid>
                                                     <Grid Background="#F7FAF3">
                                                         <Grid.ColumnDefinitions>
@@ -975,7 +1085,7 @@
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
                                                         <TextBlock Text="Total expended" Margin="8,6" />
-                                                        <TextBlock Grid.Column="1" Text="{Binding ContingencyExpendedTotal, StringFormat={}{0:C0}}" Margin="8,6" FontWeight="SemiBold" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding ContingencyExpendedTotal, Converter={StaticResource AccountingNoDecimalsConverter}}" Margin="8,6" FontWeight="SemiBold" />
                                                     </Grid>
                                                     <Grid>
                                                         <Grid.ColumnDefinitions>
@@ -983,7 +1093,7 @@
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
                                                         <TextBlock Text="Proposed expenditure" Margin="8,6" />
-                                                        <TextBlock Grid.Column="1" Text="{Binding ContingencyProposedTotal, StringFormat={}{0:C0}}" Margin="8,6" FontWeight="SemiBold" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding ContingencyProposedTotal, Converter={StaticResource AccountingNoDecimalsConverter}}" Margin="8,6" FontWeight="SemiBold" />
                                                     </Grid>
                                                     <Grid Background="#F7FAF3">
                                                         <Grid.ColumnDefinitions>
@@ -991,7 +1101,7 @@
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
                                                         <TextBlock Text="Total Remaining" Margin="8,6" />
-                                                        <TextBlock Grid.Column="1" Text="{Binding ContingencyRemainingTotal, StringFormat={}{0:C0}}" Margin="8,6" FontWeight="SemiBold" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding ContingencyRemainingTotal, Converter={StaticResource AccountingNoDecimalsConverter}}" Margin="8,6" FontWeight="SemiBold" />
                                                     </Grid>
                                                 </StackPanel>
                                             </Border>
@@ -1060,7 +1170,7 @@
                             </TabItem>
 
                             <TabItem Tag="Pivot Builder">
-                                <TabItem.Header><StackPanel Orientation="Horizontal"><Image Source="/Assets/Icons/png/ic_tab_pivot_builder_16.png" Width="16" Height="16" Margin="0,0,7,0"/><TextBlock Text="Pivot Builder"/></StackPanel></TabItem.Header>
+                                <TabItem.Header><StackPanel Orientation="Horizontal" Tag="Pivot Builder" MouseRightButtonUp="WorkspaceTabHeader_MouseRightButtonUp"><Image x:Name="PivotBuilderTabHeaderIcon" Source="/Assets/Icons/png/ic_tab_pivot_builder_16.png" Width="16" Height="16" Margin="0,0,7,0" Tag="Pivot Builder"/><TextBlock Text="Pivot Builder"/></StackPanel></TabItem.Header>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -1154,15 +1264,15 @@
                             </TabItem>
 
                             <TabItem Tag="Contingency">
-                                <TabItem.Header><StackPanel Orientation="Horizontal"><Image Source="/Assets/Icons/png/ic_tab_contingency_16.png" Width="16" Height="16" Margin="0,0,7,0"/><TextBlock Text="Contingency"/></StackPanel></TabItem.Header>
+                                <TabItem.Header><StackPanel Orientation="Horizontal" Tag="Contingency" MouseRightButtonUp="WorkspaceTabHeader_MouseRightButtonUp"><Image x:Name="ContingencyTabHeaderIcon" Source="/Assets/Icons/png/ic_tab_contingency_16.png" Width="16" Height="16" Margin="0,0,7,0" Tag="Contingency"/><TextBlock Text="Contingency"/></StackPanel></TabItem.Header>
                                 <DockPanel LastChildFill="True">
                                 <ContentControl DockPanel.Dock="Top" Content="{Binding}" ContentTemplate="{StaticResource WorkspaceViewStripTemplate}" />
                                 <DataGrid x:Name="ContingencyGrid" ItemsSource="{Binding ContingencyEntries}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="110" />
-                                        <DataGridTextColumn Header="Expended" Binding="{Binding ContingencyExpended, StringFormat={}{0:C0}}" Width="110" />
-                                        <DataGridTextColumn Header="Remaining" Binding="{Binding RemainingContingency, StringFormat={}{0:C0}}" Width="110" />
-                                        <DataGridTextColumn Header="Proposed" Binding="{Binding ProposedExpenditure, StringFormat={}{0:C0}}" Width="110" />
+                                        <DataGridTextColumn Header="Expended" Binding="{Binding ContingencyExpended, Converter={StaticResource AccountingNoDecimalsConverter}}" Width="110" />
+                                        <DataGridTextColumn Header="Remaining" Binding="{Binding RemainingContingency, Converter={StaticResource AccountingNoDecimalsConverter}}" Width="110" />
+                                        <DataGridTextColumn Header="Proposed" Binding="{Binding ProposedExpenditure, Converter={StaticResource AccountingNoDecimalsConverter}}" Width="110" />
                                         <DataGridTextColumn Header="Reason" Binding="{Binding Reason}" Width="300" />
                                         <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="140" />
                                     </DataGrid.Columns>
@@ -1171,7 +1281,7 @@
                             </TabItem>
 
                             <TabItem Tag="Audit">
-                                <TabItem.Header><StackPanel Orientation="Horizontal"><Image Source="/Assets/Icons/png/ic_tab_audit_16.png" Width="16" Height="16" Margin="0,0,7,0"/><TextBlock Text="Audit"/></StackPanel></TabItem.Header>
+                                <TabItem.Header><StackPanel Orientation="Horizontal" Tag="Audit" MouseRightButtonUp="WorkspaceTabHeader_MouseRightButtonUp"><Image x:Name="AuditTabHeaderIcon" Source="/Assets/Icons/png/ic_tab_audit_16.png" Width="16" Height="16" Margin="0,0,7,0" Tag="Audit"/><TextBlock Text="Audit"/></StackPanel></TabItem.Header>
                                 <DockPanel LastChildFill="True">
                                 <ContentControl DockPanel.Dock="Top" Content="{Binding}" ContentTemplate="{StaticResource WorkspaceViewStripTemplate}" />
                                 <DataGrid x:Name="AuditGrid" ItemsSource="{Binding AuditEvents}">
@@ -1436,7 +1546,7 @@
                                 <Border Background="#FBFCFE" BorderBrush="#E1E7F0" BorderThickness="1" Padding="12" Margin="0,0,0,6" CornerRadius="10">
                                     <StackPanel>
                                         <TextBlock Text="Raw total" Foreground="{StaticResource MutedTextBrush}" />
-                                        <TextBlock Text="{Binding LedgerTransactionTotal, StringFormat={}{0:C0}}" FontSize="18" FontWeight="Bold" />
+                                        <TextBlock Text="{Binding LedgerTransactionTotal, Converter={StaticResource AccountingNoDecimalsConverter}}" FontSize="18" FontWeight="Bold" />
                                     </StackPanel>
                                 </Border>
                                 <Border Background="#FBFCFE" BorderBrush="#E1E7F0" BorderThickness="1" Padding="12" Margin="0,0,6,0" CornerRadius="10">
@@ -1448,7 +1558,7 @@
                                 <Border Background="#FBFCFE" BorderBrush="#E1E7F0" BorderThickness="1" Padding="12" Margin="0" CornerRadius="10">
                                     <StackPanel>
                                         <TextBlock Text="Average rate" Foreground="{StaticResource MutedTextBrush}" />
-                                        <TextBlock Text="{Binding LedgerAverageRate, StringFormat={}{0:C2}}" FontSize="18" FontWeight="Bold" />
+                                        <TextBlock Text="{Binding LedgerAverageRate, Converter={StaticResource AccountingNoDecimalsConverter}, ConverterParameter=Decimals:2}" FontSize="18" FontWeight="Bold" />
                                     </StackPanel>
                                 </Border>
                             </UniformGrid>
@@ -1484,8 +1594,8 @@
                                                 <DataGridTextColumn Header="Period" Binding="{Binding Period}" Width="60" />
                                                 <DataGridTextColumn Header="Date" Binding="{Binding DocDate}" Width="90" />
                                                 <DataGridTextColumn Header="Units" Binding="{Binding Units, StringFormat={}{0:N2}}" Width="70" />
-                                                <DataGridTextColumn Header="Rate" Binding="{Binding UnitRate, StringFormat={}{0:C2}}" Width="80" />
-                                                <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat={}{0:C0}}" Width="85" />
+                                                <DataGridTextColumn Header="Rate" Binding="{Binding UnitRate, Converter={StaticResource AccountingNoDecimalsConverter}, ConverterParameter=Decimals:2}" Width="80" />
+                                                <DataGridTextColumn Header="Amount" Binding="{Binding Amount, Converter={StaticResource AccountingNoDecimalsConverter}}" Width="85" />
                                                 <DataGridTextColumn Header="Cost Ledger" Binding="{Binding CostLedger}" Width="90" />
                                                 <DataGridTextColumn Header="Cost Account" Binding="{Binding CostAccount}" Width="95" />
                                                 <DataGridTextColumn Header="Project" Binding="{Binding ProjectCode}" Width="80" />
@@ -1552,13 +1662,13 @@
                                         <Border BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" Padding="10" Margin="0,0,6,0" CornerRadius="8">
                                             <StackPanel>
                                                 <TextBlock Text="Spend to date" Foreground="{StaticResource MutedTextBrush}" />
-                                                <TextBlock Text="{Binding LedgerTransactionTotal, StringFormat={}{0:C0}}" FontSize="18" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding LedgerTransactionTotal, Converter={StaticResource AccountingNoDecimalsConverter}}" FontSize="18" FontWeight="SemiBold" />
                                             </StackPanel>
                                         </Border>
                                         <Border BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" Padding="10" Margin="0" CornerRadius="8">
                                             <StackPanel>
                                                 <TextBlock Text="Spend + forecast" Foreground="{StaticResource MutedTextBrush}" />
-                                                <TextBlock Text="{Binding LedgerProjectedTotal, StringFormat={}{0:C0}}" FontSize="18" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding LedgerProjectedTotal, Converter={StaticResource AccountingNoDecimalsConverter}}" FontSize="18" FontWeight="SemiBold" />
                                             </StackPanel>
                                         </Border>
                                     </UniformGrid>

@@ -102,6 +102,17 @@ public sealed partial class MainWindowViewModel
             .OrderBy(period => period.StartDate)
             .ToList();
 
+        var calendarYearOrder = selectedPeriods
+            .Select(period => period.StartDate!.Value.Year)
+            .Distinct()
+            .OrderBy(year => year)
+            .ToList();
+        var fiscalYearOrder = selectedPeriods
+            .Select(period => FiscalPeriod.FiscalYearFromPeriodLabel(period.Label))
+            .Where(label => !string.IsNullOrWhiteSpace(label))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         var periodColumns = selectedPeriods
             .Select((period, index) =>
             {
@@ -109,19 +120,18 @@ public sealed partial class MainWindowViewModel
                 var isLocked = IsForecastPeriodLocked(period.StartDate);
                 var fiscalYear = FiscalPeriod.FiscalYearFromPeriodLabel(period.Label);
                 var monthLabel = period.StartDate?.ToString("MMM") ?? string.Empty;
-                var useFirstFiscalPalette = string.Equals(fiscalYear, $"FY{calendarYear % 100:00}", StringComparison.OrdinalIgnoreCase);
                 var primaryLabel = ShowMonthNameAboveFiscalPeriod ? monthLabel : period.Label;
                 var secondaryLabel = ShowMonthNameAboveFiscalPeriod ? period.Label : monthLabel;
+                var calendarBandIndex = calendarYearOrder.IndexOf(calendarYear);
+                var fiscalBandIndex = fiscalYearOrder.FindIndex(label => string.Equals(label, fiscalYear, StringComparison.OrdinalIgnoreCase));
+                var monthRowBackground = GetForecastCalendarYearHeaderBrush(calendarYear.ToString(), calendarBandIndex);
+                var fiscalRowBackground = GetForecastFiscalYearHeaderBrush(fiscalYear, fiscalBandIndex);
                 var primaryBackground = ShowMonthNameAboveFiscalPeriod
-                    ? BrushFactory.Frozen(0xC9, 0xD5, 0xEA)
-                    : useFirstFiscalPalette
-                        ? BrushFactory.Frozen(0xDD, 0xE9, 0xD5)
-                        : BrushFactory.Frozen(0xFB, 0xEF, 0xC4);
+                    ? monthRowBackground
+                    : fiscalRowBackground;
                 var secondaryBackground = ShowMonthNameAboveFiscalPeriod
-                    ? useFirstFiscalPalette
-                        ? BrushFactory.Frozen(0xDD, 0xE9, 0xD5)
-                        : BrushFactory.Frozen(0xFB, 0xEF, 0xC4)
-                    : BrushFactory.Frozen(0xC9, 0xD5, 0xEA);
+                    ? fiscalRowBackground
+                    : monthRowBackground;
                 var previousFiscalYear = index > 0
                     ? FiscalPeriod.FiscalYearFromPeriodLabel(selectedPeriods[index - 1].Label)
                     : string.Empty;
@@ -186,6 +196,78 @@ public sealed partial class MainWindowViewModel
         }
 
         ReplaceCollection(CtcMonthForecastColumns, periodColumns);
+    }
+
+    public Brush GetForecastCalendarYearHeaderBrush(string yearLabel, int bandIndex = 0)
+    {
+        if (_dataset.ForecastCalendarYearHeaderColorHexes.TryGetValue(yearLabel, out var overrideHex)
+            && IsValidHexColour(overrideHex))
+        {
+            return BrushFactory.FrozenHeaderGradient(overrideHex);
+        }
+
+        return bandIndex % 2 == 0
+            ? BrushFactory.FrozenVerticalGradient("#CFE5FA", "#A6C8E8")
+            : BrushFactory.FrozenVerticalGradient("#F9E1C4", "#EFC18C");
+    }
+
+    public Brush GetForecastFiscalYearHeaderBrush(string fiscalYearLabel, int bandIndex = 0)
+    {
+        if (_dataset.ForecastFiscalYearHeaderColorHexes.TryGetValue(fiscalYearLabel, out var overrideHex)
+            && IsValidHexColour(overrideHex))
+        {
+            return BrushFactory.FrozenHeaderGradient(overrideHex);
+        }
+
+        return bandIndex % 2 == 0
+            ? BrushFactory.FrozenVerticalGradient("#D7ECCF", "#B4D49A")
+            : BrushFactory.FrozenVerticalGradient("#FFF0B8", "#F0D37A");
+    }
+
+    public string? GetForecastCalendarYearHeaderColorHex(string yearLabel)
+    {
+        return _dataset.ForecastCalendarYearHeaderColorHexes.GetValueOrDefault(yearLabel);
+    }
+
+    public string? GetForecastFiscalYearHeaderColorHex(string fiscalYearLabel)
+    {
+        return _dataset.ForecastFiscalYearHeaderColorHexes.GetValueOrDefault(fiscalYearLabel);
+    }
+
+    public void SetForecastCalendarYearHeaderColor(string yearLabel, string? colorHex)
+    {
+        SetHeaderColor(_dataset.ForecastCalendarYearHeaderColorHexes, yearLabel, colorHex);
+    }
+
+    public void SetForecastFiscalYearHeaderColor(string fiscalYearLabel, string? colorHex)
+    {
+        SetHeaderColor(_dataset.ForecastFiscalYearHeaderColorHexes, fiscalYearLabel, colorHex);
+    }
+
+    private void SetHeaderColor(Dictionary<string, string> target, string key, string? colorHex)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(colorHex) || !IsValidHexColour(colorHex))
+        {
+            target.Remove(key);
+        }
+        else
+        {
+            target[key] = colorHex;
+        }
+
+        IsDirty = true;
+        RebuildCtcMonthForecastColumns();
+    }
+
+    private static bool IsValidHexColour(string value)
+    {
+        return BrushFactory.IsValidHeaderGradientSpec(value)
+               || BrushFactory.TryParseHexColor(value, out _);
     }
 
     public bool IsForecastPeriodLocked(DateOnly? periodStartDate)

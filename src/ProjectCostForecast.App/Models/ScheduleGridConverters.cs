@@ -43,7 +43,7 @@ public sealed class ForecastAmountTextConverter : IValueConverter
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (parameter is string text
-            && string.Equals(text, "BlankZero", StringComparison.OrdinalIgnoreCase)
+            && text.Contains("BlankZero", StringComparison.OrdinalIgnoreCase)
             && value is decimal decimalValue
             && decimalValue == 0m)
         {
@@ -59,6 +59,14 @@ public sealed class ForecastAmountTextConverter : IValueConverter
         if (string.IsNullOrEmpty(text))
         {
             return 0m;
+        }
+
+        if (parameter is string converterParameter
+            && converterParameter.Contains("ForecastMonth", StringComparison.OrdinalIgnoreCase))
+        {
+            return AccountingNoDecimalsConverter.TryParseForecastMonthInput(text, culture, out var forecastAmount)
+                ? forecastAmount
+                : DependencyProperty.UnsetValue;
         }
 
         return decimal.TryParse(text, NumberStyles.Any, culture, out var amount)

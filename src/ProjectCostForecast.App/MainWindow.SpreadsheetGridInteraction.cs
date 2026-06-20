@@ -15,7 +15,6 @@ namespace ProjectCostForecast.App;
 public partial class MainWindow
 {
     private readonly HashSet<DataGrid> _spreadsheetAttachedGrids = [];
-    private readonly HashSet<ScrollBar> _spreadsheetVerticalScrollBars = [];
     private readonly Dictionary<DataGrid, object?> _spreadsheetCurrentRows = [];
     private readonly HashSet<DataGrid> _spreadsheetSelectionUpdateQueued = [];
     private static readonly Dictionary<(Type Type, string Path), PropertyInfo[]?> SpreadsheetPropertyPathCache = [];
@@ -106,7 +105,6 @@ public partial class MainWindow
 
             UpdateSpreadsheetSelectionStatus(grid);
             UpdateSpreadsheetSelectionVisuals(grid);
-            Dispatcher.BeginInvoke(() => WireSpreadsheetVerticalScrollbar(grid), System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
@@ -341,7 +339,6 @@ public partial class MainWindow
     {
         if (sender is DataGrid grid)
         {
-            WireSpreadsheetVerticalScrollbar(grid);
             QueueSpreadsheetSelectionUpdate(grid, refreshAllVisuals: true);
             if (IsManagementResourceGrid(grid))
             {
@@ -612,25 +609,14 @@ public partial class MainWindow
         }
     }
 
-    private void WireSpreadsheetVerticalScrollbar(DataGrid grid)
+    private void SpreadsheetGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (FindChild<ScrollViewer>(grid) is not ScrollViewer scrollViewer)
+        if (sender is not DataGrid grid || e.OriginalSource is not DependencyObject source)
         {
             return;
         }
 
-        foreach (var scrollBar in FindChildren<ScrollBar>(grid).Where(item => item.Orientation == Orientation.Vertical))
-        {
-            if (_spreadsheetVerticalScrollBars.Add(scrollBar))
-            {
-                scrollBar.Scroll += (_, args) => scrollViewer.ScrollToVerticalOffset(args.NewValue);
-            }
-        }
-    }
-
-    private void SpreadsheetGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is not DataGrid grid || e.OriginalSource is not DependencyObject source)
+        if (IsScrollBarInteractionSource(source))
         {
             return;
         }

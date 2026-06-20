@@ -5,6 +5,8 @@ namespace ProjectCostForecast.App.Models;
 
 public static class GridColumnPresentationState
 {
+    private static readonly Brush DefaultHeaderGradient = CreateDefaultHeaderGradient();
+
     public static readonly DependencyProperty IconGlyphProperty =
         DependencyProperty.RegisterAttached(
             "IconGlyph",
@@ -31,7 +33,7 @@ public static class GridColumnPresentationState
             "HeaderBackground",
             typeof(Brush),
             typeof(GridColumnPresentationState),
-            new FrameworkPropertyMetadata(new SolidColorBrush(Color.FromRgb(0xEA, 0xF0, 0xF8))));
+            new FrameworkPropertyMetadata(DefaultHeaderGradient));
 
     public static readonly DependencyProperty BaseHeaderBackgroundProperty =
         DependencyProperty.RegisterAttached(
@@ -39,6 +41,13 @@ public static class GridColumnPresentationState
             typeof(Brush),
             typeof(GridColumnPresentationState),
             new FrameworkPropertyMetadata(null));
+
+    public static readonly DependencyProperty HeaderColorSpecProperty =
+        DependencyProperty.RegisterAttached(
+            "HeaderColorSpec",
+            typeof(string),
+            typeof(GridColumnPresentationState),
+            new FrameworkPropertyMetadata(string.Empty));
 
     public static string GetIconGlyph(DependencyObject element) => (string)element.GetValue(IconGlyphProperty);
 
@@ -59,4 +68,22 @@ public static class GridColumnPresentationState
     public static Brush? GetBaseHeaderBackground(DependencyObject element) => element.GetValue(BaseHeaderBackgroundProperty) as Brush;
 
     public static void SetBaseHeaderBackground(DependencyObject element, Brush value) => element.SetValue(BaseHeaderBackgroundProperty, value);
+
+    public static string GetHeaderColorSpec(DependencyObject element) => (string)element.GetValue(HeaderColorSpecProperty);
+
+    public static void SetHeaderColorSpec(DependencyObject element, string value) => element.SetValue(HeaderColorSpecProperty, value);
+
+    private static Brush CreateDefaultHeaderGradient()
+    {
+        var gradient = new LinearGradientBrush
+        {
+            StartPoint = new Point(0.5, 0),
+            EndPoint = new Point(0.5, 1)
+        };
+        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xF8, 0xFA, 0xFC), 0));
+        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xEC, 0xF1, 0xF6), 0.5));
+        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xE1, 0xE8, 0xF0), 1));
+        gradient.Freeze();
+        return gradient;
+    }
 }

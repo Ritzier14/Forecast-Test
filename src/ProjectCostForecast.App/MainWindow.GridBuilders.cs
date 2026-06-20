@@ -19,6 +19,11 @@ namespace ProjectCostForecast.App;
 
 public partial class MainWindow
 {
+    private static readonly double ForecastMonthColumnDefaultWidth = 52;
+    private static readonly double ForecastMonthColumnMinimumWidth = 52;
+    private static readonly double ForecastMonthTotalColumnDefaultWidth = Math.Max(88, ForecastMonthColumnDefaultWidth + 14);
+    private static readonly double ForecastMonthTotalColumnMinimumWidth = 62;
+
     private void RebuildMonthlyPivotColumns()
     {
         if (DataContext is not MainWindowViewModel viewModel)
@@ -80,6 +85,20 @@ public partial class MainWindow
         QueueSpreadsheetSelectionUpdate(ForecastLinesGrid, refreshAllVisuals: true);
         QueueApplyCurrentWorkspaceViewColumnState();
         RefreshForecastGridStatePills();
+    }
+
+    private static double MeasureForecastMonthColumnWidth(string sampleText, double extraChromeWidth, double minimumWidth)
+    {
+        var formatted = new FormattedText(
+            sampleText,
+            CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            new Typeface(new FontFamily("Segoe UI"), FontStyles.Italic, FontWeights.SemiBold, FontStretches.Normal),
+            11,
+            Brushes.Black,
+            1.0);
+
+        return Math.Max(minimumWidth, Math.Ceiling(formatted.WidthIncludingTrailingWhitespace + 8 + extraChromeWidth));
     }
 
     private void RebuildForecastYearBands()
@@ -194,22 +213,25 @@ public partial class MainWindow
         ForecastYearBandCanvas.Width = ForecastGridHost.ActualWidth;
         ForecastYearBandCanvas.Height = ForecastYearBandHeight;
         ForecastYearBandCanvas.Visibility = Visibility.Visible;
+        var visibleForecastGridHeight = GetForecastVisibleGridHeight();
+        var overlayContentHeight = ForecastYearBandHeight + ForecastLinesGrid.ColumnHeaderHeight + visibleForecastGridHeight;
         ForecastFreezeBoundaryCanvas.Width = ForecastGridHost.ActualWidth;
-        ForecastFreezeBoundaryCanvas.Height = ForecastGridHost.ActualHeight;
+        ForecastFreezeBoundaryCanvas.Height = overlayContentHeight;
         ForecastFreezeBoundaryCanvas.Visibility = Visibility.Visible;
 
         var groupedHeaders = yearBandColumns
             .GroupBy(item => item.Definition.YearLabel)
             .ToList();
-        var yearBandClipLeft = Math.Max(0, freezeBoundaryX ?? 0);
+        var yearBandClipLeft = Math.Max(0, (freezeBoundaryX ?? 0) - 2);
         ForecastYearBandCanvas.Clip = new RectangleGeometry(new Rect(
             yearBandClipLeft,
             0,
             Math.Max(0, ForecastGridHost.ActualWidth - yearBandClipLeft),
             ForecastYearBandHeight));
 
-        foreach (var group in groupedHeaders)
+        foreach (var groupWithIndex in groupedHeaders.Select((Group, Index) => new { Group, Index }))
         {
+            var group = groupWithIndex.Group;
             var columns = group.ToList();
             var left = columns.First().Left;
             var right = columns.Last().Left + columns.Last().Width;
@@ -223,9 +245,12 @@ public partial class MainWindow
             {
                 Width = width,
                 Height = ForecastYearBandHeight,
-                Background = BrushFactory.Frozen(0xF8, 0xFA, 0xFC),
-                BorderBrush = BrushFactory.Frozen(0x94, 0xA3, 0xB8),
+                Tag = group.Key,
+                Background = viewModel?.GetForecastCalendarYearHeaderBrush(group.Key, groupWithIndex.Index)
+                    ?? BrushFactory.FrozenVerticalGradient("#CFE5FA", "#A6C8E8"),
+                BorderBrush = BrushFactory.Frozen("#8DA0B6"),
                 BorderThickness = new Thickness(1, 1, 1, 1),
+                Cursor = Cursors.Arrow,
                 Child = new TextBlock
                 {
                     Text = $"Calendar year {group.Key}",
@@ -236,14 +261,16 @@ public partial class MainWindow
                     TextAlignment = TextAlignment.Center
                 }
             };
+            band.MouseRightButtonUp += ForecastYearBand_MouseRightButtonUp;
 
             Canvas.SetLeft(band, left);
             Canvas.SetTop(band, 0);
             ForecastYearBandCanvas.Children.Add(band);
         }
 
-        var gridGuideHeight = Math.Max(0, ForecastGridHost.ActualHeight);
         var rowGuideTop = ForecastYearBandHeight;
+        var fiscalSeparatorTop = Math.Max(0, ForecastYearBandHeight - 1);
+        var gridGuideHeight = Math.Max(rowGuideTop, overlayContentHeight);
         foreach (var column in monthColumns)
         {
             if (column.Definition.RightDashedSeparatorVisibility != Visibility.Visible)
@@ -261,9 +288,9 @@ public partial class MainWindow
             {
                 X1 = right,
                 X2 = right,
-                Y1 = rowGuideTop,
+                Y1 = fiscalSeparatorTop,
                 Y2 = gridGuideHeight,
-                Stroke = Brushes.Black,
+                Stroke = BrushFactory.Frozen("#6B7280"),
                 StrokeThickness = 1,
                 StrokeDashArray = new DoubleCollection { 3, 2 },
                 SnapsToDevicePixels = true
@@ -281,16 +308,30 @@ public partial class MainWindow
                 continue;
             }
 
-            var calendarBoundary = new Rectangle
+            var yearBandBoundary = new Line
             {
-                Width = 3,
-                Height = gridGuideHeight,
-                Fill = BrushFactory.Frozen(0x94, 0xA3, 0xB8),
+                X1 = right,
+                X2 = right,
+                Y1 = 0,
+                Y2 = ForecastYearBandHeight,
+                Stroke = Brushes.Black,
+                StrokeThickness = 1,
                 IsHitTestVisible = false
             };
 
-            Canvas.SetLeft(calendarBoundary, right - 1.5);
-            Canvas.SetTop(calendarBoundary, 0);
+            ForecastYearBandCanvas.Children.Add(yearBandBoundary);
+
+            var calendarBoundary = new Line
+            {
+                X1 = right,
+                X2 = right,
+                Y1 = 0,
+                Y2 = gridGuideHeight,
+                Stroke = Brushes.Black,
+                StrokeThickness = 1,
+                IsHitTestVisible = false
+            };
+
             ForecastFreezeBoundaryCanvas.Children.Add(calendarBoundary);
         }
 
@@ -298,29 +339,16 @@ public partial class MainWindow
             && boundaryX >= 0
             && boundaryX <= ForecastGridHost.ActualWidth)
         {
-            var topFreezeLine = new Rectangle
-            {
-                Width = 4,
-                Height = ForecastYearBandCanvas.Height,
-                Fill = BrushFactory.Frozen(0x25, 0x63, 0xEB),
-                IsHitTestVisible = false
-            };
-
-            Canvas.SetLeft(topFreezeLine, boundaryX - 2);
-            Canvas.SetTop(topFreezeLine, 0);
-            ForecastYearBandCanvas.Children.Add(topFreezeLine);
-
             var fullHeightFreezeLine = new Rectangle
             {
                 Width = 4,
-                Height = gridGuideHeight,
+                Height = gridGuideHeight + 1,
                 Fill = BrushFactory.Frozen(0x25, 0x63, 0xEB),
-                Opacity = 0.9,
                 IsHitTestVisible = false
             };
 
             Canvas.SetLeft(fullHeightFreezeLine, boundaryX - 2);
-            Canvas.SetTop(fullHeightFreezeLine, 0);
+            Canvas.SetTop(fullHeightFreezeLine, -1);
             ForecastFreezeBoundaryCanvas.Children.Add(fullHeightFreezeLine);
 
             var label = new Border
@@ -328,6 +356,7 @@ public partial class MainWindow
                 Background = BrushFactory.Frozen(0x25, 0x63, 0xEB),
                 CornerRadius = new CornerRadius(3),
                 Padding = new Thickness(5, 2, 5, 2),
+                IsHitTestVisible = false,
                 Child = new TextBlock
                 {
                     Text = "Frozen",
@@ -338,11 +367,22 @@ public partial class MainWindow
             };
 
             Canvas.SetLeft(label, Math.Max(0, boundaryX + 6));
-            Canvas.SetTop(label, 4);
-            ForecastFreezeBoundaryCanvas.Children.Add(label);
+            Canvas.SetTop(label, 2);
+            ForecastYearBandCanvas.Children.Add(label);
         }
 
         return true;
+    }
+
+    private double GetForecastVisibleGridHeight()
+    {
+        var scrollViewer = _forecastGridScrollViewer ??= FindChild<ScrollViewer>(ForecastLinesGrid);
+        if (scrollViewer is not null && scrollViewer.ViewportHeight > 0)
+        {
+            return scrollViewer.ViewportHeight;
+        }
+
+        return Math.Max(0, ForecastLinesGrid.ActualHeight);
     }
 
     private void QueueRebuildForecastYearBands()
@@ -378,6 +418,14 @@ public partial class MainWindow
 
     private void ForecastColumnWidthChanged(object? sender, EventArgs e)
     {
+        if (sender is DataGridColumn { Header: ForecastMonthColumnDefinition definition } column
+            && string.Equals(definition.Key, "27-03", StringComparison.OrdinalIgnoreCase))
+        {
+            var widthMessage = $"[ForecastWidth] {definition.Key} {definition.PrimaryLabel}/{definition.SecondaryLabel} width={column.ActualWidth:F1}";
+            System.Diagnostics.Debug.WriteLine(widthMessage);
+            Console.WriteLine(widthMessage);
+        }
+
         QueueRebuildForecastYearBands();
         QueueRefreshForecastGroupHeaderPresenters();
     }
@@ -547,20 +595,20 @@ public partial class MainWindow
         AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("Task", nameof(ForecastLine.TaskNumber), 110, numeric: false, leftPadding: 33), 90), MainWindowViewModel.ForecastFreezeTaskKey);
         AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateEditableTextColumn("Resource", nameof(ForecastLine.ResourceName), 220), 140), MainWindowViewModel.ForecastFreezeResourceKey);
         AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("Category", nameof(ForecastLine.ProjectCode), 160, numeric: false), 110), MainWindowViewModel.ForecastFreezeCategoryKey);
-        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("CTD", BuildAccountingBinding(nameof(ForecastLine.CostToDateSummary)), 90), 72), MainWindowViewModel.ForecastFreezeCostToDateKey);
-        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("Month Cost", BuildAccountingBinding(nameof(ForecastLine.CurrentMonthCost)), 95), 78), MainWindowViewModel.ForecastFreezeMonthCostKey);
-        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("Last Forecast", BuildAccountingBinding(nameof(ForecastLine.LastMonthForecast)), 105), 84), MainWindowViewModel.ForecastFreezeLastForecastKey);
-        var monthVarianceColumn = CreateReadOnlyTextColumn("Month Var", BuildAccountingBinding(nameof(ForecastLine.VarianceLastMonthToDate)), 95);
+        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("CTD", BuildAccountingBinding(nameof(ForecastLine.CostToDateSummary), showCurrency: viewModel.ShowCurrencySymbols), 90), 72), MainWindowViewModel.ForecastFreezeCostToDateKey);
+        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("Month Cost", BuildAccountingBinding(nameof(ForecastLine.CurrentMonthCost), showCurrency: viewModel.ShowCurrencySymbols), 95), 78), MainWindowViewModel.ForecastFreezeMonthCostKey);
+        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("Last Forecast", BuildAccountingBinding(nameof(ForecastLine.LastMonthForecast), showCurrency: viewModel.ShowCurrencySymbols), 105), 84), MainWindowViewModel.ForecastFreezeLastForecastKey);
+        var monthVarianceColumn = CreateReadOnlyTextColumn("Month Var", BuildAccountingBinding(nameof(ForecastLine.VarianceLastMonthToDate), showCurrency: viewModel.ShowCurrencySymbols), 95);
         monthVarianceColumn.MinWidth = 78;
         ApplyVarianceIndicatorStyle(monthVarianceColumn, viewModel, nameof(ForecastLine.VarianceLastMonthToDate));
         AddForecastGridColumn(grid, freezeCandidates, monthVarianceColumn, MainWindowViewModel.ForecastFreezeMonthVarianceKey);
-        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("CTC", BuildAccountingBinding(nameof(ForecastLine.TotalForecastCtc)), 105), 84), MainWindowViewModel.ForecastFreezeCtcKey);
-        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("FCC", BuildAccountingBinding(nameof(ForecastLine.PlannedCostFcc)), 105), 84), MainWindowViewModel.ForecastFreezeFccKey);
-        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("Budget", BuildAccountingBinding(nameof(ForecastLine.Budget)), 105), 84), MainWindowViewModel.ForecastFreezeBudgetKey);
+        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("CTC", BuildAccountingBinding(nameof(ForecastLine.TotalForecastCtc), showCurrency: viewModel.ShowCurrencySymbols), 105), 84), MainWindowViewModel.ForecastFreezeCtcKey);
+        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("FCC", BuildAccountingBinding(nameof(ForecastLine.PlannedCostFcc), showCurrency: viewModel.ShowCurrencySymbols), 105), 84), MainWindowViewModel.ForecastFreezeFccKey);
+        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("Budget", BuildAccountingBinding(nameof(ForecastLine.Budget), showCurrency: viewModel.ShowCurrencySymbols), 105), 84), MainWindowViewModel.ForecastFreezeBudgetKey);
         var budgetVarianceColumn = new DataGridTextColumn
         {
             Header = "Budget Var",
-            Binding = BuildAccountingBinding(nameof(ForecastLine.TotalBudgetVariance)),
+            Binding = BuildAccountingBinding(nameof(ForecastLine.TotalBudgetVariance), showCurrency: viewModel.ShowCurrencySymbols),
             Width = 105,
             IsReadOnly = true,
             ElementStyle = CreateNumericTextStyle()
@@ -587,12 +635,16 @@ public partial class MainWindow
                 Header = columnDefinition,
                 HeaderTemplate = monthHeaderTemplate,
                 HeaderStyle = CreateForecastMonthHeaderStyle(),
-                Width = columnDefinition.IsTotal ? 110 : 88,
-                MinWidth = columnDefinition.IsTotal ? 84 : 64,
+                Width = columnDefinition.IsTotal ? ForecastMonthTotalColumnDefaultWidth : ForecastMonthColumnDefaultWidth,
+                MinWidth = columnDefinition.IsTotal ? ForecastMonthTotalColumnMinimumWidth : ForecastMonthColumnMinimumWidth,
                 IsReadOnly = columnDefinition.IsTotal || !columnDefinition.IsEditable,
                 CellStyle = CreateForecastMonthCellStyle(columnDefinition)
             };
-            column.CellTemplate = CreateForecastMonthDisplayTemplate(columnDefinition, viewModel.ShowForecastZeroAsBlank);
+            column.CellTemplate = CreateForecastMonthDisplayTemplate(
+                columnDefinition,
+                viewModel.ShowForecastZeroAsBlank,
+                viewModel.ShowCurrencySymbols,
+                viewModel.ForecastMonthMillionDecimals);
             if (!columnDefinition.IsTotal && columnDefinition.IsEditable)
             {
                 column.CellEditingTemplate = CreateForecastMonthEditingTemplate(columnDefinition, viewModel.ShowForecastZeroAsBlank);
@@ -606,20 +658,13 @@ public partial class MainWindow
 
     private static void ApplyForecastFixedHeaderGradient(IEnumerable<DataGridColumn> columns)
     {
-        var gradient = new LinearGradientBrush
-        {
-            StartPoint = new Point(0.5, 0),
-            EndPoint = new Point(0.5, 1)
-        };
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xD9, 0xE5, 0xF2), 0));
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xB7, 0xC9, 0xDC), 0.48));
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xD7, 0xE2, 0xEE), 1));
-        gradient.Freeze();
+        var gradient = CreateGridHeaderGradient();
 
         foreach (var column in columns)
         {
             GridColumnPresentationState.SetHeaderBackground(column, gradient);
             GridColumnPresentationState.SetBaseHeaderBackground(column, gradient);
+            GridColumnPresentationState.SetHeaderColorSpec(column, string.Empty);
         }
     }
 
@@ -644,50 +689,51 @@ public partial class MainWindow
             {
                 Mode = metric == ManagementResourceMetric.AllocationPercentage ? BindingMode.TwoWay : BindingMode.OneWay,
                 UpdateSourceTrigger = UpdateSourceTrigger.LostFocus,
-                StringFormat = "{0:C2}"
+                Converter = AccountingConverter,
+                ConverterParameter = viewModel.ShowCurrencySymbols ? "Decimals:2;ShowCurrency" : "Decimals:2"
             },
             Width = 88,
             IsReadOnly = metric != ManagementResourceMetric.AllocationPercentage
         });
         var ctdColumn = CreateReadOnlyTextColumn(
             "CTD",
-            BuildAccountingBinding("Resource.SourceLine.CostToDateSummary"),
+            BuildAccountingBinding("Resource.SourceLine.CostToDateSummary", showCurrency: viewModel.ShowCurrencySymbols),
             90);
         grid.Columns.Add(ctdColumn);
         var monthCostColumn = CreateReadOnlyTextColumn(
             "Month Cost",
-            BuildAccountingBinding("Resource.SourceLine.CurrentMonthCost"),
+            BuildAccountingBinding("Resource.SourceLine.CurrentMonthCost", showCurrency: viewModel.ShowCurrencySymbols),
             95);
         grid.Columns.Add(monthCostColumn);
         var lastForecastColumn = CreateReadOnlyTextColumn(
             "Last Forecast",
-            BuildAccountingBinding("Resource.SourceLine.LastMonthForecast"),
+            BuildAccountingBinding("Resource.SourceLine.LastMonthForecast", showCurrency: viewModel.ShowCurrencySymbols),
             105);
         grid.Columns.Add(lastForecastColumn);
         var monthVarianceColumn = CreateReadOnlyTextColumn(
             "Month Var",
-            BuildAccountingBinding("Resource.SourceLine.VarianceLastMonthToDate"),
+            BuildAccountingBinding("Resource.SourceLine.VarianceLastMonthToDate", showCurrency: viewModel.ShowCurrencySymbols),
             95);
         ApplyVarianceIndicatorStyle(monthVarianceColumn, viewModel, "Resource.SourceLine.VarianceLastMonthToDate");
         grid.Columns.Add(monthVarianceColumn);
         var ctcColumn = CreateReadOnlyTextColumn(
             "CTC",
-            BuildAccountingBinding("Resource.SourceLine.TotalForecastCtc"),
+            BuildAccountingBinding("Resource.SourceLine.TotalForecastCtc", showCurrency: viewModel.ShowCurrencySymbols),
             105);
         grid.Columns.Add(ctcColumn);
         var fccColumn = CreateReadOnlyTextColumn(
             "FCC",
-            BuildAccountingBinding("Resource.SourceLine.PlannedCostFcc"),
+            BuildAccountingBinding("Resource.SourceLine.PlannedCostFcc", showCurrency: viewModel.ShowCurrencySymbols),
             105);
         grid.Columns.Add(fccColumn);
         var budgetColumn = CreateReadOnlyTextColumn(
             "Budget",
-            BuildAccountingBinding("Resource.SourceLine.Budget"),
+            BuildAccountingBinding("Resource.SourceLine.Budget", showCurrency: viewModel.ShowCurrencySymbols),
             105);
         grid.Columns.Add(budgetColumn);
         var budgetVarianceColumn = CreateReadOnlyTextColumn(
             "Budget Var",
-            BuildAccountingBinding("Resource.SourceLine.TotalBudgetVariance"),
+            BuildAccountingBinding("Resource.SourceLine.TotalBudgetVariance", showCurrency: viewModel.ShowCurrencySymbols),
             105);
         ApplyVarianceIndicatorStyle(budgetVarianceColumn, viewModel, "Resource.SourceLine.TotalBudgetVariance");
         grid.Columns.Add(budgetVarianceColumn);
@@ -708,11 +754,12 @@ public partial class MainWindow
                 Header = columnDefinition,
                 HeaderTemplate = monthHeaderTemplate,
                 HeaderStyle = CreateForecastMonthHeaderStyle(),
-                Width = columnDefinition.IsTotal ? 110 : 88,
+                Width = columnDefinition.IsTotal ? ForecastMonthTotalColumnDefaultWidth : ForecastMonthColumnDefaultWidth,
+                MinWidth = columnDefinition.IsTotal ? ForecastMonthTotalColumnMinimumWidth : ForecastMonthColumnMinimumWidth,
                 IsReadOnly = !editable,
                 SortMemberPath = $"[{columnDefinition.Key}]",
                 CellStyle = CreateForecastMonthCellStyle(columnDefinition),
-                CellTemplate = CreateManagementResourceMonthDisplayTemplate(columnDefinition, metric)
+                CellTemplate = CreateManagementResourceMonthDisplayTemplate(columnDefinition, metric, viewModel.ShowCurrencySymbols)
             };
             if (editable)
             {
@@ -740,7 +787,8 @@ public partial class MainWindow
 
     private static DataTemplate CreateManagementResourceMonthDisplayTemplate(
         ForecastMonthColumnDefinition columnDefinition,
-        ManagementResourceMetric metric)
+        ManagementResourceMetric metric,
+        bool showCurrencySymbols)
     {
         var template = new DataTemplate();
         var grid = new FrameworkElementFactory(typeof(Grid));
@@ -749,6 +797,7 @@ public partial class MainWindow
         if (metric == ManagementResourceMetric.Cost)
         {
             binding.Converter = AccountingConverter;
+            binding.ConverterParameter = showCurrencySymbols ? "ShowCurrency" : null;
         }
         else
         {
@@ -1281,7 +1330,7 @@ public partial class MainWindow
             : new Style(typeof(DataGridCell), baseStyle);
         style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
         style.Setters.Add(new Setter(Control.BackgroundProperty, columnDefinition.ValueBackground));
-        style.Setters.Add(new Setter(Control.BorderBrushProperty, BrushFactory.Frozen(0xD9, 0xD9, 0xD9)));
+        style.Setters.Add(new Setter(Control.BorderBrushProperty, BrushFactory.Frozen("#CCD6E2")));
         style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0, 0, 1, 1)));
         style.Setters.Add(new Setter(Control.ForegroundProperty, columnDefinition.ValueForeground));
 
@@ -1397,16 +1446,41 @@ public partial class MainWindow
         };
     }
 
-    private static DataTemplate CreateForecastMonthDisplayTemplate(ForecastMonthColumnDefinition columnDefinition, bool showZeroAsBlank)
+    private static DataTemplate CreateForecastMonthDisplayTemplate(
+        ForecastMonthColumnDefinition columnDefinition,
+        bool showZeroAsBlank,
+        bool showCurrencySymbols,
+        int compactMillionDecimals)
     {
         var template = new DataTemplate();
         var grid = new FrameworkElementFactory(typeof(Grid));
 
         var text = new FrameworkElementFactory(typeof(TextBlock));
+        var converterParameter = new List<string>();
+        if (showZeroAsBlank && !columnDefinition.IsTotal)
+        {
+            converterParameter.Add("BlankZero");
+        }
+
+        if (showCurrencySymbols)
+        {
+            converterParameter.Add("ShowCurrency");
+        }
+
+        if (!columnDefinition.IsTotal)
+        {
+            converterParameter.Add($"CompactMillions:{Math.Max(0, compactMillionDecimals)}");
+        }
+
         text.SetBinding(TextBlock.TextProperty, new Binding($"[{columnDefinition.Key}]")
         {
             Converter = AccountingConverter,
-            ConverterParameter = showZeroAsBlank && !columnDefinition.IsTotal ? "BlankZero" : null
+            ConverterParameter = converterParameter.Count == 0 ? null : string.Join(';', converterParameter)
+        });
+        text.SetBinding(FrameworkElement.ToolTipProperty, new Binding($"[{columnDefinition.Key}]")
+        {
+            Converter = AccountingConverter,
+            ConverterParameter = showCurrencySymbols ? "ShowCurrency" : null
         });
         text.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
         text.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Right);
@@ -1433,7 +1507,7 @@ public partial class MainWindow
             UpdateSourceTrigger = UpdateSourceTrigger.LostFocus,
             StringFormat = "{0:F0}",
             Converter = ForecastAmountTextConverter.Instance,
-            ConverterParameter = showZeroAsBlank ? "BlankZero" : null
+            ConverterParameter = showZeroAsBlank ? "ForecastMonth;BlankZero" : "ForecastMonth"
         });
         textBox.SetValue(Control.BorderThicknessProperty, new Thickness(0));
         textBox.SetValue(Control.BackgroundProperty, Brushes.Transparent);
@@ -1501,12 +1575,29 @@ public partial class MainWindow
         };
     }
 
-    private static Binding BuildAccountingBinding(string path)
+    private static Binding BuildAccountingBinding(string path, bool showCurrency = false, int decimals = 0)
     {
         return new Binding(path)
         {
-            Converter = AccountingConverter
+            Converter = AccountingConverter,
+            ConverterParameter = showCurrency
+                ? $"Decimals:{Math.Max(0, decimals)};ShowCurrency"
+                : $"Decimals:{Math.Max(0, decimals)}"
         };
+    }
+
+    private static LinearGradientBrush CreateGridHeaderGradient()
+    {
+        var gradient = new LinearGradientBrush
+        {
+            StartPoint = new Point(0.5, 0),
+            EndPoint = new Point(0.5, 1)
+        };
+        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xF8, 0xFA, 0xFC), 0));
+        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xEC, 0xF1, 0xF6), 0.5));
+        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xE1, 0xE8, 0xF0), 1));
+        gradient.Freeze();
+        return gradient;
     }
 
     private void ApplyDefaultColumnPresentation(DependencyObject root)

@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Data;
@@ -276,8 +277,6 @@ public sealed partial class MainWindowViewModel
 
     private static string FormatReportCurrency(decimal value)
     {
-        return decimal.Round(value, 0, MidpointRounding.AwayFromZero) == 0
-            ? "-"
-            : value.ToString("C0");
+        return AccountingNoDecimalsConverter.FormatAccounting(value, CultureInfo.CurrentCulture);
     }
 }

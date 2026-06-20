@@ -1,3 +1,5 @@
+using System;
+
 namespace ProjectCostForecast.App.Models;
 
 public sealed class ProjectDataset
@@ -18,6 +20,11 @@ public sealed class ProjectDataset
     public List<WorkspaceViewLayout> WorkspaceViews { get; set; } = [];
     public List<string> WorkspaceTabOrder { get; set; } = [];
     public List<string> DetailWorkspaceTabOrder { get; set; } = [];
+    public Dictionary<string, string> ForecastGroupHeaderIconKeys { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> ForecastGroupHeaderIconColorHexes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> ForecastCalendarYearHeaderColorHexes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> ForecastFiscalYearHeaderColorHexes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> ForecastGroupHeaderColorHexes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public List<int> SelectedCtcMonthForecastYears { get; set; } = [];
     public bool ShowCtcMonthForecastYearTotals { get; set; }
     public ScheduleData Schedule { get; set; } = new();

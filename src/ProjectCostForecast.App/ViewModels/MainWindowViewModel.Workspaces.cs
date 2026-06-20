@@ -92,6 +92,8 @@ public sealed partial class MainWindowViewModel
             WorkspaceKey = workspaceKey,
             ContentKey = "Default",
             Name = "Default",
+            EditName = "Default",
+            DefaultName = "Default",
             ShowZeroAsBlank = true,
             GroupForecastLinesByTask = isForecast,
             ForecastGroupByKey = isForecast ? ForecastGroupByTaskKey : ForecastGroupByNoneKey
@@ -112,7 +114,17 @@ public sealed partial class MainWindowViewModel
     {
         if (!_detailWorkspaceViews.TryGetValue(ActiveDetailWorkspaceKey, out var views))
         {
-            views = [new WorkspaceViewTab { WorkspaceKey = ActiveDetailWorkspaceKey, ContentKey = "Default", Name = "Default" }];
+            views =
+            [
+                new WorkspaceViewTab
+                {
+                    WorkspaceKey = ActiveDetailWorkspaceKey,
+                    ContentKey = "Default",
+                    Name = "Default",
+                    EditName = "Default",
+                    DefaultName = "Default"
+                }
+            ];
             _detailWorkspaceViews[ActiveDetailWorkspaceKey] = views;
         }
 
@@ -137,18 +149,22 @@ public sealed partial class MainWindowViewModel
 
         EndAllWorkspaceViewRenames();
         var sourceView = SelectedWorkspaceView ?? views.FirstOrDefault();
-        var nextNumber = views.Count + 1;
+        var defaultName = GetNextWorkspaceViewDefaultName(views);
         var newView = new WorkspaceViewTab
         {
             WorkspaceKey = ActiveWorkspaceKey,
             ContentKey = sourceView?.ContentKey ?? "Default",
-            Name = $"View {nextNumber}",
+            Name = defaultName,
+            EditName = defaultName,
+            DefaultName = defaultName,
+            RenameRestoreName = defaultName,
             HiddenColumnKeys = sourceView?.HiddenColumnKeys?.ToList() ?? [],
             ColumnLayouts = sourceView?.ColumnLayouts?.Select(CloneWorkspaceColumnLayout).ToList() ?? [],
             ShowZeroAsBlank = sourceView?.ShowZeroAsBlank ?? true,
             GroupForecastLinesByTask = sourceView?.GroupForecastLinesByTask ?? false,
             ForecastGroupByKey = NormalizeForecastGroupByKey(sourceView?.ForecastGroupByKey),
-            IsEditing = true
+            IsEditing = true,
+            IsNewlyCreated = true
         };
 
         views.Add(newView);
@@ -170,18 +186,22 @@ public sealed partial class MainWindowViewModel
 
         EndAllWorkspaceViewRenames();
         var sourceView = SelectedDetailWorkspaceView ?? views.FirstOrDefault();
-        var nextNumber = views.Count + 1;
+        var defaultName = GetNextWorkspaceViewDefaultName(views);
         var newView = new WorkspaceViewTab
         {
             WorkspaceKey = ActiveDetailWorkspaceKey,
             ContentKey = sourceView?.ContentKey ?? "Default",
-            Name = $"View {nextNumber}",
+            Name = defaultName,
+            EditName = defaultName,
+            DefaultName = defaultName,
+            RenameRestoreName = defaultName,
             HiddenColumnKeys = sourceView?.HiddenColumnKeys?.ToList() ?? [],
             ColumnLayouts = sourceView?.ColumnLayouts?.Select(CloneWorkspaceColumnLayout).ToList() ?? [],
             ShowZeroAsBlank = sourceView?.ShowZeroAsBlank ?? true,
             GroupForecastLinesByTask = sourceView?.GroupForecastLinesByTask ?? false,
             ForecastGroupByKey = NormalizeForecastGroupByKey(sourceView?.ForecastGroupByKey),
-            IsEditing = true
+            IsEditing = true,
+            IsNewlyCreated = true
         };
 
         views.Add(newView);
@@ -297,6 +317,8 @@ public sealed partial class MainWindowViewModel
             SelectedWorkspaceView = view;
         }
 
+        view.RenameRestoreName = view.Name;
+        view.EditName = view.Name;
         view.IsEditing = true;
     }
 
@@ -316,17 +338,35 @@ public sealed partial class MainWindowViewModel
         }
     }
 
-    public void EndRenameWorkspaceView(WorkspaceViewTab? view)
+    public bool EndRenameWorkspaceView(WorkspaceViewTab? view)
     {
         if (view is null)
         {
-            return;
+            return true;
         }
 
-        if (string.IsNullOrWhiteSpace(view.Name))
+        var fallbackName = string.IsNullOrWhiteSpace(view.RenameRestoreName)
+            ? (!string.IsNullOrWhiteSpace(view.DefaultName) ? view.DefaultName : "View")
+            : view.RenameRestoreName;
+        var proposedName = string.IsNullOrWhiteSpace(view.EditName)
+            ? fallbackName
+            : view.EditName.Trim();
+
+        if (HasWorkspaceViewNameConflict(view, proposedName))
         {
-            view.Name = "View";
+            StatusText = $"View name '{view.EditName.Trim()}' is already in use.";
+            return false;
         }
+
+        if (string.IsNullOrWhiteSpace(proposedName))
+        {
+            proposedName = !string.IsNullOrWhiteSpace(view.DefaultName) ? view.DefaultName : "View";
+        }
+
+        view.Name = proposedName;
+        view.EditName = proposedName;
+        view.RenameRestoreName = proposedName;
+        view.IsNewlyCreated = false;
 
         if (IsDetailWorkspaceKey(view.WorkspaceKey))
         {
@@ -338,5 +378,54 @@ public sealed partial class MainWindowViewModel
         }
 
         view.IsEditing = false;
+        IsDirty = true;
+        return true;
+    }
+
+    public void CancelRenameWorkspaceView(WorkspaceViewTab? view)
+    {
+        if (view is null)
+        {
+            return;
+        }
+
+        var fallbackName = string.IsNullOrWhiteSpace(view.RenameRestoreName)
+            ? (!string.IsNullOrWhiteSpace(view.DefaultName) ? view.DefaultName : "View")
+            : view.RenameRestoreName;
+        view.Name = fallbackName;
+        view.EditName = fallbackName;
+        view.IsEditing = false;
+        view.IsNewlyCreated = false;
+    }
+
+    private bool HasWorkspaceViewNameConflict(WorkspaceViewTab view, string candidateName)
+    {
+        if (string.IsNullOrWhiteSpace(candidateName))
+        {
+            return false;
+        }
+
+        var collection = IsDetailWorkspaceKey(view.WorkspaceKey)
+            ? _detailWorkspaceViews.GetValueOrDefault(view.WorkspaceKey)
+            : _workspaceViews.GetValueOrDefault(view.WorkspaceKey);
+        if (collection is null)
+        {
+            return false;
+        }
+
+        return collection.Any(existing =>
+            !ReferenceEquals(existing, view)
+            && string.Equals(existing.Name?.Trim(), candidateName.Trim(), StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string GetNextWorkspaceViewDefaultName(IEnumerable<WorkspaceViewTab> views)
+    {
+        var nextNumber = views.Count() + 1;
+        while (views.Any(view => string.Equals(view.Name?.Trim(), $"View {nextNumber}", StringComparison.OrdinalIgnoreCase)))
+        {
+            nextNumber++;
+        }
+
+        return $"View {nextNumber}";
     }
 }

@@ -27,6 +27,13 @@ public partial class MainWindow
             return;
         }
 
+        if (IsScrollBarInteractionSource(source))
+        {
+            _forecastLeftDragStart = null;
+            _forecastDragLine = null;
+            return;
+        }
+
         _forecastLeftDragStart = e.GetPosition(ForecastLinesGrid);
         var cell = FindParent<DataGridCell>(source);
         _forecastDragLine = cell is not null && IsForecastIdentifierCell(cell)

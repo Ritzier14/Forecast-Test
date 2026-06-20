@@ -49,20 +49,6 @@ public sealed partial class MainWindowViewModel
         }
     }
 
-    public void SetKpiSelection(int pillId, string key)
-    {
-        var pill = KpiPills.FirstOrDefault(item => item.Id == pillId);
-        var option = KpiOptions.FirstOrDefault(item => string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase));
-        if (pill is null || option is null)
-        {
-            return;
-        }
-
-        pill.Key = option.Key;
-        RefreshKpiPill(pill);
-        SaveUserPreferences();
-    }
-
     public bool IsKpiPillActive(string key)
     {
         return KpiPills.Any(item => string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase));
@@ -99,6 +85,219 @@ public sealed partial class MainWindowViewModel
         }
 
         SaveUserPreferences();
+    }
+
+    public string? GetKpiIconKey(string key)
+    {
+        return _userPreferences.KpiIconKeys.GetValueOrDefault(key);
+    }
+
+    public string? GetKpiIconColorHex(string key)
+    {
+        return _userPreferences.KpiIconColorHexes.GetValueOrDefault(key);
+    }
+
+    public void SetKpiIcon(string key, string? iconKey, string? iconColorHex)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(iconKey))
+        {
+            _userPreferences.KpiIconKeys.Remove(key);
+        }
+        else
+        {
+            _userPreferences.KpiIconKeys[key] = iconKey;
+        }
+
+        if (string.IsNullOrWhiteSpace(iconColorHex))
+        {
+            _userPreferences.KpiIconColorHexes.Remove(key);
+        }
+        else
+        {
+            _userPreferences.KpiIconColorHexes[key] = iconColorHex;
+        }
+
+        RefreshKpiPills();
+        SaveUserPreferences();
+    }
+
+    public string? GetWorkspaceTabIconKey(string workspaceKey)
+    {
+        return _userPreferences.WorkspaceTabIconKeys.GetValueOrDefault(workspaceKey);
+    }
+
+    public string? GetWorkspaceTabIconColorHex(string workspaceKey)
+    {
+        return _userPreferences.WorkspaceTabIconColorHexes.GetValueOrDefault(workspaceKey);
+    }
+
+    public void SetWorkspaceTabIcon(string workspaceKey, string? iconKey, string? iconColorHex)
+    {
+        if (string.IsNullOrWhiteSpace(workspaceKey))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(iconKey))
+        {
+            _userPreferences.WorkspaceTabIconKeys.Remove(workspaceKey);
+        }
+        else
+        {
+            _userPreferences.WorkspaceTabIconKeys[workspaceKey] = iconKey;
+        }
+
+        if (string.IsNullOrWhiteSpace(iconColorHex))
+        {
+            _userPreferences.WorkspaceTabIconColorHexes.Remove(workspaceKey);
+        }
+        else
+        {
+            _userPreferences.WorkspaceTabIconColorHexes[workspaceKey] = iconColorHex;
+        }
+
+        OnPropertyChanged(nameof(WorkspaceTabIconVersion));
+        SaveUserPreferences();
+    }
+
+    public int WorkspaceTabIconVersion => _userPreferences.WorkspaceTabIconKeys.Count;
+
+    public string? GetForecastGroupHeaderIconKey(string groupName)
+    {
+        return _dataset.ForecastGroupHeaderIconKeys.GetValueOrDefault(groupName);
+    }
+
+    public string? GetForecastGroupHeaderIconColorHex(string groupName)
+    {
+        return _dataset.ForecastGroupHeaderIconColorHexes.GetValueOrDefault(groupName);
+    }
+
+    public string? GetForecastGroupHeaderColorHex(string groupName)
+    {
+        return _dataset.ForecastGroupHeaderColorHexes.GetValueOrDefault(groupName);
+    }
+
+    public void SetForecastGroupHeaderColor(string groupName, string? colorHex)
+    {
+        if (string.IsNullOrWhiteSpace(groupName))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(colorHex))
+        {
+            _dataset.ForecastGroupHeaderColorHexes.Remove(groupName);
+        }
+        else
+        {
+            _dataset.ForecastGroupHeaderColorHexes[groupName] = colorHex;
+        }
+
+        IsDirty = true;
+    }
+
+    public void SetForecastGroupHeaderIcon(string groupName, string? iconKey, string? iconColorHex)
+    {
+        if (string.IsNullOrWhiteSpace(groupName))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(iconKey))
+        {
+            _dataset.ForecastGroupHeaderIconKeys.Remove(groupName);
+        }
+        else
+        {
+            _dataset.ForecastGroupHeaderIconKeys[groupName] = iconKey;
+        }
+
+        if (string.IsNullOrWhiteSpace(iconColorHex))
+        {
+            _dataset.ForecastGroupHeaderIconColorHexes.Remove(groupName);
+        }
+        else
+        {
+            _dataset.ForecastGroupHeaderIconColorHexes[groupName] = iconColorHex;
+        }
+
+        IsDirty = true;
+    }
+
+    public void MoveKpiPill(int pillId, int targetPillId, bool insertAfter)
+    {
+        var sourceIndex = IndexOfKpiPill(pillId);
+        var targetIndex = IndexOfKpiPill(targetPillId);
+        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex == targetIndex)
+        {
+            return;
+        }
+
+        var destinationIndex = sourceIndex < targetIndex
+            ? (insertAfter ? targetIndex : targetIndex - 1)
+            : (insertAfter ? targetIndex + 1 : targetIndex);
+        destinationIndex = Math.Clamp(destinationIndex, 0, KpiPills.Count - 1);
+        if (destinationIndex == sourceIndex)
+        {
+            return;
+        }
+
+        KpiPills.Move(sourceIndex, destinationIndex);
+        SaveUserPreferences();
+    }
+
+    public void MoveKpiPillToEnd(int pillId)
+    {
+        var sourceIndex = IndexOfKpiPill(pillId);
+        if (sourceIndex < 0)
+        {
+            return;
+        }
+
+        var targetIndex = KpiPills.Count - 1;
+        if (sourceIndex == targetIndex)
+        {
+            return;
+        }
+
+        KpiPills.Move(sourceIndex, targetIndex);
+        SaveUserPreferences();
+    }
+
+    public void MoveKpiPillToIndex(int pillId, int targetIndex)
+    {
+        var sourceIndex = IndexOfKpiPill(pillId);
+        if (sourceIndex < 0)
+        {
+            return;
+        }
+
+        targetIndex = Math.Clamp(targetIndex, 0, KpiPills.Count - 1);
+        if (sourceIndex == targetIndex)
+        {
+            return;
+        }
+
+        KpiPills.Move(sourceIndex, targetIndex);
+        SaveUserPreferences();
+    }
+
+    private int IndexOfKpiPill(int pillId)
+    {
+        for (var index = 0; index < KpiPills.Count; index++)
+        {
+            if (KpiPills[index].Id == pillId)
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     public KpiOption? GetSelectedKpi(int pillId)
@@ -553,7 +752,10 @@ public sealed partial class MainWindowViewModel
         pill.Name = option?.Name ?? "Select total";
         pill.ValueText = FormatKpiValue(option);
         pill.Subtext = GetKpiSubtext(option);
-        pill.IconPath = GetKpiIconPath(option?.Key);
+        pill.IconPath = GetKpiIconPath(GetKpiIconKey(option?.Key ?? string.Empty) ?? option?.Key);
+        pill.IconSource = MainWindow.GetBuiltInImageSourceByPath(
+            pill.IconPath,
+            GetKpiIconColorHex(option?.Key ?? string.Empty));
         if (TryGetPreviousKpiValue(option, out var previousValue))
         {
             var currentValue = GetKpiValue(option);
@@ -579,6 +781,28 @@ public sealed partial class MainWindowViewModel
             "TotalBudgetVariance" => "ic_metric_forecast_variance_28.png",
             "MonthlyVariance" => "ic_metric_variance_percent_28.png",
             "TotalBudget" => "ic_metric_budget_remaining_28.png",
+            "CurrentMonthCost" => "ic_calendar_18.png",
+            "RemainingForecast" => "ic_nav_reports_20.png",
+            "ic_metric_planned_cost_28.png" => "ic_metric_planned_cost_28.png",
+            "ic_metric_cost_to_date_28.png" => "ic_metric_cost_to_date_28.png",
+            "ic_metric_forecast_at_completion_28.png" => "ic_metric_forecast_at_completion_28.png",
+            "ic_metric_forecast_variance_28.png" => "ic_metric_forecast_variance_28.png",
+            "ic_metric_variance_percent_28.png" => "ic_metric_variance_percent_28.png",
+            "ic_metric_budget_remaining_28.png" => "ic_metric_budget_remaining_28.png",
+            "ic_tab_forecast_16.png" => "ic_tab_forecast_16.png",
+            "ic_tab_resources_16.png" => "ic_tab_resources_16.png",
+            "ic_tab_raw_transactions_16.png" => "ic_tab_raw_transactions_16.png",
+            "ic_tab_summary_16.png" => "ic_tab_summary_16.png",
+            "ic_tab_monthly_report_16.png" => "ic_tab_monthly_report_16.png",
+            "ic_tab_pivot_builder_16.png" => "ic_tab_pivot_builder_16.png",
+            "ic_tab_contingency_16.png" => "ic_tab_contingency_16.png",
+            "ic_tab_audit_16.png" => "ic_tab_audit_16.png",
+            "ic_category_project_management_20.png" => "ic_category_project_management_20.png",
+            "ic_category_internal_staff_20.png" => "ic_category_internal_staff_20.png",
+            "ic_category_design_consultants_20.png" => "ic_category_design_consultants_20.png",
+            "ic_category_contractors_20.png" => "ic_category_contractors_20.png",
+            "ic_category_compliance_20.png" => "ic_category_compliance_20.png",
+            "ic_category_closeout_20.png" => "ic_category_closeout_20.png",
             _ => "ic_metric_forecast_at_completion_28.png"
         };
 

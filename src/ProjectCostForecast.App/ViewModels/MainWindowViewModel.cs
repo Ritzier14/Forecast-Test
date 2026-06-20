@@ -31,7 +31,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public const string ForecastFreezeFccKey = "FCC";
     public const string ForecastFreezeBudgetKey = "Budget";
     public const string ForecastFreezeBudgetVarianceKey = "BudgetVariance";
-    public const string DefaultForecastFreezeColumnKey = ForecastFreezeBudgetVarianceKey;
+    public const string DefaultForecastFreezeColumnKey = ForecastFreezeCategoryKey;
     public const string ForecastGroupByNoneKey = "None";
     public const string ForecastGroupByTaskKey = "Task";
     public const string ForecastGroupByResourceKey = "Resource";
@@ -106,6 +106,8 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private bool _showCtcMonthForecastColumns = true;
     private bool _showMonthNameAboveFiscalPeriod;
     private bool _showCtcMonthForecastYearTotals;
+    private bool _showCurrencySymbols;
+    private int _forecastMonthMillionDecimals = 2;
     private bool _keepColumnHighlightsAcrossTabs;
     private int _selectedCtcMonthForecastYear;
     private readonly HashSet<int> _selectedCtcMonthForecastYears = [];
@@ -133,6 +135,10 @@ public sealed partial class MainWindowViewModel : NotifyObject
         };
         _dataset = new SampleDataService().Load();
         _userPreferences = _userPreferencesService.Load();
+        _userPreferences.KpiIconKeys ??= new(StringComparer.OrdinalIgnoreCase);
+        _userPreferences.KpiIconColorHexes ??= new(StringComparer.OrdinalIgnoreCase);
+        _userPreferences.WorkspaceTabIconKeys ??= new(StringComparer.OrdinalIgnoreCase);
+        _userPreferences.WorkspaceTabIconColorHexes ??= new(StringComparer.OrdinalIgnoreCase);
         _suppressPreferenceSave = true;
 
         ForecastLines = CreateCollection<ForecastLine>();
@@ -827,6 +833,31 @@ public sealed partial class MainWindowViewModel : NotifyObject
                 _dataset.ShowCtcMonthForecastYearTotals = value;
                 RebuildCtcMonthForecastColumns();
                 IsDirty = true;
+                SaveUserPreferences();
+            }
+        }
+    }
+
+    public bool ShowCurrencySymbols
+    {
+        get => _showCurrencySymbols;
+        set
+        {
+            if (SetProperty(ref _showCurrencySymbols, value))
+            {
+                SaveUserPreferences();
+            }
+        }
+    }
+
+    public int ForecastMonthMillionDecimals
+    {
+        get => _forecastMonthMillionDecimals;
+        set
+        {
+            var normalized = Math.Clamp(value, 0, 4);
+            if (SetProperty(ref _forecastMonthMillionDecimals, normalized))
+            {
                 SaveUserPreferences();
             }
         }

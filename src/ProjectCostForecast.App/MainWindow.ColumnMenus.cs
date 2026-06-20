@@ -172,6 +172,66 @@ public partial class MainWindow
         return colourMenu;
     }
 
+    private MenuItem BuildColumnHeaderColourMenu(DataGrid grid, DataGridColumn column)
+    {
+        var colourMenu = new MenuItem { Header = "Header colour", Icon = CreateMenuTextIcon("C") };
+        var targetColumns = ReferenceEquals(grid, ForecastLinesGrid)
+            ? grid.Columns.Where(candidate => candidate.Header is not ForecastMonthColumnDefinition).ToList()
+            : [column];
+        foreach (var option in ColumnColourOptions)
+        {
+            var item = new MenuItem
+            {
+                Header = option.Label,
+                Icon = CreateColourSwatch(option.HeaderHex),
+                StaysOpenOnClick = true
+            };
+            item.Click += (_, _) =>
+            {
+                var targetHeaderBrush =
+                    string.Equals(option.Label, "Default", StringComparison.OrdinalIgnoreCase)
+                        ? CreateGridHeaderGradient()
+                        : BrushFactory.FrozenHeaderGradient(option.HeaderHex);
+                var targetSpec =
+                    string.Equals(option.Label, "Default", StringComparison.OrdinalIgnoreCase)
+                        ? string.Empty
+                        : BrushFactory.SerializeHeaderGradientSpec(option.HeaderHex, "Balanced");
+
+                foreach (var targetColumn in targetColumns)
+                {
+                    GridColumnPresentationState.SetBaseHeaderBackground(targetColumn, targetHeaderBrush);
+                    GridColumnPresentationState.SetHeaderColorSpec(targetColumn, targetSpec);
+                    ApplyColumnHighlightPresentation(targetColumn, GridColumnHighlightState.GetIsHighlighted(targetColumn));
+                    RefreshColumnPresentation(targetColumn);
+                }
+            };
+            colourMenu.Items.Add(item);
+        }
+
+        colourMenu.Items.Add(new Separator());
+        var customItem = new MenuItem { Header = "Custom..." };
+        customItem.Click += (_, _) => ExecuteAfterClosingMenu(customItem, () =>
+            OpenHeaderColorPicker(
+                ReferenceEquals(grid, ForecastLinesGrid) ? "Forecast Fixed Header Colour" : $"{GetForecastColumnMenuLabel(column)} Header Colour",
+                targetColumns.Select(GridColumnPresentationState.GetHeaderColorSpec).FirstOrDefault(spec => !string.IsNullOrWhiteSpace(spec)),
+                colorSpec =>
+                {
+                    var brush = string.IsNullOrWhiteSpace(colorSpec)
+                        ? CreateGridHeaderGradient()
+                        : BrushFactory.FrozenHeaderGradient(colorSpec);
+                    foreach (var targetColumn in targetColumns)
+                    {
+                        GridColumnPresentationState.SetBaseHeaderBackground(targetColumn, brush);
+                        GridColumnPresentationState.SetHeaderColorSpec(targetColumn, colorSpec ?? string.Empty);
+                        ApplyColumnHighlightPresentation(targetColumn, GridColumnHighlightState.GetIsHighlighted(targetColumn));
+                        RefreshColumnPresentation(targetColumn);
+                    }
+                }));
+        colourMenu.Items.Add(customItem);
+
+        return colourMenu;
+    }
+
     private void AddWindowContextMenuItems(ContextMenu menu, DataGrid grid, MainWindowViewModel? viewModel)
     {
         if (viewModel is not null && ReferenceEquals(grid, ForecastLinesGrid))
@@ -555,6 +615,16 @@ public partial class MainWindow
 
         menu.Items.Add(iconMenu);
         menu.Items.Add(BuildColumnColourMenu(header.Column));
+        if (header.Column.Header is not ForecastMonthColumnDefinition)
+        {
+            menu.Items.Add(BuildColumnHeaderColourMenu(grid, header.Column));
+        }
+        if (viewModel is not null
+            && ReferenceEquals(grid, ForecastLinesGrid)
+            && header.Column.Header is ForecastMonthColumnDefinition { IsTotal: false } monthColumn)
+        {
+            menu.Items.Add(BuildForecastHeaderColourMenu(viewModel, monthColumn));
+        }
 
         if (viewModel is not null && IsHighlightableGrid(grid))
         {
@@ -586,6 +656,37 @@ public partial class MainWindow
 
         if (viewModel is not null && ReferenceEquals(grid, ForecastLinesGrid))
         {
+            if (IsForecastMoneyColumn(header.Column))
+            {
+                var showCurrencySymbols = new MenuItem
+                {
+                    Header = "Show dollar symbols",
+                    IsCheckable = true,
+                    IsChecked = viewModel.ShowCurrencySymbols
+                };
+                showCurrencySymbols.Click += (_, _) => viewModel.ShowCurrencySymbols = showCurrencySymbols.IsChecked;
+                menu.Items.Add(showCurrencySymbols);
+            }
+
+            if (header.Column.Header is ForecastMonthColumnDefinition { IsTotal: false })
+            {
+                var decimalPlacesMenu = new MenuItem { Header = "Million decimals" };
+                for (var decimals = 0; decimals <= 4; decimals++)
+                {
+                    var decimalsValue = decimals;
+                    var decimalItem = new MenuItem
+                    {
+                        Header = decimalsValue.ToString(CultureInfo.InvariantCulture),
+                        IsCheckable = true,
+                        IsChecked = viewModel.ForecastMonthMillionDecimals == decimalsValue
+                    };
+                    decimalItem.Click += (_, _) => viewModel.ForecastMonthMillionDecimals = decimalsValue;
+                    decimalPlacesMenu.Items.Add(decimalItem);
+                }
+
+                menu.Items.Add(decimalPlacesMenu);
+            }
+
             if (header.Column.Header?.ToString() is string varianceHeader
                 && (string.Equals(varianceHeader, "Month Var", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(varianceHeader, "Budget Var", StringComparison.OrdinalIgnoreCase)))
@@ -622,6 +723,107 @@ public partial class MainWindow
                 menu.Items.Add(resetFreeze);
             }
         }
+    }
+
+    private static bool IsForecastMoneyColumn(DataGridColumn column)
+    {
+        if (column.Header is ForecastMonthColumnDefinition)
+        {
+            return true;
+        }
+
+        var headerText = column.Header?.ToString() ?? string.Empty;
+        return string.Equals(headerText, "CTD", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(headerText, "Month Cost", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(headerText, "Last Forecast", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(headerText, "Month Var", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(headerText, "CTC", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(headerText, "FCC", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(headerText, "Budget", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(headerText, "Budget Var", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private MenuItem BuildForecastHeaderColourMenu(MainWindowViewModel viewModel, ForecastMonthColumnDefinition monthColumn)
+    {
+        var fiscalYear = FiscalPeriod.FiscalYearFromPeriodLabel(monthColumn.Key);
+        var menu = new MenuItem { Header = "Header colour", Icon = CreateMenuTextIcon("C") };
+        menu.Items.Add(BuildForecastHeaderColourTargetMenu(
+            $"Calendar year {monthColumn.YearLabel}",
+            viewModel.GetForecastCalendarYearHeaderColorHex(monthColumn.YearLabel),
+            colorHex =>
+            {
+                viewModel.SetForecastCalendarYearHeaderColor(monthColumn.YearLabel, colorHex);
+                QueueRebuildForecastYearBands();
+            }));
+        menu.Items.Add(BuildForecastHeaderColourTargetMenu(
+            fiscalYear,
+            viewModel.GetForecastFiscalYearHeaderColorHex(fiscalYear),
+            colorHex =>
+            {
+                viewModel.SetForecastFiscalYearHeaderColor(fiscalYear, colorHex);
+                QueueRebuildForecastYearBands();
+            }));
+        return menu;
+    }
+
+    private MenuItem BuildForecastHeaderColourTargetMenu(string label, string? selectedHex, Action<string?> apply)
+    {
+        var menu = new MenuItem { Header = label };
+        foreach (var option in ColumnColourOptions)
+        {
+            var optionHex = string.Equals(option.Label, "Default", StringComparison.OrdinalIgnoreCase)
+                ? null
+                : option.HeaderHex;
+            var item = new MenuItem
+            {
+                Header = option.Label,
+                Icon = CreateColourSwatch(option.HeaderHex),
+                IsCheckable = true,
+                IsChecked = string.IsNullOrWhiteSpace(optionHex)
+                    ? string.IsNullOrWhiteSpace(selectedHex)
+                    : string.Equals(selectedHex, optionHex, StringComparison.OrdinalIgnoreCase)
+            };
+            item.Click += (_, _) =>
+            {
+                apply(optionHex);
+                CloseContainingMenu(item);
+            };
+            menu.Items.Add(item);
+        }
+
+        menu.Items.Add(new Separator());
+        var customItem = new MenuItem { Header = "Custom..." };
+        customItem.Click += (_, _) => ExecuteAfterClosingMenu(customItem, () =>
+            OpenHeaderColorPicker(label, selectedHex, apply));
+        menu.Items.Add(customItem);
+
+        return menu;
+    }
+
+    private void ForecastYearBand_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string yearLabel } element
+            || DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var menu = CreateColumnContextMenu();
+        AddSectionHeader(menu, "Calendar year");
+        menu.Items.Add(BuildForecastHeaderColourTargetMenu(
+            $"Calendar year {yearLabel}",
+            viewModel.GetForecastCalendarYearHeaderColorHex(yearLabel),
+            colorHex =>
+            {
+                viewModel.SetForecastCalendarYearHeaderColor(yearLabel, colorHex);
+                QueueRebuildForecastYearBands();
+            }));
+        ApplyMenuIcons(menu);
+        element.ContextMenu = menu;
+        menu.PlacementTarget = element;
+        menu.Placement = PlacementMode.MousePoint;
+        menu.IsOpen = true;
+        e.Handled = true;
     }
 
     private void AddSectionHeader(ContextMenu menu, string title)

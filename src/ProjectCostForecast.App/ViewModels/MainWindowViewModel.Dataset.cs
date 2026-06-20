@@ -23,6 +23,11 @@ public sealed partial class MainWindowViewModel
         _dataset.UnmatchedImportCombinations ??= [];
         _dataset.WorkspaceViews ??= [];
         _dataset.ManagementResources ??= [];
+        _dataset.ForecastGroupHeaderIconKeys ??= new(StringComparer.OrdinalIgnoreCase);
+        _dataset.ForecastGroupHeaderIconColorHexes ??= new(StringComparer.OrdinalIgnoreCase);
+        _dataset.ForecastCalendarYearHeaderColorHexes ??= new(StringComparer.OrdinalIgnoreCase);
+        _dataset.ForecastFiscalYearHeaderColorHexes ??= new(StringComparer.OrdinalIgnoreCase);
+        _dataset.ForecastGroupHeaderColorHexes ??= new(StringComparer.OrdinalIgnoreCase);
         InitializeWorkspaceViews(_dataset.WorkspaceViews);
         RefreshCurrentWorkspaceViews();
         foreach (var line in _dataset.ForecastLines)

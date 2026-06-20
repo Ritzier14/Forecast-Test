@@ -23,8 +23,18 @@ public partial class MainWindow
     {
         if (DataContext is MainWindowViewModel viewModel && sender is TextBox textBox && textBox.DataContext is WorkspaceViewTab view)
         {
-            SetWorkspaceViewEditingWidthLock(textBox, isEditing: false);
-            viewModel.EndRenameWorkspaceView(view);
+            if (viewModel.EndRenameWorkspaceView(view))
+            {
+            }
+            else
+            {
+                Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+                {
+                    UpdateWorkspaceViewEditorWidth(textBox);
+                    textBox.Focus();
+                    textBox.SelectAll();
+                }));
+            }
         }
     }
 
@@ -32,8 +42,25 @@ public partial class MainWindow
     {
         if (e.Key == Key.Enter && DataContext is MainWindowViewModel viewModel && sender is TextBox textBox && textBox.DataContext is WorkspaceViewTab view)
         {
-            SetWorkspaceViewEditingWidthLock(textBox, isEditing: false);
-            viewModel.EndRenameWorkspaceView(view);
+            if (viewModel.EndRenameWorkspaceView(view))
+            {
+                Keyboard.ClearFocus();
+            }
+            else
+            {
+                Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+                {
+                    UpdateWorkspaceViewEditorWidth(textBox);
+                    textBox.Focus();
+                    textBox.SelectAll();
+                }));
+            }
+
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && DataContext is MainWindowViewModel escapeViewModel && sender is TextBox escapeTextBox && escapeTextBox.DataContext is WorkspaceViewTab escapeView)
+        {
+            escapeViewModel.CancelRenameWorkspaceView(escapeView);
             Keyboard.ClearFocus();
             e.Handled = true;
         }
@@ -56,10 +83,21 @@ public partial class MainWindow
 
         Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
         {
-            SetWorkspaceViewEditingWidthLock(textBox, isEditing: true);
             UpdateWorkspaceViewEditorWidth(textBox);
+            textBox.HorizontalAlignment = HorizontalAlignment.Left;
+
+            if (_pendingWorkspaceEditorFocusView is not null
+                && !ReferenceEquals(textBox.DataContext, _pendingWorkspaceEditorFocusView))
+            {
+                return;
+            }
+
             textBox.Focus();
             textBox.SelectAll();
+            if (ReferenceEquals(textBox.DataContext, _pendingWorkspaceEditorFocusView))
+            {
+                _pendingWorkspaceEditorFocusView = null;
+            }
         }));
     }
 
@@ -68,8 +106,71 @@ public partial class MainWindow
         if (sender is TextBox textBox)
         {
             UpdateWorkspaceViewEditorWidth(textBox);
+            textBox.HorizontalAlignment = HorizontalAlignment.Left;
             textBox.SelectAll();
         }
+    }
+
+    private void WorkspaceViewName_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is TextBox textBox && textBox.IsVisible)
+        {
+            UpdateWorkspaceViewEditorWidth(textBox);
+        }
+    }
+
+    private void AddWorkspaceViewButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        if (viewModel.AddWorkspaceViewCommand.CanExecute(null))
+        {
+            viewModel.AddWorkspaceViewCommand.Execute(null);
+            _pendingWorkspaceEditorFocusView = viewModel.SelectedWorkspaceView;
+            QueueFocusPendingWorkspaceViewEditor();
+        }
+    }
+
+    private void AddDetailWorkspaceViewButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        if (viewModel.AddDetailWorkspaceViewCommand.CanExecute(null))
+        {
+            viewModel.AddDetailWorkspaceViewCommand.Execute(null);
+            _pendingWorkspaceEditorFocusView = viewModel.SelectedDetailWorkspaceView;
+            QueueFocusPendingWorkspaceViewEditor();
+        }
+    }
+
+    private void QueueFocusPendingWorkspaceViewEditor()
+    {
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            if (_pendingWorkspaceEditorFocusView is null)
+            {
+                return;
+            }
+
+            var editor = FindChildren<TextBox>(this)
+                .FirstOrDefault(textBox => textBox.IsVisible && ReferenceEquals(textBox.DataContext, _pendingWorkspaceEditorFocusView));
+            if (editor is null)
+            {
+                return;
+            }
+
+            UpdateWorkspaceViewEditorWidth(editor);
+            editor.HorizontalAlignment = HorizontalAlignment.Left;
+            editor.Focus();
+            editor.SelectAll();
+            _pendingWorkspaceEditorFocusView = null;
+        }));
     }
 
     private static void UpdateWorkspaceViewEditorWidth(TextBox textBox)
@@ -87,23 +188,6 @@ public partial class MainWindow
             VisualTreeHelper.GetDpi(textBox).PixelsPerDip);
         var chromeWidth = textBox.Padding.Left + textBox.Padding.Right + WorkspaceViewEditorExtraWidth;
         textBox.Width = Math.Max(WorkspaceViewEditorMinimumWidth, Math.Ceiling(formattedText.WidthIncludingTrailingWhitespace + chromeWidth));
-    }
-
-    private static void SetWorkspaceViewEditingWidthLock(TextBox textBox, bool isEditing)
-    {
-        if (FindParent<ListBoxItem>(textBox) is not ListBoxItem item)
-        {
-            return;
-        }
-
-        if (isEditing)
-        {
-            item.MinWidth = Math.Max(item.ActualWidth, item.MinWidth);
-        }
-        else
-        {
-            item.ClearValue(FrameworkElement.MinWidthProperty);
-        }
     }
 
     private void QueueAttachInteractiveGridHandlers()

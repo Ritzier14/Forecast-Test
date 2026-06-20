@@ -388,6 +388,10 @@ public sealed partial class MainWindowViewModel
             ShowCtcMonthForecastColumns = _userPreferences.ShowCtcMonthForecastColumns;
             ShowMonthNameAboveFiscalPeriod = _userPreferences.ShowMonthNameAboveFiscalPeriod;
             ShowCtcMonthForecastYearTotals = _userPreferences.ShowCtcMonthForecastYearTotals;
+            ShowCurrencySymbols = _userPreferences.ShowCurrencySymbols;
+            ForecastMonthMillionDecimals = _userPreferences.ForecastMonthMillionDecimals < 0
+                ? 2
+                : _userPreferences.ForecastMonthMillionDecimals;
             ForecastFreezeColumnKey = _userPreferences.ForecastFreezeColumnKey;
             KeepColumnHighlightsAcrossTabs = _userPreferences.KeepColumnHighlightsAcrossTabs;
             ShowVarianceIndicators = _userPreferences.ShowVarianceIndicators;
@@ -455,6 +459,8 @@ public sealed partial class MainWindowViewModel
         _userPreferences.ShowCtcMonthForecastColumns = ShowCtcMonthForecastColumns;
         _userPreferences.ShowMonthNameAboveFiscalPeriod = ShowMonthNameAboveFiscalPeriod;
         _userPreferences.ShowCtcMonthForecastYearTotals = ShowCtcMonthForecastYearTotals;
+        _userPreferences.ShowCurrencySymbols = ShowCurrencySymbols;
+        _userPreferences.ForecastMonthMillionDecimals = ForecastMonthMillionDecimals;
         _userPreferences.SelectedCtcMonthForecastYears = _selectedCtcMonthForecastYears.OrderBy(year => year).ToList();
         _userPreferences.ForecastFreezeColumnKey = ForecastFreezeColumnKey;
         _userPreferences.KeepColumnHighlightsAcrossTabs = KeepColumnHighlightsAcrossTabs;
@@ -519,6 +525,9 @@ public sealed partial class MainWindowViewModel
             WorkspaceKey = NormaliseWorkspaceKey(layout.WorkspaceKey),
             ContentKey = layout.ContentKey,
             Name = string.IsNullOrWhiteSpace(layout.Name) ? "View" : layout.Name,
+            EditName = string.IsNullOrWhiteSpace(layout.Name) ? "View" : layout.Name,
+            DefaultName = string.IsNullOrWhiteSpace(layout.Name) ? "View" : layout.Name,
+            RenameRestoreName = string.IsNullOrWhiteSpace(layout.Name) ? "View" : layout.Name,
             GroupForecastLinesByTask = string.Equals(groupByKey, ForecastGroupByTaskKey, StringComparison.OrdinalIgnoreCase),
             ForecastGroupByKey = groupByKey,
             HiddenColumnKeys = layout.HiddenColumnKeys?.ToList() ?? [],

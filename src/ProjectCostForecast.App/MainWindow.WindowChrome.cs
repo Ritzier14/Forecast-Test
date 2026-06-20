@@ -71,8 +71,7 @@ public partial class MainWindow
 
     private ContextMenu BuildKpiContextMenu(MainWindowViewModel viewModel, int? pillId)
     {
-        var menu = new ContextMenu();
-        var selected = pillId.HasValue ? viewModel.GetSelectedKpi(pillId.Value) : null;
+        var menu = CreateColumnContextMenu();
         foreach (var option in viewModel.KpiOptions)
         {
             var isActive = viewModel.IsKpiPillActive(option.Key);
@@ -80,26 +79,26 @@ public partial class MainWindow
             {
                 Header = option.Name,
                 IsCheckable = true,
-                IsChecked = isActive,
-                FontWeight = string.Equals(selected?.Key, option.Key, StringComparison.OrdinalIgnoreCase)
-                    ? FontWeights.SemiBold
-                    : FontWeights.Normal
+                IsChecked = isActive
             };
-            item.Click += (_, _) =>
-            {
-                if (pillId.HasValue)
-                {
-                    viewModel.SetKpiSelection(pillId.Value, option.Key);
-                    return;
-                }
-
-                viewModel.SetKpiPillActive(option.Key, !isActive);
-            };
+            item.Click += (_, _) => viewModel.SetKpiPillActive(option.Key, !isActive);
             menu.Items.Add(item);
         }
 
         if (pillId.HasValue)
         {
+            var selectedOption = viewModel.GetSelectedKpi(pillId.Value);
+            if (selectedOption is not null)
+            {
+                menu.Items.Add(new Separator());
+                var changeIcon = new MenuItem
+                {
+                    Header = "Change icon"
+                };
+                changeIcon.Click += (_, _) => ExecuteAfterClosingMenu(changeIcon, () => OpenKpiIconPicker(pillId.Value));
+                menu.Items.Add(changeIcon);
+            }
+
             menu.Items.Add(new Separator());
             var removeItem = new MenuItem
             {
@@ -110,6 +109,7 @@ public partial class MainWindow
             menu.Items.Add(removeItem);
         }
 
+        ApplyMenuIcons(menu);
         return menu;
     }
 
@@ -148,6 +148,155 @@ public partial class MainWindow
     {
         _kpiRightDragStart = null;
         Dispatcher.BeginInvoke(() => _kpiRightDragging = false);
+    }
+
+    private void KpiCard_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_kpiRightDragging || sender is not FrameworkElement element || !int.TryParse(element.Tag?.ToString(), out var pillId))
+        {
+            return;
+        }
+
+        _kpiLeftDragStart = e.GetPosition(KpiScrollViewer);
+        _kpiDragPillId = pillId;
+    }
+
+    private void KpiCard_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_kpiRightDragging
+            || _kpiLeftDragStart is null
+            || _kpiDragPillId is null
+            || e.LeftButton != MouseButtonState.Pressed
+            || sender is not FrameworkElement element)
+        {
+            return;
+        }
+
+        var current = e.GetPosition(KpiScrollViewer);
+        if (Math.Abs(current.X - _kpiLeftDragStart.Value.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(current.Y - _kpiLeftDragStart.Value.Y) < SystemParameters.MinimumVerticalDragDistance)
+        {
+            return;
+        }
+
+        var data = new DataObject(typeof(int), _kpiDragPillId.Value);
+        try
+        {
+            DimDraggedElement(element);
+            DragDrop.DoDragDrop(element, data, DragDropEffects.Move);
+        }
+        finally
+        {
+            RestoreDimmedDragElement();
+            _kpiLeftDragStart = null;
+            _kpiDragPillId = null;
+        }
+
+        e.Handled = true;
+    }
+
+    private void KpiCard_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _kpiLeftDragStart = null;
+        _kpiDragPillId = null;
+    }
+
+    private void KpiCard_DragOver(object sender, DragEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || !e.Data.GetDataPresent(typeof(int)))
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Data.GetData(typeof(int)) is int sourcePillId)
+        {
+            MoveKpiPillByPointer(viewModel, sourcePillId, e.GetPosition(KpiScrollViewer).X);
+        }
+
+        e.Effects = DragDropEffects.Move;
+        e.Handled = true;
+    }
+
+    private void KpiCard_DragLeave(object sender, DragEventArgs e)
+    {
+    }
+
+    private void KpiCard_Drop(object sender, DragEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || !e.Data.GetDataPresent(typeof(int)))
+        {
+            return;
+        }
+
+        if (e.Data.GetData(typeof(int)) is int sourcePillId)
+        {
+            MoveKpiPillByPointer(viewModel, sourcePillId, e.GetPosition(KpiScrollViewer).X);
+        }
+
+        e.Handled = true;
+    }
+
+    private void KpiStrip_DragOver(object sender, DragEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel
+            && e.Data.GetDataPresent(typeof(int))
+            && e.Data.GetData(typeof(int)) is int sourcePillId)
+        {
+            MoveKpiPillByPointer(viewModel, sourcePillId, e.GetPosition(KpiScrollViewer).X);
+            e.Effects = DragDropEffects.Move;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+        }
+
+        e.Handled = true;
+    }
+
+    private void KpiStrip_DragLeave(object sender, DragEventArgs e)
+    {
+    }
+
+    private void KpiStrip_Drop(object sender, DragEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || !e.Data.GetDataPresent(typeof(int)))
+        {
+            return;
+        }
+
+        if (e.Data.GetData(typeof(int)) is int sourcePillId)
+        {
+            MoveKpiPillByPointer(viewModel, sourcePillId, e.GetPosition(KpiScrollViewer).X);
+        }
+
+        e.Handled = true;
+    }
+
+    private void MoveKpiPillByPointer(MainWindowViewModel viewModel, int sourcePillId, double pointerX)
+    {
+        var targetIndex = 0;
+        foreach (var pill in viewModel.KpiPills)
+        {
+            if (pill.Id == sourcePillId)
+            {
+                continue;
+            }
+
+            if (KpiItemsControl.ItemContainerGenerator.ContainerFromItem(pill) is not FrameworkElement container)
+            {
+                continue;
+            }
+
+            var centerX = container.TransformToAncestor(KpiScrollViewer).Transform(new Point(container.ActualWidth / 2, 0)).X;
+            if (pointerX > centerX)
+            {
+                targetIndex++;
+            }
+        }
+
+        viewModel.MoveKpiPillToIndex(sourcePillId, targetIndex);
     }
 
     private void LedgerChartScrollViewer_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
@@ -195,6 +344,14 @@ public partial class MainWindow
 
     private void Grid_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
+        if (sender is DataGrid sourceGrid
+            && e.OriginalSource is DependencyObject interactionSource
+            && IsScrollBarInteractionSource(interactionSource))
+        {
+            CancelGridPanCapture(sourceGrid);
+            return;
+        }
+
         if (e.ChangedButton != MouseButton.Right
             || sender is not DataGrid grid
             || e.OriginalSource is not DependencyObject source
@@ -214,6 +371,23 @@ public partial class MainWindow
         _gridHorizontalScrollStartOffset = scrollViewer.HorizontalOffset;
         _gridVerticalScrollStartOffset = scrollViewer.VerticalOffset;
         _gridRightDragging = false;
+    }
+
+    private void CancelGridPanCapture(DataGrid? grid)
+    {
+        if (grid?.IsMouseCaptured == true)
+        {
+            grid.ReleaseMouseCapture();
+        }
+
+        _gridRightDragStart = null;
+        _activeGridScrollViewer = null;
+        _gridRightDragging = false;
+    }
+
+    private static bool IsScrollBarInteractionSource(DependencyObject source)
+    {
+        return FindParent<ScrollBar>(source) is not null;
     }
 
     private void Grid_PreviewMouseMove(object sender, MouseEventArgs e)

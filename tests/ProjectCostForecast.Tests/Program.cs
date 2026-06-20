@@ -4,7 +4,9 @@ using ProjectCostForecast.App.Services;
 using ProjectCostForecast.App.ViewModels;
 using ClosedXML.Excel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Reflection;
+using System.Windows.Controls;
 
 var root = FindRepositoryRoot();
 var dataPath = Path.Combine(root, "src", "ProjectCostForecast.App", "Data", "SampleData.json");
@@ -26,6 +28,11 @@ var appliedCount = SpreadsheetClipboardService.Apply(
 AssertEqual(3, appliedCount, "Clipboard apply skips read-only destinations");
 AssertTrue(!appliedCells.ContainsKey((2, 4)), "Clipboard apply leaves read-only destination unchanged");
 AssertEqual("D", appliedCells[(3, 4)], "Clipboard apply offsets the pasted matrix");
+AssertEqual("1,260,000", AccountingNoDecimalsConverter.FormatAccounting(1260000m, CultureInfo.CurrentCulture), "Accounting formatter omits dollar symbols by default");
+AssertEqual("(1,260,000)", AccountingNoDecimalsConverter.FormatAccounting(-1260000m, CultureInfo.CurrentCulture), "Accounting formatter uses brackets for negatives");
+AssertEqual("1.26m", AccountingNoDecimalsConverter.FormatAccounting(1260000m, CultureInfo.CurrentCulture, compactMillions: true, compactMillionDecimals: 2), "Accounting formatter compacts millions for forecast cells");
+AssertTrue(AccountingNoDecimalsConverter.TryParseForecastMonthInput("1.26", CultureInfo.CurrentCulture, out var compactMillionAmount) && compactMillionAmount == 1260000m, "Forecast month parser expands bare decimal million input");
+AssertTrue(AccountingNoDecimalsConverter.TryParseForecastMonthInput("1.25m", CultureInfo.CurrentCulture, out var suffixedMillionAmount) && suffixedMillionAmount == 1250000m, "Forecast month parser expands suffixed million input");
 
 AssertTrue(KpiComparisonFormatter.Format(108.7m, 100m).StartsWith("↑ 8.7%", StringComparison.Ordinal), "KPI comparison formats an increase");
 AssertTrue(KpiComparisonFormatter.Format(90m, 100m).StartsWith("↓ 10%", StringComparison.Ordinal), "KPI comparison formats a decrease");
@@ -313,6 +320,31 @@ AssertTrue(defaultResourceView.ColumnLayouts.Any(layout => layout.Key == "Resour
 viewModel.SelectedWorkspaceView = customResourceView;
 AssertTrue(customResourceView.HiddenColumnKeys.SequenceEqual(["Tasks"], StringComparer.OrdinalIgnoreCase), "Custom workspace view keeps an independent hidden column layout");
 AssertTrue(customResourceView.ColumnLayouts.Any(layout => layout.Key == "Tasks" && Math.Abs(layout.Width - 301d) < 0.01), "Custom workspace view keeps an independent column width");
+
+var headerColorPersistencePath = Path.Combine(Path.GetTempPath(), $"project-cost-header-colours-{Guid.NewGuid():N}.json");
+try
+{
+    var headerColorDataset = new ProjectDataset();
+    headerColorDataset.ForecastCalendarYearHeaderColorHexes["Calendar year 2026"] = "#CFE5FA";
+    headerColorDataset.ForecastFiscalYearHeaderColorHexes["FY27"] = "#F0D37A";
+    headerColorDataset.ForecastGroupHeaderColorHexes["Project Management"] = "#D7ECCF";
+    new ProjectFileService().Save(headerColorPersistencePath, headerColorDataset);
+    var reloadedHeaderColorDataset = new ProjectFileService().Load(headerColorPersistencePath);
+    AssertEqual("#CFE5FA", reloadedHeaderColorDataset.ForecastCalendarYearHeaderColorHexes["Calendar year 2026"], "Calendar year header colour persists in the project file");
+    AssertEqual("#F0D37A", reloadedHeaderColorDataset.ForecastFiscalYearHeaderColorHexes["FY27"], "Fiscal year header colour persists in the project file");
+    AssertEqual("#D7ECCF", reloadedHeaderColorDataset.ForecastGroupHeaderColorHexes["Project Management"], "Forecast group header colour persists in the project file");
+}
+finally
+{
+    File.Delete(headerColorPersistencePath);
+}
+
+var migratedMonthWidth = InvokeForecastWidthMigration(savedWidth: 112d, currentWidth: 78d, minWidth: 70d, isTotal: false);
+AssertNearlyEqual(78d, migratedMonthWidth, 0.01, "Legacy saved forecast month width migrates to the new default width");
+var migratedTotalMonthWidth = InvokeForecastWidthMigration(savedWidth: 120d, currentWidth: 96d, minWidth: 84d, isTotal: true);
+AssertNearlyEqual(96d, migratedTotalMonthWidth, 0.01, "Legacy saved forecast total width migrates to the new default width");
+var preservedCustomMonthWidth = InvokeForecastWidthMigration(savedWidth: 143d, currentWidth: 78d, minWidth: 70d, isTotal: false);
+AssertNearlyEqual(143d, preservedCustomMonthWidth, 0.01, "User-resized forecast month widths are preserved during migration");
 
 viewModel.ActiveWorkspaceKey = "CTC Forecast";
 var defaultForecastView = viewModel.SelectedWorkspaceView!;
@@ -824,4 +856,33 @@ static void AssertTrue(bool condition, string description)
     }
 
     Console.WriteLine($"PASS: {description}");
+}
+
+static void AssertNearlyEqual(double expected, double actual, double tolerance, string description)
+{
+    if (Math.Abs(expected - actual) > tolerance)
+    {
+        throw new InvalidOperationException($"{description}: expected {expected}, actual {actual}, tolerance {tolerance}.");
+    }
+
+    Console.WriteLine($"PASS: {description}");
+}
+
+static double InvokeForecastWidthMigration(double savedWidth, double currentWidth, double minWidth, bool isTotal)
+{
+    var method = typeof(MainWindow).GetMethod("GetAppliedLayoutWidth", BindingFlags.NonPublic | BindingFlags.Static)
+        ?? throw new MissingMethodException(typeof(MainWindow).FullName, "GetAppliedLayoutWidth");
+    var column = new DataGridTextColumn
+    {
+        Header = new ForecastMonthColumnDefinition
+        {
+            Key = isTotal ? "TOTAL:26-11" : "MONTH:26-11",
+            IsTotal = isTotal
+        },
+        Width = new DataGridLength(currentWidth),
+        MinWidth = minWidth
+    };
+
+    return (double)(method.Invoke(null, [column, savedWidth])
+        ?? throw new InvalidOperationException("Forecast width migration returned null."));
 }

@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -14,7 +15,7 @@ namespace ProjectCostForecast.App;
 public sealed class ForecastGroupHeaderPresenter : FrameworkElement
 {
     private const double HeaderHeight = 36;
-    private const double CellPadding = 8;
+    private const double CellPadding = 6;
     private static readonly AccountingNoDecimalsConverter AccountingConverter = new();
     private static readonly Brush HighlightFill = BrushFactory.Frozen("#66FDE68A");
     private static readonly (Brush Background, Brush Border)[] Palette =
@@ -80,6 +81,7 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         MouseLeftButtonDown += OnMouseLeftButtonDown;
+        MouseRightButtonUp += OnMouseRightButtonUp;
     }
 
     protected override Size MeasureOverride(Size availableSize)
@@ -103,6 +105,11 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
         var horizontalOffset = _scrollViewer?.HorizontalOffset ?? 0;
         var frozenColumnCount = grid.FrozenColumnCount;
         var palette = Palette[Math.Abs(GroupIndex) % Palette.Length];
+        var overrideBackground = _registeredOwner?.GetResolvedForecastGroupHeaderBackground(GroupName);
+        if (overrideBackground is not null)
+        {
+            palette = (overrideBackground, palette.Border);
+        }
         var naturalLeft = 0d;
         var frozenLeft = 0d;
         var columnLayouts = new List<(DataGridColumn Column, double Left, double Width, bool Frozen)>();
@@ -173,7 +180,7 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
         var textLeft = left + CellPadding;
         if (IsTaskColumn(column))
         {
-            var icon = GetCategoryIcon(summary.Category);
+            var icon = GetCategoryIcon(GroupName, summary.Category);
             if (icon is not null)
             {
                 drawingContext.DrawImage(icon, new Rect(left + 6, 8, 20, 20));
@@ -275,14 +282,25 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
         return pen;
     }
 
-    private static ImageSource? GetCategoryIcon(string category)
+    private ImageSource? GetCategoryIcon(string groupName, string category)
     {
-        if (CategoryIcons.TryGetValue(category, out var cached))
+        var iconKey = _registeredOwner?.GetResolvedForecastGroupHeaderIconKey(groupName, category)
+            ?? GetDefaultCategoryIconKey(category);
+        var iconColorHex = _registeredOwner?.GetResolvedForecastGroupHeaderIconColorHex(groupName);
+        var cacheKey = $"{iconKey}|{iconColorHex ?? string.Empty}";
+        if (CategoryIcons.TryGetValue(cacheKey, out var cached))
         {
             return cached;
         }
 
-        var fileName = category switch
+        var image = MainWindow.GetBuiltInImageSourceByPath($"/Assets/Icons/png/{iconKey}", iconColorHex);
+        CategoryIcons[cacheKey] = image;
+        return image;
+    }
+
+    private static string GetDefaultCategoryIconKey(string category)
+    {
+        return category switch
         {
             "Internal Staff Costs" => "ic_category_internal_staff_20.png",
             "Design Consultants" => "ic_category_design_consultants_20.png",
@@ -291,15 +309,6 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
             "Close Out" => "ic_category_closeout_20.png",
             _ => "ic_category_project_management_20.png"
         };
-
-        var bitmap = new BitmapImage();
-        bitmap.BeginInit();
-        bitmap.UriSource = new Uri($"pack://application:,,,/Assets/Icons/png/{fileName}", UriKind.Absolute);
-        bitmap.CacheOption = BitmapCacheOption.OnLoad;
-        bitmap.EndInit();
-        bitmap.Freeze();
-        CategoryIcons[category] = bitmap;
-        return bitmap;
     }
 
     private static void OnOwningGridChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
@@ -333,6 +342,61 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
         RebuildSummary();
         _registeredOwner = FindAncestor<MainWindow>(this);
         _registeredOwner?.RegisterForecastGroupHeaderPresenter(this);
+    }
+
+    private void OnMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_registeredOwner is null || _summary is null)
+        {
+            return;
+        }
+
+        var x = e.GetPosition(this).X;
+        if (!TryGetColumnBounds(IsTaskColumn, out var taskLeft, out var taskWidth)
+            || x < taskLeft
+            || x > taskLeft + taskWidth)
+        {
+            return;
+        }
+
+        _registeredOwner.OpenForecastGroupHeaderIconContextMenu(this, GroupName, _summary.Category);
+        e.Handled = true;
+    }
+
+    private bool TryGetColumnBounds(Func<DataGridColumn, bool> predicate, out double left, out double width)
+    {
+        left = 0;
+        width = 0;
+        var grid = OwningGrid;
+        if (grid is null)
+        {
+            return false;
+        }
+
+        var horizontalOffset = _scrollViewer?.HorizontalOffset ?? 0;
+        var frozenColumnCount = grid.FrozenColumnCount;
+        var naturalLeft = 0d;
+        var frozenLeft = 0d;
+        foreach (var column in GetVisibleColumns())
+        {
+            var columnWidth = GetColumnWidth(column);
+            var frozen = column.DisplayIndex < frozenColumnCount;
+            var columnLeft = frozen ? horizontalOffset + frozenLeft : naturalLeft;
+            if (predicate(column))
+            {
+                left = columnLeft;
+                width = columnWidth;
+                return true;
+            }
+
+            naturalLeft += columnWidth;
+            if (frozen)
+            {
+                frozenLeft += columnWidth;
+            }
+        }
+
+        return false;
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)

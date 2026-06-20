@@ -28,7 +28,7 @@ public partial class MainWindow : Window
     private static readonly SolidColorBrush HighlightedColumnCellBrush = BrushFactory.Frozen("#FEF3C7");
     private static readonly SolidColorBrush HighlightedColumnHeaderBrush = BrushFactory.Frozen("#FDE68A");
     private static readonly SolidColorBrush HoveredHighlightedCellBrush = BrushFactory.Frozen("#FDE68A");
-    private const double WorkspaceViewEditorMinimumWidth = 34;
+    private const double WorkspaceViewEditorMinimumWidth = 72;
     private const double WorkspaceViewEditorExtraWidth = 14;
     private static readonly IReadOnlyList<ColumnIconOption> ColumnIconOptions =
     [
@@ -56,11 +56,38 @@ public partial class MainWindow : Window
         new("Pink", "#FCE7F3", "#FBCFE8"),
         new("Red", "#FEE2E2", "#FECACA")
     ];
+    private static readonly IReadOnlyList<BuiltInImageIconOption> BuiltInImageIconOptions =
+    [
+        new("ic_tab_forecast_16.png", "Forecast", "/Assets/Icons/png/ic_tab_forecast_16.png"),
+        new("ic_tab_resources_16.png", "Resources", "/Assets/Icons/png/ic_tab_resources_16.png"),
+        new("ic_tab_raw_transactions_16.png", "Raw transactions", "/Assets/Icons/png/ic_tab_raw_transactions_16.png"),
+        new("ic_tab_summary_16.png", "Summary", "/Assets/Icons/png/ic_tab_summary_16.png"),
+        new("ic_tab_monthly_report_16.png", "Monthly report", "/Assets/Icons/png/ic_tab_monthly_report_16.png"),
+        new("ic_tab_pivot_builder_16.png", "Pivot builder", "/Assets/Icons/png/ic_tab_pivot_builder_16.png"),
+        new("ic_tab_contingency_16.png", "Contingency", "/Assets/Icons/png/ic_tab_contingency_16.png"),
+        new("ic_tab_audit_16.png", "Audit", "/Assets/Icons/png/ic_tab_audit_16.png"),
+        new("ic_metric_planned_cost_28.png", "Planned cost", "/Assets/Icons/png/ic_metric_planned_cost_28.png"),
+        new("ic_metric_cost_to_date_28.png", "Cost to date", "/Assets/Icons/png/ic_metric_cost_to_date_28.png"),
+        new("ic_metric_forecast_at_completion_28.png", "Forecast at completion", "/Assets/Icons/png/ic_metric_forecast_at_completion_28.png"),
+        new("ic_metric_forecast_variance_28.png", "Forecast variance", "/Assets/Icons/png/ic_metric_forecast_variance_28.png"),
+        new("ic_metric_variance_percent_28.png", "Variance percent", "/Assets/Icons/png/ic_metric_variance_percent_28.png"),
+        new("ic_metric_budget_remaining_28.png", "Budget remaining", "/Assets/Icons/png/ic_metric_budget_remaining_28.png"),
+        new("ic_category_project_management_20.png", "Project management", "/Assets/Icons/png/ic_category_project_management_20.png"),
+        new("ic_category_internal_staff_20.png", "Internal staff", "/Assets/Icons/png/ic_category_internal_staff_20.png"),
+        new("ic_category_design_consultants_20.png", "Design consultants", "/Assets/Icons/png/ic_category_design_consultants_20.png"),
+        new("ic_category_contractors_20.png", "Contractors", "/Assets/Icons/png/ic_category_contractors_20.png"),
+        new("ic_category_compliance_20.png", "Compliance", "/Assets/Icons/png/ic_category_compliance_20.png"),
+        new("ic_category_closeout_20.png", "Close out", "/Assets/Icons/png/ic_category_closeout_20.png"),
+        new("ic_calendar_18.png", "Calendar", "/Assets/Icons/png/ic_calendar_18.png"),
+        new("ic_nav_reports_20.png", "Reports", "/Assets/Icons/png/ic_nav_reports_20.png")
+    ];
     private readonly Dictionary<DataGrid, GridColumnFilterState> _gridColumnFilters = [];
     private readonly Dictionary<ICollectionView, Predicate<object>?> _baseViewFilters = [];
     private Point? _kpiRightDragStart;
     private double _kpiScrollStartOffset;
     private bool _kpiRightDragging;
+    private Point? _kpiLeftDragStart;
+    private int? _kpiDragPillId;
     private Point? _ledgerChartRightDragStart;
     private double _ledgerChartScrollStartOffset;
     private bool _ledgerChartRightDragging;
@@ -113,6 +140,7 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, string?> _detailWorkspaceHighlightedColumnKeys = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<DataGridColumn> _trackedForecastColumns = [];
     private static readonly HashSet<DataGridColumn> AutoSizedColumns = [];
+    private WorkspaceViewTab? _pendingWorkspaceEditorFocusView;
     private static readonly DependencyPropertyDescriptor? ForecastColumnActualWidthDescriptor =
         DependencyPropertyDescriptor.FromProperty(DataGridColumn.ActualWidthProperty, typeof(DataGridColumn));
 
@@ -139,6 +167,7 @@ public partial class MainWindow : Window
             QueueApplyCurrentDetailWorkspaceViewColumnState();
             QueueScrollLedgerChartToEnd();
             RefreshForecastGridStatePills();
+            RefreshWorkspaceTabIcons();
             UpdateForecastGroupToggleVisual();
             ForecastGridHost.SizeChanged += ForecastGridHost_SizeChanged;
             QueueReportForecastGridFirstDraw();
@@ -158,6 +187,7 @@ public partial class MainWindow : Window
             QueueApplyCurrentWorkspaceViewColumnState();
             QueueApplyCurrentDetailWorkspaceViewColumnState();
             RefreshForecastGridStatePills();
+            RefreshWorkspaceTabIcons();
             UpdateForecastGroupToggleVisual();
             QueueScrollLedgerChartToEnd();
         };
@@ -379,4 +409,6 @@ public partial class MainWindow : Window
         menu.IsOpen = true;
         e.Handled = true;
     }
+
+    private sealed record BuiltInImageIconOption(string Key, string Label, string AssetPath);
 }

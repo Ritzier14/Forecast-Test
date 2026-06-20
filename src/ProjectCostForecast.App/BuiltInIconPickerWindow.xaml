@@ -1,0 +1,155 @@
+<UserControl x:Class="ProjectCostForecast.App.BuiltInIconPickerWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="980"
+             Height="680"
+             MinWidth="840"
+             MinHeight="560"
+             Background="#F6F8FC"
+             SnapsToDevicePixels="True"
+             UseLayoutRounding="True">
+    <UserControl.Resources>
+        <Style x:Key="IconPickerTabButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0,0,0,3" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="#475569" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Margin" Value="0,0,20,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                            <Border x:Name="ActiveUnderline"
+                                    Height="3"
+                                    Background="{TemplateBinding BorderBrush}"
+                                    VerticalAlignment="Bottom"
+                                    Visibility="Visible" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#1E3A5F" />
+                            </Trigger>
+                            <Trigger Property="BorderBrush" Value="Transparent">
+                                <Setter TargetName="ActiveUnderline" Property="Visibility" Value="Collapsed" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <Border Margin="18"
+            Background="White"
+            BorderBrush="#E5EAF3"
+            BorderThickness="1"
+            CornerRadius="22"
+            Padding="28">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="42"
+                            Height="42"
+                            Background="#F5F8FF"
+                            BorderBrush="#DCE6F7"
+                            BorderThickness="1"
+                            CornerRadius="12">
+                        <Viewbox Width="20" Height="20" Stretch="Uniform">
+                            <Path Stroke="#1F2937"
+                                  StrokeThickness="1.6"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round"
+                                  Data="M 3 5 H 17 A 2 2 0 0 1 19 7 V 17 A 2 2 0 0 1 17 19 H 3 A 2 2 0 0 1 1 17 V 7 A 2 2 0 0 1 3 5 Z M 5 9 A 2 2 0 1 0 5 5 A 2 2 0 1 0 5 9 Z M 2 15 L 7 11 L 11 14 L 14 12 L 18 16" />
+                        </Viewbox>
+                    </Border>
+                    <TextBlock x:Name="DialogTitleTextBlock"
+                               Margin="16,0,0,0"
+                               VerticalAlignment="Center"
+                               FontSize="24"
+                               FontWeight="SemiBold"
+                               Foreground="#111827"
+                               Text="Icon Library" />
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Width="40"
+                        Height="40"
+                        Click="CloseButton_Click"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Foreground="#374151"
+                        FontSize="20"
+                        Content="X"
+                        ToolTip="Close" />
+            </Grid>
+
+            <Border Grid.Row="1"
+                    Background="#FFFFFF"
+                    BorderBrush="#DCE4EE"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    Padding="14,8"
+                    Margin="0,0,0,14">
+                <TextBox x:Name="SearchTextBox"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         FontSize="15"
+                         Foreground="#111827"
+                         TextChanged="SearchTextBox_TextChanged" />
+            </Border>
+
+            <Grid Grid.Row="2" Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid Grid.Column="0">
+                    <Border Height="1"
+                            Background="#DCE4EE"
+                            VerticalAlignment="Bottom" />
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Left">
+                        <Button x:Name="AllCategoryButton" Content="Standard" Click="CategoryButton_Click" Tag="Standard" Style="{StaticResource IconPickerTabButtonStyle}" />
+                        <Button x:Name="KpiCategoryButton" Content="KPI" Click="CategoryButton_Click" Tag="Kpi" Style="{StaticResource IconPickerTabButtonStyle}" />
+                        <Button x:Name="TabsCategoryButton" Content="Tabs" Click="CategoryButton_Click" Tag="Tabs" Style="{StaticResource IconPickerTabButtonStyle}" />
+                        <Button x:Name="GroupsCategoryButton" Content="Groups" Click="CategoryButton_Click" Tag="Groups" Style="{StaticResource IconPickerTabButtonStyle}" />
+                    </StackPanel>
+                </Grid>
+                <Button x:Name="ToggleBordersButton"
+                        Grid.Column="1"
+                        Padding="12,6"
+                        Margin="12,0,0,0"
+                        Click="ToggleBordersButton_Click"
+                        Content="Hide borders" />
+            </Grid>
+
+            <ScrollViewer Grid.Row="3"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl x:Name="IconItemsControl">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </ScrollViewer>
+
+        </Grid>
+    </Border>
+</UserControl>

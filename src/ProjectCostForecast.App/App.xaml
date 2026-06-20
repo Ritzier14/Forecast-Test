@@ -306,6 +306,7 @@
                                                        Grid.Column="2"
                                                        Maximum="{TemplateBinding ScrollableHeight}"
                                                        Orientation="Vertical"
+                                                       SmallChange="1"
                                                        ViewportSize="{TemplateBinding ViewportHeight}"
                                                        Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}"
                                                        Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
@@ -318,6 +319,7 @@
                                                            Grid.Column="1"
                                                            Maximum="{TemplateBinding ScrollableWidth}"
                                                            Orientation="Horizontal"
+                                                           SmallChange="1"
                                                            ViewportSize="{TemplateBinding ViewportWidth}"
                                                            Value="{Binding HorizontalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}"
                                                            Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" />
@@ -527,7 +529,7 @@
                             <MultiDataTrigger>
                                 <MultiDataTrigger.Conditions>
                                     <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource TemplatedParent}}" Value="False" />
-                                    <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" Value="True" />
+                                    <Condition Binding="{Binding Path=(models:GridHoverState.IsRowHovered), RelativeSource={RelativeSource TemplatedParent}}" Value="True" />
                                 </MultiDataTrigger.Conditions>
                                 <Setter TargetName="HoverOverlay" Property="Visibility" Value="Visible" />
                             </MultiDataTrigger>
@@ -563,7 +565,7 @@
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                         <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="False" />
-                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" Value="True" />
+                        <Condition Binding="{Binding Path=(models:GridHoverState.IsRowHovered), RelativeSource={RelativeSource Self}}" Value="True" />
                     </MultiDataTrigger.Conditions>
                     <Setter Property="Background" Value="#F3F4F6" />
                 </MultiDataTrigger>

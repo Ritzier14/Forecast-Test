@@ -1,3 +1,5 @@
+using System;
+
 namespace ProjectCostForecast.App.Models;
 
 public sealed class AppUserPreferences
@@ -15,6 +17,8 @@ public sealed class AppUserPreferences
     public bool ShowCtcMonthForecastColumns { get; set; } = true;
     public bool ShowMonthNameAboveFiscalPeriod { get; set; }
     public bool ShowCtcMonthForecastYearTotals { get; set; }
+    public bool ShowCurrencySymbols { get; set; }
+    public int ForecastMonthMillionDecimals { get; set; } = 2;
     public List<int> SelectedCtcMonthForecastYears { get; set; } = [];
     public string ForecastFreezeColumnKey { get; set; } = ViewModels.MainWindowViewModel.DefaultForecastFreezeColumnKey;
     public bool KeepColumnHighlightsAcrossTabs { get; set; }
@@ -22,4 +26,8 @@ public sealed class AppUserPreferences
     public string SelectedCategorySortOptionKey { get; set; } = "Alphabetical";
     public string SelectedLedgerChartRangeKey { get; set; } = "Last24";
     public List<string> KpiPillKeys { get; set; } = [];
+    public Dictionary<string, string> KpiIconKeys { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> KpiIconColorHexes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> WorkspaceTabIconKeys { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> WorkspaceTabIconColorHexes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }

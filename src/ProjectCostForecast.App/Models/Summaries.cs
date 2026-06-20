@@ -148,6 +148,7 @@ public sealed class KpiPill : ObservableModel
     private string _comparisonText = string.Empty;
     private string _comparisonDirection = string.Empty;
     private string _iconPath = string.Empty;
+    private ImageSource? _iconSource;
     private Visibility _comparisonVisibility = Visibility.Collapsed;
 
     public int Id { get; init; }
@@ -194,6 +195,12 @@ public sealed class KpiPill : ObservableModel
         set => SetProperty(ref _iconPath, value);
     }
 
+    public ImageSource? IconSource
+    {
+        get => _iconSource;
+        set => SetProperty(ref _iconSource, value);
+    }
+
     public Visibility ComparisonVisibility
     {
         get => _comparisonVisibility;
@@ -204,6 +211,7 @@ public sealed class KpiPill : ObservableModel
 public sealed class WorkspaceViewTab : ObservableModel
 {
     private string _name = string.Empty;
+    private string _editName = string.Empty;
     private bool _isEditing;
     private string _contentKey = string.Empty;
 
@@ -225,11 +233,21 @@ public sealed class WorkspaceViewTab : ObservableModel
         set => SetProperty(ref _name, value);
     }
 
+    public string EditName
+    {
+        get => _editName;
+        set => SetProperty(ref _editName, value);
+    }
+
     public bool IsEditing
     {
         get => _isEditing;
         set => SetProperty(ref _isEditing, value);
     }
+
+    public string RenameRestoreName { get; set; } = string.Empty;
+    public string DefaultName { get; set; } = string.Empty;
+    public bool IsNewlyCreated { get; set; }
 }
 
 public sealed class ForecastMonthColumnDefinition
