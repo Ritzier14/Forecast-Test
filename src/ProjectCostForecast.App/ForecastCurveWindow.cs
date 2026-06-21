@@ -19,6 +19,8 @@ public sealed class ForecastCurveWindow : Window
     private readonly ObservableCollection<ForecastCurveValueRow> _rows;
     private readonly ObservableCollection<ForecastCurveSummaryRow> _summaryRows;
     private readonly List<FrameworkElement> _points = [];
+    private readonly List<Rectangle> _monthlyBars = [];
+    private readonly List<Button> _lockButtons = [];
     private readonly ComboBox _presetBox;
     private Path? _newPath;
     private decimal[] _newCumulative;
@@ -36,7 +38,8 @@ public sealed class ForecastCurveWindow : Window
             Month = point.Month,
             FiscalPeriod = point.FiscalPeriod,
             ExistingValue = point.Value,
-            NewValue = point.Value
+            NewValue = point.Value,
+            IsLocked = point.IsLocked
         }));
         _summaryRows =
         [
@@ -104,7 +107,7 @@ public sealed class ForecastCurveWindow : Window
         {
             Text = "Select to apply; hover to preview.",
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(12, 0, 0, 0),
+            Margin = new Thickness(14, 0, 6, 0),
             Foreground = BrushFactory.Frozen("#64748B")
         });
         presetPanel.Children.Add(CreateLegend("Existing", "#94A3B8", new Thickness(18, 0, 0, 0)));
@@ -124,12 +127,29 @@ public sealed class ForecastCurveWindow : Window
             DrawChart();
         };
         presetPanel.Children.Add(toggleBars);
+        var unlockAll = new Button
+        {
+            Content = "Unlock all",
+            MinWidth = 88,
+            Padding = new Thickness(8, 3, 8, 3),
+            Margin = new Thickness(12, 0, 0, 0)
+        };
+        unlockAll.Click += (_, _) =>
+        {
+            foreach (var row in _rows)
+            {
+                row.IsLocked = false;
+            }
+
+            DrawChart();
+        };
+        presetPanel.Children.Add(unlockAll);
         presetPanel.Children.Add(new TextBlock
         {
             Text = "Adjustment range",
             VerticalAlignment = VerticalAlignment.Center,
             FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(18, 0, 6, 0)
+            Margin = new Thickness(20, 0, 6, 0)
         });
         AddEffectRangeButton(presetPanel, "Tight", 1);
         AddEffectRangeButton(presetPanel, "Nearby", 2, isSelected: true);
@@ -154,29 +174,49 @@ public sealed class ForecastCurveWindow : Window
 
         var table = new DataGrid
         {
-            ItemsSource = _summaryRows,
+            ItemsSource = _rows,
             AutoGenerateColumns = false,
-            IsReadOnly = true,
+            IsReadOnly = false,
             Margin = new Thickness(0, 12, 0, 0),
-            HeadersVisibility = DataGridHeadersVisibility.Column
+            HeadersVisibility = DataGridHeadersVisibility.Column,
+            CanUserAddRows = false,
+            CanUserDeleteRows = false
         };
-        table.Columns.Add(new DataGridTextColumn { Header = string.Empty, Binding = new Binding(nameof(ForecastCurveSummaryRow.Label)), Width = 110 });
-        for (var index = 0; index < _rows.Count; index++)
+        table.CellEditEnding += CurveTable_CellEditEnding;
+        table.Columns.Add(new DataGridCheckBoxColumn
         {
-            var capturedIndex = index;
-            table.Columns.Add(new DataGridTextColumn
-            {
-                Header = $"{_rows[index].Month}\n{_rows[index].FiscalPeriod}",
-                Binding = new Binding($"Values[{capturedIndex}]") { StringFormat = "{0:C0}" },
-                Width = 92
-            });
-        }
-
+            Header = "Lock",
+            Binding = new Binding(nameof(ForecastCurveValueRow.IsLocked)) { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged },
+            Width = 58
+        });
+        table.Columns.Add(new DataGridTextColumn { Header = "Month", Binding = new Binding(nameof(ForecastCurveValueRow.Month)), Width = 90, IsReadOnly = true });
+        table.Columns.Add(new DataGridTextColumn { Header = "FY period", Binding = new Binding(nameof(ForecastCurveValueRow.FiscalPeriod)), Width = 95, IsReadOnly = true });
         table.Columns.Add(new DataGridTextColumn
         {
-            Header = "Total",
-            Binding = new Binding(nameof(ForecastCurveSummaryRow.Total)) { StringFormat = "{0:C0}" },
-            Width = 110
+            Header = "Current value",
+            Binding = new Binding(nameof(ForecastCurveValueRow.ExistingValue)) { StringFormat = "{0:C0}" },
+            Width = 130,
+            IsReadOnly = true,
+            ElementStyle = new Style(typeof(TextBlock))
+            {
+                Setters =
+                {
+                    new Setter(TextBlock.ForegroundProperty, BrushFactory.Frozen("#64748B")),
+                    new Setter(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Right),
+                    new Setter(TextBlock.MarginProperty, new Thickness(0, 0, 8, 0))
+                }
+            }
+        });
+        table.Columns.Add(new DataGridTextColumn
+        {
+            Header = "New value",
+            Binding = new Binding(nameof(ForecastCurveValueRow.NewValue))
+            {
+                StringFormat = "{0:C0}",
+                UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+            },
+            Width = 130,
+            SortMemberPath = nameof(ForecastCurveValueRow.NewValue)
         });
         Grid.SetRow(table, 3);
         root.Children.Add(table);
@@ -247,14 +287,17 @@ public sealed class ForecastCurveWindow : Window
     private void ApplySelectedPreset()
     {
         var preset = GetSelectedPreset();
-        var values = ForecastCurvePresets.Apply(preset, _rows.Select(row => row.ExistingValue).ToList());
+        var values = BuildPresetValues(preset);
         _presetPreviewValues = null;
         for (var index = 0; index < _rows.Count; index++)
         {
-            _rows[index].NewValue = values[index];
+            if (!_rows[index].IsLocked)
+            {
+                _rows[index].NewValue = values[index];
+            }
         }
 
-        _newCumulative = ForecastCurveMath.BuildCumulative(values);
+        _newCumulative = ForecastCurveMath.BuildCumulative(_rows.Select(row => row.NewValue));
         RefreshSummaryRows();
         DrawChart();
     }
@@ -268,8 +311,27 @@ public sealed class ForecastCurveWindow : Window
 
     private void PreviewPreset(string preset)
     {
-        _presetPreviewValues = ForecastCurvePresets.Apply(preset, _rows.Select(row => row.ExistingValue).ToList());
+        _presetPreviewValues = BuildPresetValues(preset);
         DrawChart();
+    }
+
+    private List<decimal> BuildPresetValues(string preset)
+    {
+        var unlockedIndexes = Enumerable.Range(0, _rows.Count).Where(index => !_rows[index].IsLocked).ToList();
+        var result = _rows.Select(row => row.NewValue).ToList();
+        if (unlockedIndexes.Count == 0)
+        {
+            return result;
+        }
+
+        var sourceValues = unlockedIndexes.Select(index => _rows[index].ExistingValue).ToList();
+        var presetValues = ForecastCurvePresets.Apply(preset, sourceValues);
+        for (var index = 0; index < unlockedIndexes.Count; index++)
+        {
+            result[unlockedIndexes[index]] = presetValues[index];
+        }
+
+        return result;
     }
 
     private void ClearPresetPreview()
@@ -292,6 +354,8 @@ public sealed class ForecastCurveWindow : Window
 
         _canvas.Children.Clear();
         _points.Clear();
+        _monthlyBars.Clear();
+        _lockButtons.Clear();
         var existingCumulative = ForecastCurveMath.BuildCumulative(_rows.Select(row => row.ExistingValue));
         var displayedMonthlyValues = _presetPreviewValues ?? _rows.Select(row => row.NewValue).ToList();
         var displayedCumulative = ForecastCurveMath.BuildCumulative(displayedMonthlyValues);
@@ -340,12 +404,14 @@ public sealed class ForecastCurveWindow : Window
                 Width = 15,
                 Height = 15,
                 Points = new PointCollection([new Point(7.5, 0), new Point(15, 7.5), new Point(7.5, 15), new Point(0, 7.5)]),
-                Fill = BrushFactory.Frozen("#176B8C"),
+                Fill = BrushFactory.Frozen(_rows[index].IsLocked ? "#94A3B8" : "#176B8C"),
                 Stroke = Brushes.White,
                 StrokeThickness = 1.5,
-                Cursor = Cursors.SizeNS,
+                Cursor = _rows[index].IsLocked ? Cursors.Arrow : Cursors.SizeNS,
                 Tag = index,
-                ToolTip = $"{_rows[index].Month}: cumulative {displayedCumulative[index]:C0}"
+                ToolTip = _rows[index].IsLocked
+                    ? $"{_rows[index].Month}: locked"
+                    : $"{_rows[index].Month}: cumulative {displayedCumulative[index]:C0}"
             };
             point.PreviewMouseLeftButtonDown += Point_MouseDown;
             point.PreviewMouseMove += Point_MouseMove;
@@ -354,6 +420,20 @@ public sealed class ForecastCurveWindow : Window
             Canvas.SetTop(point, y - 7.5);
             _points.Add(point);
             _canvas.Children.Add(point);
+
+            var lockButton = new Button
+            {
+                Content = _rows[index].IsLocked ? "Locked" : "Open",
+                FontSize = 10,
+                MinWidth = 42,
+                Padding = new Thickness(4, 1, 4, 1),
+                Tag = index
+            };
+            lockButton.Click += LockButton_Click;
+            Canvas.SetLeft(lockButton, x - 21);
+            Canvas.SetTop(lockButton, plotBottom + 34);
+            _lockButtons.Add(lockButton);
+            _canvas.Children.Add(lockButton);
         }
 
 
@@ -375,14 +455,17 @@ public sealed class ForecastCurveWindow : Window
             {
                 Width = barWidth,
                 Height = Math.Max(0, plotBottom - top),
-                Fill = BrushFactory.Frozen("#93C5FD"),
+                Fill = BrushFactory.Frozen(_rows[index].IsLocked ? "#CBD5E1" : "#93C5FD"),
                 Opacity = 0.55,
                 RadiusX = 2,
                 RadiusY = 2,
-                ToolTip = $"{_rows[index].Month}: monthly forecast {value:C0}"
+                ToolTip = _rows[index].IsLocked
+                    ? $"{_rows[index].Month}: locked monthly forecast {value:C0}"
+                    : $"{_rows[index].Month}: monthly forecast {value:C0}"
             };
             Canvas.SetLeft(bar, GetX(index) - (barWidth / 2));
             Canvas.SetTop(bar, top);
+            _monthlyBars.Add(bar);
             _canvas.Children.Add(bar);
         }
     }
@@ -489,12 +572,19 @@ public sealed class ForecastCurveWindow : Window
     private double GetY(decimal value)
     {
         var height = _canvas.ActualHeight - PlotTop - PlotBottom;
-        return PlotTop + height * (1 - (double)(Math.Max(0, value) / _axisMax));
+        var ratio = _axisMax <= 0 ? 0d : (double)(Math.Max(0, value) / _axisMax);
+        return PlotTop + height * (1 - Math.Clamp(ratio, 0d, 1d));
     }
 
     private void Point_MouseDown(object sender, MouseButtonEventArgs e)
     {
         _dragIndex = (int)((FrameworkElement)sender).Tag;
+        if (_rows[_dragIndex].IsLocked)
+        {
+            _dragIndex = -1;
+            return;
+        }
+
         ((FrameworkElement)sender).CaptureMouse();
         e.Handled = true;
     }
@@ -510,16 +600,18 @@ public sealed class ForecastCurveWindow : Window
         var plotHeight = _canvas.ActualHeight - PlotTop - PlotBottom;
         var y = Math.Clamp(position.Y, PlotTop, PlotTop + plotHeight);
         var requestedCumulative = Math.Round(_axisMax * (decimal)(1 - ((y - PlotTop) / plotHeight)), 0);
+        var currentValues = _rows.Select(row => row.NewValue).ToArray();
         var monthlyValues = ForecastCurveMath.AdjustMonthlyCurve(
-            _rows.Select(row => row.NewValue).ToArray(),
+            currentValues,
             _dragIndex,
             requestedCumulative,
-            _effectRadius);
+            _effectRadius,
+            _rows.Select(row => row.IsLocked).ToArray());
         for (var index = 0; index < _rows.Count; index++)
         {
             _rows[index].NewValue = monthlyValues[index];
         }
-        _newCumulative = ForecastCurveMath.BuildCumulative(monthlyValues);
+        _newCumulative = ForecastCurveMath.BuildCumulative(_rows.Select(row => row.NewValue));
         RefreshSummaryRows();
         UpdatePoints();
     }
@@ -544,10 +636,56 @@ public sealed class ForecastCurveWindow : Window
             var y = GetY(_newCumulative[index]);
             points.Add(new Point(x, y));
             Canvas.SetTop(_points[index], y - 7.5);
-            _points[index].ToolTip = $"{_rows[index].Month}: cumulative {_newCumulative[index]:C0}";
+            _points[index].ToolTip = _rows[index].IsLocked
+                ? $"{_rows[index].Month}: locked"
+                : $"{_rows[index].Month}: cumulative {_newCumulative[index]:C0}";
+        }
+
+        if (_showMonthlyBars)
+        {
+            var plotBottom = _canvas.ActualHeight - PlotBottom;
+            for (var index = 0; index < _monthlyBars.Count && index < _rows.Count; index++)
+            {
+                var top = GetY(_rows[index].NewValue);
+                _monthlyBars[index].Height = Math.Max(0, plotBottom - top);
+                Canvas.SetTop(_monthlyBars[index], top);
+                _monthlyBars[index].Fill = BrushFactory.Frozen(_rows[index].IsLocked ? "#CBD5E1" : "#93C5FD");
+                _monthlyBars[index].ToolTip = _rows[index].IsLocked
+                    ? $"{_rows[index].Month}: locked monthly forecast {_rows[index].NewValue:C0}"
+                    : $"{_rows[index].Month}: monthly forecast {_rows[index].NewValue:C0}";
+            }
         }
 
         _newPath.Data = CreateSmoothGeometry(points);
+    }
+
+    private void LockButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: int index } || index < 0 || index >= _rows.Count)
+        {
+            return;
+        }
+
+        _rows[index].IsLocked = !_rows[index].IsLocked;
+        DrawChart();
+    }
+
+    private void CurveTable_CellEditEnding(object? sender, DataGridCellEditEndingEventArgs e)
+    {
+        if (e.EditAction != DataGridEditAction.Commit
+            || e.Row.Item is not ForecastCurveValueRow row
+            || !string.Equals(e.Column.SortMemberPath, nameof(ForecastCurveValueRow.NewValue), StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(() =>
+        {
+            row.IsLocked = true;
+            _newCumulative = ForecastCurveMath.BuildCumulative(_rows.Select(item => item.NewValue));
+            RefreshSummaryRows();
+            DrawChart();
+        });
     }
 
     private void RefreshSummaryRows()
@@ -562,17 +700,19 @@ public sealed class ForecastCurveWindow : Window
     }
 }
 
-public sealed record ForecastCurvePoint(string PeriodKey, string Month, string FiscalPeriod, decimal Value);
+public sealed record ForecastCurvePoint(string PeriodKey, string Month, string FiscalPeriod, decimal Value, bool IsLocked = false);
 
 public sealed class ForecastCurveValueRow : ObservableModel
 {
     private decimal _newValue;
+    private bool _isLocked;
 
     public string PeriodKey { get; init; } = string.Empty;
     public string Month { get; init; } = string.Empty;
     public string FiscalPeriod { get; init; } = string.Empty;
     public decimal ExistingValue { get; init; }
     public decimal NewValue { get => _newValue; set => SetProperty(ref _newValue, value); }
+    public bool IsLocked { get => _isLocked; set => SetProperty(ref _isLocked, value); }
 }
 
 public sealed class ForecastCurveSummaryRow : ObservableModel
@@ -717,6 +857,48 @@ public static class ForecastCurveMath
             ApplyWeightedChange(result, rightIndexes, transfer, towardEnd: false);
         }
 
+        return result;
+    }
+
+    public static decimal[] AdjustMonthlyCurve(
+        IReadOnlyList<decimal> monthlyValues,
+        int markerIndex,
+        decimal requestedCumulative,
+        int effectRadius,
+        IReadOnlyList<bool> lockedMonths)
+    {
+        var result = AdjustMonthlyCurve(monthlyValues, markerIndex, requestedCumulative, effectRadius);
+        if (lockedMonths.Count != monthlyValues.Count || !lockedMonths.Any(isLocked => isLocked))
+        {
+            return result;
+        }
+
+        var redistribution = 0m;
+        for (var index = 0; index < result.Length; index++)
+        {
+            if (!lockedMonths[index])
+            {
+                continue;
+            }
+
+            redistribution += result[index] - monthlyValues[index];
+            result[index] = monthlyValues[index];
+        }
+
+        if (redistribution == 0)
+        {
+            return result;
+        }
+
+        var unlockedIndexes = Enumerable.Range(0, result.Length)
+            .Where(index => !lockedMonths[index])
+            .ToList();
+        if (unlockedIndexes.Count == 0)
+        {
+            return monthlyValues.ToArray();
+        }
+
+        ApplyWeightedChange(result, unlockedIndexes, redistribution, towardEnd: true);
         return result;
     }
 

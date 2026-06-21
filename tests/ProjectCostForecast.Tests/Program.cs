@@ -261,6 +261,9 @@ AssertTrue(smoothCurve[1] != 100m && smoothCurve[2] != 100m && smoothCurve[3] !=
 AssertTrue(smoothCurve.All(value => value >= 0), "Smooth curve adjustment does not create negative months");
 var wideCurve = ForecastCurveMath.AdjustMonthlyCurve([100m, 100m, 100m, 100m, 100m, 100m], 2, 350m, 4);
 AssertTrue(wideCurve[0] != 100m && wideCurve[5] != 100m, "Wide adjustment reaches farther months");
+var lockedCurve = ForecastCurveMath.AdjustMonthlyCurve([100m, 100m, 100m, 100m], 1, 260m, 4, [false, true, false, false]);
+AssertEqual(100m, lockedCurve[1], "Locked curve months stay fixed during adjustment");
+AssertEqual(400m, lockedCurve.Sum(), "Locked curve adjustment redistributes value across unlocked months");
 viewModel.SetHoveredForecastLine(hoveredLine);
 AssertEqual("Flex Projects L / WA57102001", viewModel.LedgerTitle, "Hovering a row previews that resource drilldown");
 viewModel.ClearHoveredForecastLine();

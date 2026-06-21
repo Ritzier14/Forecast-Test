@@ -17,6 +17,7 @@ public partial class MainWindow
     private readonly HashSet<DataGrid> _spreadsheetAttachedGrids = [];
     private readonly Dictionary<DataGrid, object?> _spreadsheetCurrentRows = [];
     private readonly HashSet<DataGrid> _spreadsheetSelectionUpdateQueued = [];
+    private ForecastCurvePreviewState? _activeForecastCurvePreview;
     private static readonly Dictionary<(Type Type, string Path), PropertyInfo[]?> SpreadsheetPropertyPathCache = [];
     private static readonly Dictionary<Type, PropertyInfo?> SpreadsheetStringIndexerCache = [];
 
@@ -911,6 +912,7 @@ public partial class MainWindow
     private ContextMenu BuildSpreadsheetCellContextMenu(DataGrid grid, DataGridCell cell)
     {
         var menu = new ContextMenu();
+        menu.Closed += (_, _) => RestoreForecastCurvePreview();
         var cut = new MenuItem { Header = "Cut", InputGestureText = "Ctrl+X", IsEnabled = grid.SelectedCells.Any(item => CanWriteGridCell(grid, item.Item, item.Column)) };
         cut.Click += (_, _) => CutSelectedGridCells(grid);
         menu.Items.Add(cut);
@@ -925,9 +927,8 @@ public partial class MainWindow
 
         if (ReferenceEquals(grid, ForecastLinesGrid) && TryGetSelectedForecastCurve(grid, out var curveLine, out var curveColumns))
         {
-            var adjustCurve = new MenuItem { Header = "Adjust curve" };
-            adjustCurve.Click += (_, _) => OpenForecastCurveEditor(curveLine, curveColumns);
-            menu.Items.Add(adjustCurve);
+            menu.Items.Add(new Separator());
+            menu.Items.Add(BuildApplyCurveToSelectionMenu(curveLine, curveColumns));
         }
 
         var cellText = FormatGridCellValue(GetGridCellValue(cell.DataContext, cell.Column)).Trim();
@@ -1074,7 +1075,7 @@ public partial class MainWindow
         line = null!;
         columns = [];
         var selected = grid.SelectedCells
-            .Where(cell => cell.Item is ForecastLine && cell.Column.Header is ForecastMonthColumnDefinition { IsTotal: false, IsEditable: true })
+            .Where(cell => cell.Item is ForecastLine && cell.Column.Header is ForecastMonthColumnDefinition { IsTotal: false })
             .OrderBy(cell => cell.Column.DisplayIndex)
             .ToList();
         if (selected.Count < 2 || selected.Select(cell => cell.Item).Distinct().Count() != 1)
@@ -1093,6 +1094,204 @@ public partial class MainWindow
         return true;
     }
 
+    private MenuItem BuildApplyCurveToSelectionMenu(ForecastLine line, IReadOnlyList<ForecastMonthColumnDefinition> columns)
+    {
+        var menu = new MenuItem { Header = "Apply Curve to Selection" };
+        var lockedCount = columns.Count(column => !column.IsEditable);
+        var editableCount = columns.Count - lockedCount;
+        if (lockedCount > 0)
+        {
+            menu.Items.Add(new MenuItem
+            {
+                Header = new TextBlock
+                {
+                    Text = $"{lockedCount} locked month(s) will be skipped",
+                    Foreground = BrushFactory.Frozen("#DC2626"),
+                    FontWeight = FontWeights.SemiBold
+                },
+                IsEnabled = false
+            });
+            menu.Items.Add(new Separator());
+        }
+
+        foreach (var preset in ForecastCurvePresets.All)
+        {
+            menu.Items.Add(CreateForecastCurvePresetMenuItem(preset, line, columns, editableCount > 0));
+        }
+
+        menu.Items.Add(new Separator());
+        var adjustCurve = new MenuItem { Header = "Adjust Curve" };
+        adjustCurve.Click += (_, _) =>
+        {
+            RestoreForecastCurvePreview();
+            OpenForecastCurveEditor(line, columns);
+        };
+        menu.Items.Add(adjustCurve);
+        menu.SubmenuClosed += (_, _) => RestoreForecastCurvePreview();
+        return menu;
+    }
+
+    private MenuItem CreateForecastCurvePresetMenuItem(
+        string preset,
+        ForecastLine line,
+        IReadOnlyList<ForecastMonthColumnDefinition> columns,
+        bool canApply)
+    {
+        var label = new StackPanel { Orientation = Orientation.Vertical, MinWidth = 190 };
+        label.Children.Add(new TextBlock
+        {
+            Text = preset,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = BrushFactory.Frozen("#1E293B")
+        });
+        label.Children.Add(new TextBlock
+        {
+            Text = BuildCurvePresetPreviewText(preset, line, columns),
+            FontSize = 10,
+            Foreground = BrushFactory.Frozen("#64748B")
+        });
+
+        var item = new MenuItem
+        {
+            Header = label,
+            IsEnabled = canApply
+        };
+        item.MouseEnter += (_, _) => PreviewForecastCurvePreset(line, columns, preset);
+        item.GotKeyboardFocus += (_, _) => PreviewForecastCurvePreset(line, columns, preset);
+        item.MouseLeave += (_, _) => RestoreForecastCurvePreview();
+        item.Click += (_, _) => ApplyForecastCurvePreset(line, columns, preset);
+        return item;
+    }
+
+    private static string BuildCurvePresetPreviewText(string preset, ForecastLine line, IReadOnlyList<ForecastMonthColumnDefinition> columns)
+    {
+        var unlockedValues = columns
+            .Where(column => column.IsEditable)
+            .Select(column => line[column.Key])
+            .ToList();
+        if (unlockedValues.Count == 0)
+        {
+            return "No unlocked months";
+        }
+
+        var preview = ForecastCurvePresets.Apply(preset, unlockedValues);
+        return $"{preview.First():C0} -> {preview.Last():C0}, total {preview.Sum():C0}";
+    }
+
+    private void PreviewForecastCurvePreset(
+        ForecastLine line,
+        IReadOnlyList<ForecastMonthColumnDefinition> columns,
+        string preset)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        if (_activeForecastCurvePreview is null
+            || !ReferenceEquals(_activeForecastCurvePreview.Line, line)
+            || !ForecastCurveColumnsMatch(_activeForecastCurvePreview.Columns, columns))
+        {
+            RestoreForecastCurvePreview();
+            _activeForecastCurvePreview = new ForecastCurvePreviewState(
+                line,
+                columns.ToList(),
+                columns.ToDictionary(column => column.Key, column => line[column.Key], StringComparer.OrdinalIgnoreCase));
+        }
+
+        var previewValues = BuildForecastCurveValues(_activeForecastCurvePreview.OriginalValues, columns, preset);
+        SetForecastCurvePreviewValues(viewModel, line, previewValues, $"Previewing {preset} curve");
+    }
+
+    private void RestoreForecastCurvePreview()
+    {
+        if (_activeForecastCurvePreview is null || DataContext is not MainWindowViewModel viewModel)
+        {
+            _activeForecastCurvePreview = null;
+            return;
+        }
+
+        SetForecastCurvePreviewValues(
+            viewModel,
+            _activeForecastCurvePreview.Line,
+            _activeForecastCurvePreview.OriginalValues,
+            string.Empty);
+        _activeForecastCurvePreview = null;
+    }
+
+    private void ApplyForecastCurvePreset(
+        ForecastLine line,
+        IReadOnlyList<ForecastMonthColumnDefinition> columns,
+        string preset)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var sourceValues = _activeForecastCurvePreview is { Line: var previewLine } && ReferenceEquals(previewLine, line)
+            ? _activeForecastCurvePreview.OriginalValues
+            : columns.ToDictionary(column => column.Key, column => line[column.Key], StringComparer.OrdinalIgnoreCase);
+        var appliedValues = BuildForecastCurveValues(sourceValues, columns, preset);
+        _activeForecastCurvePreview = null;
+
+        viewModel.BeginSpreadsheetEditBatch();
+        foreach (var column in columns.Where(column => column.IsEditable))
+        {
+            line[column.Key] = appliedValues[column.Key];
+        }
+
+        line.NotifyMonthForecastValuesChanged();
+        viewModel.EndSpreadsheetEditBatch($"Applied {preset} curve to selected months", changed: true, rebuildFilterLists: false);
+        QueueSpreadsheetSelectionUpdate(ForecastLinesGrid, [line]);
+    }
+
+    private static Dictionary<string, decimal> BuildForecastCurveValues(
+        IReadOnlyDictionary<string, decimal> sourceValues,
+        IReadOnlyList<ForecastMonthColumnDefinition> columns,
+        string preset)
+    {
+        var result = sourceValues.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+        var editableColumns = columns.Where(column => column.IsEditable).ToList();
+        var editableSourceValues = editableColumns.Select(column => sourceValues[column.Key]).ToList();
+        var presetValues = ForecastCurvePresets.Apply(preset, editableSourceValues);
+        for (var index = 0; index < editableColumns.Count; index++)
+        {
+            result[editableColumns[index].Key] = presetValues[index];
+        }
+
+        return result;
+    }
+
+    private void SetForecastCurvePreviewValues(
+        MainWindowViewModel viewModel,
+        ForecastLine line,
+        IReadOnlyDictionary<string, decimal> values,
+        string status)
+    {
+        foreach (var (periodKey, value) in values)
+        {
+            line[periodKey] = value;
+        }
+
+        line.NotifyMonthForecastValuesChanged();
+        viewModel.RecalculateForecastLinesForSpreadsheetEdit([line]);
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            viewModel.StatusText = status;
+        }
+
+        QueueSpreadsheetSelectionUpdate(ForecastLinesGrid, [line]);
+    }
+
+    private static bool ForecastCurveColumnsMatch(
+        IReadOnlyList<ForecastMonthColumnDefinition> left,
+        IReadOnlyList<ForecastMonthColumnDefinition> right)
+    {
+        return left.Count == right.Count
+            && left.Zip(right).All(pair => string.Equals(pair.First.Key, pair.Second.Key, StringComparison.OrdinalIgnoreCase));
+    }
+
     private void OpenForecastCurveEditor(ForecastLine line, IReadOnlyList<ForecastMonthColumnDefinition> columns)
     {
         var points = columns.Select(column => new ForecastCurvePoint(
@@ -1101,7 +1300,8 @@ public partial class MainWindow
                 ? column.SecondaryLabel
                 : column.PrimaryLabel,
             column.Key,
-            line[column.Key])).ToList();
+            line[column.Key],
+            !column.IsEditable)).ToList();
         var window = new ForecastCurveWindow(line.ResourceName, line.ProjectCode, points) { Owner = this };
         if (window.ShowDialog() != true || DataContext is not MainWindowViewModel viewModel)
         {
@@ -1117,6 +1317,11 @@ public partial class MainWindow
         line.NotifyMonthForecastValuesChanged();
         viewModel.EndSpreadsheetEditBatch("Forecast curve adjusted", changed: true, rebuildFilterLists: false);
     }
+
+    private sealed record ForecastCurvePreviewState(
+        ForecastLine Line,
+        List<ForecastMonthColumnDefinition> Columns,
+        Dictionary<string, decimal> OriginalValues);
 
     private static MenuItem BuildQuickFiltersMenu(MainWindowViewModel viewModel)
     {

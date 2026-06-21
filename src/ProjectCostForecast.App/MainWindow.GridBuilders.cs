@@ -1171,6 +1171,7 @@ public partial class MainWindow
             line = viewModel.GetForecastLine(monthlyForecast);
         }
         var menu = new ContextMenu();
+        menu.Closed += (_, _) => RestoreForecastCurvePreview();
 
         var hasSelectedText = !string.IsNullOrWhiteSpace(selectedText);
         if (grid is not null && cell is not null)
@@ -1279,9 +1280,8 @@ public partial class MainWindow
 
                 if (TryGetSelectedForecastCurve(grid, out var curveLine, out var curveColumns))
                 {
-                    var adjustCurve = new MenuItem { Header = "Adjust curve..." };
-                    adjustCurve.Click += (_, _) => OpenForecastCurveEditor(curveLine, curveColumns);
-                    menu.Items.Add(adjustCurve);
+                    menu.Items.Add(new Separator());
+                    menu.Items.Add(BuildApplyCurveToSelectionMenu(curveLine, curveColumns));
                 }
 
                 var deleteLine = new MenuItem
