@@ -135,6 +135,48 @@ viewModel.SetForecastFreezeColumn("MONTH:26-11");
 AssertEqual("MONTH:26-11", viewModel.ForecastFreezeColumnKey, "Forecast grid freeze column can be changed");
 viewModel.ResetForecastFreezeColumn();
 AssertEqual(MainWindowViewModel.DefaultForecastFreezeColumnKey, viewModel.ForecastFreezeColumnKey, "Forecast grid freeze reset returns to the forecast start boundary");
+
+var metadataDataset = new ProjectDataset
+{
+    Header = new ProjectHeader { CurrentPeriod = "26-11" },
+    ForecastPeriods = [new ForecastPeriod { Label = "26-11", StartDate = new DateOnly(2026, 6, 1) }],
+    Transactions =
+    [
+        new CostTransaction { TaskNumber = "RAW-001", ManualName = "Imported", FyPeriod = "26-11", Amount = 10m }
+    ],
+    ForecastLines =
+    [
+        new ForecastLine { TaskNumber = "RAW-001", ResourceName = "Imported", ProjectCode = "Legacy Category" },
+        new ForecastLine { TaskNumber = "MAN-001", ResourceName = "Manual", ProjectCode = string.Empty }
+    ],
+    ProjectTaskCodes =
+    [
+        new ProjectTaskCode { SystemCode = "RAW-001", TaskName = "Imported task", IsRawDataCode = true },
+        new ProjectTaskCode { SystemCode = "MAN-001", TaskName = "Manual task", IsManualCode = true }
+    ],
+    ProjectCategories =
+    [
+        new ProjectCategory { Name = "Legacy Category" },
+        new ProjectCategory { Name = "Manual Override" }
+    ]
+};
+var metadataViewModel = new MainWindowViewModel();
+InvokeLoadDataset(metadataViewModel, metadataDataset);
+var migratedLine = metadataViewModel.ForecastLines.Single(line => line.TaskNumber == "RAW-001");
+var fallbackLine = metadataViewModel.ForecastLines.Single(line => line.TaskNumber == "MAN-001");
+AssertEqual("Legacy Category", migratedLine.ReportingCategoryOverride, "Legacy ProjectCode migrates into reporting category override");
+AssertEqual("Legacy Category", migratedLine.ReportingCategory, "Row override takes priority over task-name category");
+AssertEqual("Manual task", fallbackLine.ReportingCategory, "Task name is the default reporting category");
+metadataViewModel.SetForecastLineReportingCategory(fallbackLine, "Manual Override");
+AssertEqual("Manual Override", fallbackLine.ReportingCategory, "Typed row category override applies immediately");
+metadataViewModel.DeleteProjectCategory(metadataViewModel.ProjectCategories.Single(category => category.Name == "Manual Override"));
+AssertEqual("Manual task", fallbackLine.ReportingCategory, "Deleting a category clears overrides and falls back to task name");
+metadataViewModel.ProjectTaskCodes.Add(new ProjectTaskCode { SystemCode = "MAN-002", TaskName = "Manual task", IsManualCode = true });
+metadataViewModel.RefreshTaskCategoryMetadata();
+AssertTrue(metadataViewModel.ProjectTaskCodes.Any(task => task.TaskName == "Manual task (1)"), "Duplicate task names get numeric suffixes");
+AssertTrue(!metadataViewModel.ProjectTaskCodes.Single(task => task.SystemCode == "RAW-001").CanEditSystemCode, "Raw task system code is locked");
+AssertTrue(metadataViewModel.ProjectTaskCodes.Single(task => task.SystemCode == "MAN-001").CanEditSystemCode, "Manual task system code remains editable");
+
 var managementSourceLine = viewModel.ForecastLines.Single(line =>
     string.Equals(line.TaskNumber, "WA57102001", StringComparison.OrdinalIgnoreCase)
     && string.Equals(line.ResourceName, "Stanley Drake", StringComparison.OrdinalIgnoreCase));
@@ -885,4 +927,11 @@ static double InvokeForecastWidthMigration(double savedWidth, double currentWidt
 
     return (double)(method.Invoke(null, [column, savedWidth])
         ?? throw new InvalidOperationException("Forecast width migration returned null."));
+}
+
+static void InvokeLoadDataset(MainWindowViewModel viewModel, ProjectDataset dataset)
+{
+    var method = typeof(MainWindowViewModel).GetMethod("LoadDataset", BindingFlags.NonPublic | BindingFlags.Instance)
+        ?? throw new MissingMethodException(typeof(MainWindowViewModel).FullName, "LoadDataset");
+    method.Invoke(viewModel, [dataset, false]);
 }

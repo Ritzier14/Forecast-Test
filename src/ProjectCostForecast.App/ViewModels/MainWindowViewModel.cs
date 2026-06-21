@@ -142,6 +142,8 @@ public sealed partial class MainWindowViewModel : NotifyObject
         _suppressPreferenceSave = true;
 
         ForecastLines = CreateCollection<ForecastLine>();
+        ProjectTaskCodes = CreateCollection<ProjectTaskCode>();
+        ProjectCategories = CreateCollection<ProjectCategory>();
         ManagementResources = CreateCollection<ManagementResource>();
         ManagementResourceAllocationRows = CreateCollection<ManagementResourceTableRow>();
         ManagementResourceHoursRows = CreateCollection<ManagementResourceTableRow>();
@@ -264,6 +266,14 @@ public sealed partial class MainWindowViewModel : NotifyObject
 
     public ProjectHeader Header => _dataset.Header;
     public ObservableCollection<ForecastLine> ForecastLines { get; }
+    public ObservableCollection<ProjectTaskCode> ProjectTaskCodes { get; }
+    public ObservableCollection<ProjectCategory> ProjectCategories { get; }
+    public IReadOnlyList<string> ProjectCategoryNames => ProjectCategories
+        .Select(category => category.Name)
+        .Where(name => !string.IsNullOrWhiteSpace(name))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+        .ToList();
     public ObservableCollection<ManagementResource> ManagementResources { get; }
     public ObservableCollection<ManagementResourceTableRow> ManagementResourceAllocationRows { get; }
     public ObservableCollection<ManagementResourceTableRow> ManagementResourceHoursRows { get; }

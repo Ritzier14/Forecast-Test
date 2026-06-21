@@ -163,6 +163,8 @@ public partial class MainWindow
                 SetSingleCheckedItem(item);
                 GridColumnPresentationState.SetBaseColumnBackground(column, BrushFactory.Frozen(option.ColumnHex));
                 GridColumnPresentationState.SetBaseHeaderBackground(column, BrushFactory.Frozen(option.HeaderHex));
+                GridColumnPresentationState.SetColumnBorderBrush(column, GetColumnBorderBrush(option));
+                GridColumnPresentationState.SetHeaderBorderBrush(column, GetHeaderBorderBrush(option));
                 ApplyColumnHighlightPresentation(column, GridColumnHighlightState.GetIsHighlighted(column));
                 RefreshColumnPresentation(column);
             };
@@ -201,6 +203,7 @@ public partial class MainWindow
                 {
                     GridColumnPresentationState.SetBaseHeaderBackground(targetColumn, targetHeaderBrush);
                     GridColumnPresentationState.SetHeaderColorSpec(targetColumn, targetSpec);
+                    GridColumnPresentationState.SetHeaderBorderBrush(targetColumn, GetHeaderBorderBrush(option));
                     ApplyColumnHighlightPresentation(targetColumn, GridColumnHighlightState.GetIsHighlighted(targetColumn));
                     RefreshColumnPresentation(targetColumn);
                 }
@@ -223,6 +226,7 @@ public partial class MainWindow
                     {
                         GridColumnPresentationState.SetBaseHeaderBackground(targetColumn, brush);
                         GridColumnPresentationState.SetHeaderColorSpec(targetColumn, colorSpec ?? string.Empty);
+                        GridColumnPresentationState.SetHeaderBorderBrush(targetColumn, BrushFactory.Frozen("#D9E2EC"));
                         ApplyColumnHighlightPresentation(targetColumn, GridColumnHighlightState.GetIsHighlighted(targetColumn));
                         RefreshColumnPresentation(targetColumn);
                     }
@@ -230,6 +234,20 @@ public partial class MainWindow
         colourMenu.Items.Add(customItem);
 
         return colourMenu;
+    }
+
+    private static Brush GetColumnBorderBrush(ColumnColourOption option)
+    {
+        return string.Equals(option.Label, "Blue", StringComparison.OrdinalIgnoreCase)
+            ? BrushFactory.Frozen("#9FB9D9")
+            : BrushFactory.Frozen("#D9E2EC");
+    }
+
+    private static Brush GetHeaderBorderBrush(ColumnColourOption option)
+    {
+        return string.Equals(option.Label, "Blue", StringComparison.OrdinalIgnoreCase)
+            ? BrushFactory.Frozen("#8EACD2")
+            : BrushFactory.Frozen("#D9E2EC");
     }
 
     private void AddWindowContextMenuItems(ContextMenu menu, DataGrid grid, MainWindowViewModel? viewModel)

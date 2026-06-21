@@ -67,28 +67,71 @@ public partial class MainWindow
 
     internal void OpenForecastGroupHeaderIconContextMenu(ForecastGroupHeaderPresenter presenter, string groupName, string category)
     {
+        OpenForecastGroupHeaderContextMenu(presenter, groupName, category, includeAppearanceOptions: true, isExpanded: presenter.IsExpanded);
+    }
+
+    internal void OpenForecastGroupHeaderContextMenu(
+        ForecastGroupHeaderPresenter presenter,
+        string groupName,
+        string category,
+        bool includeAppearanceOptions,
+        bool isExpanded)
+    {
         if (DataContext is not MainWindowViewModel viewModel)
         {
             return;
         }
 
         var menu = CreateColumnContextMenu();
-        var changeIcon = new MenuItem { Header = "Change icon" };
-        changeIcon.Click += (_, _) => ExecuteAfterClosingMenu(changeIcon, () =>
-            OpenBuiltInIconPicker(
-                "Group Header Icon",
-                viewModel.GetForecastGroupHeaderIconKey(groupName),
-                viewModel.GetForecastGroupHeaderIconColorHex(groupName),
-                GetDefaultForecastGroupHeaderIconKey(category),
-                null,
-                "Groups",
-                (iconKey, iconColorHex) =>
-                {
-                    viewModel.SetForecastGroupHeaderIcon(groupName, iconKey, iconColorHex);
-                    QueueRefreshForecastGroupHeaderPresenters();
-                }));
-        menu.Items.Add(changeIcon);
-        menu.Items.Add(BuildForecastGroupHeaderColourMenu(viewModel, groupName));
+        var expandGroupItem = new MenuItem
+        {
+            Header = isExpanded ? "Collapse Group" : "Expand Group"
+        };
+        expandGroupItem.Click += (_, _) =>
+        {
+            presenter.SetExpandedState(!isExpanded);
+            CloseContainingMenu(expandGroupItem);
+        };
+        menu.Items.Add(expandGroupItem);
+
+        var expandAll = new MenuItem { Header = "Expand All" };
+        expandAll.Click += (_, _) =>
+        {
+            SetGroupedExpandState(ForecastLinesGrid, true);
+            CloseContainingMenu(expandAll);
+        };
+        menu.Items.Add(expandAll);
+
+        var collapseAll = new MenuItem { Header = "Collapse All" };
+        collapseAll.Click += (_, _) =>
+        {
+            SetGroupedExpandState(ForecastLinesGrid, false);
+            CloseContainingMenu(collapseAll);
+        };
+        menu.Items.Add(collapseAll);
+
+        if (includeAppearanceOptions)
+        {
+            menu.Items.Add(new Separator());
+
+            var changeIcon = new MenuItem { Header = "Change icon" };
+            changeIcon.Click += (_, _) => ExecuteAfterClosingMenu(changeIcon, () =>
+                OpenBuiltInIconPicker(
+                    "Group Header Icon",
+                    viewModel.GetForecastGroupHeaderIconKey(groupName),
+                    viewModel.GetForecastGroupHeaderIconColorHex(groupName),
+                    GetDefaultForecastGroupHeaderIconKey(category),
+                    null,
+                    "Groups",
+                    (iconKey, iconColorHex) =>
+                    {
+                        viewModel.SetForecastGroupHeaderIcon(groupName, iconKey, iconColorHex);
+                        QueueRefreshForecastGroupHeaderPresenters();
+                    }));
+            menu.Items.Add(changeIcon);
+            menu.Items.Add(BuildForecastGroupHeaderColourMenu(viewModel, groupName));
+        }
+
         ApplyMenuIcons(menu);
         menu.PlacementTarget = presenter;
         menu.Placement = PlacementMode.MousePoint;

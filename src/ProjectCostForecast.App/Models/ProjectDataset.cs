@@ -9,6 +9,8 @@ public sealed class ProjectDataset
     public List<ForecastPeriod> ForecastPeriods { get; set; } = [];
     public List<FiscalYearBudget> FiscalYearBudgets { get; set; } = [];
     public List<ForecastLine> ForecastLines { get; set; } = [];
+    public List<ProjectTaskCode> ProjectTaskCodes { get; set; } = [];
+    public List<ProjectCategory> ProjectCategories { get; set; } = [];
     public List<ManagementResource> ManagementResources { get; set; } = [];
     public List<CostTransaction> Transactions { get; set; } = [];
     public List<UnmatchedImportCombination> UnmatchedImportCombinations { get; set; } = [];
@@ -28,6 +30,40 @@ public sealed class ProjectDataset
     public List<int> SelectedCtcMonthForecastYears { get; set; } = [];
     public bool ShowCtcMonthForecastYearTotals { get; set; }
     public ScheduleData Schedule { get; set; } = new();
+}
+
+public sealed class ProjectTaskCode : ObservableModel
+{
+    private string _systemCode = string.Empty;
+    private string _taskName = string.Empty;
+    private string _iconKey = string.Empty;
+    private string _iconColorHex = string.Empty;
+
+    public string SystemCode { get => _systemCode; set => SetProperty(ref _systemCode, value?.Trim() ?? string.Empty); }
+    public string TaskName { get => _taskName; set => SetProperty(ref _taskName, value?.Trim() ?? string.Empty); }
+    public bool IsRawDataCode { get; set; }
+    public bool IsManualCode { get; set; }
+    public int DisplayOrder { get; set; }
+    public string IconKey { get => _iconKey; set => SetProperty(ref _iconKey, value?.Trim() ?? string.Empty); }
+    public string IconColorHex { get => _iconColorHex; set => SetProperty(ref _iconColorHex, value?.Trim() ?? string.Empty); }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool CanEditSystemCode => !IsRawDataCode;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool CanDelete => !IsRawDataCode;
+}
+
+public sealed class ProjectCategory : ObservableModel
+{
+    private string _name = string.Empty;
+    private string _colorHex = string.Empty;
+    private string _iconKey = string.Empty;
+
+    public string Name { get => _name; set => SetProperty(ref _name, value?.Trim() ?? string.Empty); }
+    public string ColorHex { get => _colorHex; set => SetProperty(ref _colorHex, value?.Trim() ?? string.Empty); }
+    public string IconKey { get => _iconKey; set => SetProperty(ref _iconKey, value?.Trim() ?? string.Empty); }
+    public int DisplayOrder { get; set; }
 }
 
 public sealed class ProjectHeader

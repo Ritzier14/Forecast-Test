@@ -42,6 +42,20 @@ public static class GridColumnPresentationState
             typeof(GridColumnPresentationState),
             new FrameworkPropertyMetadata(null));
 
+    public static readonly DependencyProperty ColumnBorderBrushProperty =
+        DependencyProperty.RegisterAttached(
+            "ColumnBorderBrush",
+            typeof(Brush),
+            typeof(GridColumnPresentationState),
+            new FrameworkPropertyMetadata(Brushes.Transparent));
+
+    public static readonly DependencyProperty HeaderBorderBrushProperty =
+        DependencyProperty.RegisterAttached(
+            "HeaderBorderBrush",
+            typeof(Brush),
+            typeof(GridColumnPresentationState),
+            new FrameworkPropertyMetadata(Brushes.Transparent));
+
     public static readonly DependencyProperty HeaderColorSpecProperty =
         DependencyProperty.RegisterAttached(
             "HeaderColorSpec",
@@ -68,6 +82,14 @@ public static class GridColumnPresentationState
     public static Brush? GetBaseHeaderBackground(DependencyObject element) => element.GetValue(BaseHeaderBackgroundProperty) as Brush;
 
     public static void SetBaseHeaderBackground(DependencyObject element, Brush value) => element.SetValue(BaseHeaderBackgroundProperty, value);
+
+    public static Brush GetColumnBorderBrush(DependencyObject element) => (Brush)element.GetValue(ColumnBorderBrushProperty);
+
+    public static void SetColumnBorderBrush(DependencyObject element, Brush value) => element.SetValue(ColumnBorderBrushProperty, value);
+
+    public static Brush GetHeaderBorderBrush(DependencyObject element) => (Brush)element.GetValue(HeaderBorderBrushProperty);
+
+    public static void SetHeaderBorderBrush(DependencyObject element, Brush value) => element.SetValue(HeaderBorderBrushProperty, value);
 
     public static string GetHeaderColorSpec(DependencyObject element) => (string)element.GetValue(HeaderColorSpecProperty);
 

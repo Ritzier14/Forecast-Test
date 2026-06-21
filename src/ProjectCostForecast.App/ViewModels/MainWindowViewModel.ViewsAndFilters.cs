@@ -204,7 +204,8 @@ public sealed partial class MainWindowViewModel
         var term = GetNormalisedSearchTerm();
         return CalculationService.Normalise(line.TaskNumber).Contains(term, StringComparison.OrdinalIgnoreCase)
             || CalculationService.Normalise(line.ResourceName).Contains(term, StringComparison.OrdinalIgnoreCase)
-            || CalculationService.Normalise(line.ProjectCode).Contains(term, StringComparison.OrdinalIgnoreCase);
+            || CalculationService.Normalise(line.ProjectCode).Contains(term, StringComparison.OrdinalIgnoreCase)
+            || CalculationService.Normalise(line.ReportingCategory).Contains(term, StringComparison.OrdinalIgnoreCase);
     }
 
     private bool FilterTransaction(object item)
@@ -382,7 +383,7 @@ public sealed partial class MainWindowViewModel
                     ForecastLinesView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ForecastLine.ResourceName)));
                     break;
                 case ForecastGroupByCategoryKey:
-                    ForecastLinesView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ForecastLine.ProjectCode)));
+                    ForecastLinesView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ForecastLine.ReportingCategory)));
                     break;
             }
         }

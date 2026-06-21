@@ -429,8 +429,9 @@ public sealed partial class MainWindowViewModel
         {
             RowNumber = ForecastLines.Any() ? ForecastLines.Max(item => item.RowNumber) + 1 : 1,
             TaskNumber = anchor?.TaskNumber ?? string.Empty,
-            ResourceName = "New line",
-            ProjectCode = anchor?.ProjectCode ?? "Unassigned",
+            ResourceName = anchor is null ? string.Empty : "New line",
+            ProjectCode = anchor?.ProjectCode ?? string.Empty,
+            ReportingCategoryOverride = anchor?.ReportingCategoryOverride ?? anchor?.ReportingCategory ?? string.Empty,
             Budget = 0,
             IsManuallyAdded = true
         };
@@ -450,6 +451,7 @@ public sealed partial class MainWindowViewModel
         var anchorIndex = anchor is null ? -1 : ForecastLines.IndexOf(anchor);
         var insertIndex = anchorIndex < 0 ? ForecastLines.Count : anchorIndex + (below ? 1 : 0);
         ForecastLines.Insert(insertIndex, line);
+        InitializeTaskCategoryMetadata();
 
         AddAuditEvent("ForecastLine", line.RowNumber.ToString(), "Created", string.Empty, line.ResourceName, below ? "Added line below" : "Added line above");
         ApplyForecastPeriodLockStates();

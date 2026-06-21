@@ -343,6 +343,12 @@ public sealed partial class MainWindowViewModel
     private void SyncDatasetFromCollections()
     {
         _dataset.ForecastLines = ForecastLines.ToList();
+        _dataset.ProjectTaskCodes = ProjectTaskCodes
+            .OrderBy(task => task.DisplayOrder)
+            .ToList();
+        _dataset.ProjectCategories = ProjectCategories
+            .OrderBy(category => category.DisplayOrder)
+            .ToList();
         _dataset.ManagementResources = ManagementResources.ToList();
         _dataset.Transactions = Transactions.ToList();
         _dataset.CategorySummaries = CategorySummaries.ToList();

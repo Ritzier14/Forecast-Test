@@ -218,11 +218,28 @@ public partial class MainWindow
             _detailWorkspaceExpandedWidth = DetailWorkspaceColumn.Width;
         }
 
+        DetailWorkspaceShell.Visibility = Visibility.Collapsed;
+        CollapsedDetailWorkspaceHost.Visibility = Visibility.Visible;
         DetailWorkspacePanel.Visibility = Visibility.Collapsed;
+        DetailWorkspaceShell.Background = Brushes.Transparent;
+        DetailWorkspaceShell.BorderBrush = Brushes.Transparent;
+        DetailWorkspaceShell.BorderThickness = new Thickness(0);
+        DetailWorkspaceShell.Padding = new Thickness(0);
+        DetailWorkspaceShell.CornerRadius = new CornerRadius(0);
+        DetailWorkspaceRail.Margin = new Thickness(0);
+        DetailWorkspaceRail.Background = Brushes.Transparent;
+        DetailWorkspaceRail.BorderBrush = Brushes.Transparent;
+        DetailWorkspaceRail.BorderThickness = new Thickness(0);
+        DetailWorkspaceRail.CornerRadius = new CornerRadius(0);
+        DetailWorkspaceRail.Padding = new Thickness(0);
+        DetailWorkspaceRail.Width = 32;
+        DetailWorkspaceCollapsedTab.Background = BrushFactory.Frozen("#F8FAFC");
+        DetailWorkspaceCollapsedTab.BorderBrush = BrushFactory.Frozen("#D7E0EA");
+        DetailWorkspaceCollapsedTab.BorderThickness = new Thickness(1);
         WorkspaceGridSplitter.Visibility = Visibility.Collapsed;
         WorkspaceSplitterColumn.Width = new GridLength(0);
         DetailWorkspaceContentColumn.Width = new GridLength(0);
-        DetailWorkspaceColumn.Width = new GridLength(68);
+        DetailWorkspaceColumn.Width = new GridLength(40);
         if (DataContext is MainWindowViewModel viewModel)
         {
             viewModel.SetDetailPanelCollapsed(true);
@@ -231,7 +248,24 @@ public partial class MainWindow
 
     private void ExpandDetailWorkspacePanel()
     {
+        DetailWorkspaceShell.Visibility = Visibility.Visible;
+        CollapsedDetailWorkspaceHost.Visibility = Visibility.Collapsed;
         DetailWorkspacePanel.Visibility = Visibility.Visible;
+        DetailWorkspaceShell.Background = BrushFactory.Frozen("#F8FAFD");
+        DetailWorkspaceShell.BorderBrush = BrushFactory.Frozen("#DCE4EE");
+        DetailWorkspaceShell.BorderThickness = new Thickness(1);
+        DetailWorkspaceShell.Padding = new Thickness(8);
+        DetailWorkspaceShell.CornerRadius = new CornerRadius(14);
+        DetailWorkspaceRail.Margin = new Thickness(8, 0, 0, 0);
+        DetailWorkspaceRail.Background = BrushFactory.Frozen("#FCFCFD");
+        DetailWorkspaceRail.BorderBrush = BrushFactory.Frozen("#DCE4EE");
+        DetailWorkspaceRail.BorderThickness = new Thickness(1);
+        DetailWorkspaceRail.CornerRadius = new CornerRadius(12);
+        DetailWorkspaceRail.Padding = new Thickness(5);
+        DetailWorkspaceRail.Width = 52;
+        DetailWorkspaceCollapsedTab.Background = BrushFactory.Frozen("#F8FAFC");
+        DetailWorkspaceCollapsedTab.BorderBrush = BrushFactory.Frozen("#D7E0EA");
+        DetailWorkspaceCollapsedTab.BorderThickness = new Thickness(1);
         WorkspaceGridSplitter.Visibility = Visibility.Visible;
         DetailWorkspaceContentColumn.Width = new GridLength(1, GridUnitType.Star);
         WorkspaceSplitterColumn.Width = new GridLength(12);

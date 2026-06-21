@@ -28,12 +28,15 @@ public sealed partial class MainWindowViewModel
         _dataset.ForecastCalendarYearHeaderColorHexes ??= new(StringComparer.OrdinalIgnoreCase);
         _dataset.ForecastFiscalYearHeaderColorHexes ??= new(StringComparer.OrdinalIgnoreCase);
         _dataset.ForecastGroupHeaderColorHexes ??= new(StringComparer.OrdinalIgnoreCase);
+        _dataset.ProjectTaskCodes ??= [];
+        _dataset.ProjectCategories ??= [];
         InitializeWorkspaceViews(_dataset.WorkspaceViews);
         RefreshCurrentWorkspaceViews();
         foreach (var line in _dataset.ForecastLines)
         {
             line.EnsureResourceCommentMetrics();
         }
+        InitializeTaskCategoryMetadata();
         ApplyClosedForecastPeriodRule();
         _calculationService.Recalculate(_dataset);
 

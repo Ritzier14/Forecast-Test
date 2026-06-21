@@ -102,7 +102,13 @@ public sealed class CalculationService
     public List<CategorySummary> RecalculateCategorySummaries(IEnumerable<ForecastLine> forecastLines)
     {
         return forecastLines
-            .GroupBy(line => line.ProjectCode)
+            .GroupBy(line =>
+            {
+                var reportingCategory = Normalise(line.ReportingCategory);
+                return string.IsNullOrWhiteSpace(reportingCategory)
+                    ? Normalise(line.ProjectCode)
+                    : reportingCategory;
+            })
             .Where(group => !string.IsNullOrWhiteSpace(group.Key))
             .Select(group => new CategorySummary
             {

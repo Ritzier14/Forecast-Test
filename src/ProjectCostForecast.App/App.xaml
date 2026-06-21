@@ -374,15 +374,17 @@
                         <Grid SnapsToDevicePixels="True">
                             <Border x:Name="HeaderBackground"
                                     Background="{Binding Column.(models:GridColumnPresentationState.HeaderBackground), RelativeSource={RelativeSource TemplatedParent}}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderBrush="{Binding Column.(models:GridColumnPresentationState.HeaderBorderBrush), RelativeSource={RelativeSource TemplatedParent}}"
                                     BorderThickness="{TemplateBinding BorderThickness}" />
                             <Border x:Name="HeaderHoverOverlay"
                                     Background="#4DDDE8F7"
+                                    BorderBrush="{Binding Column.(models:GridColumnPresentationState.HeaderBorderBrush), RelativeSource={RelativeSource TemplatedParent}}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     Visibility="Collapsed"
                                     IsHitTestVisible="False" />
                             <Border x:Name="HeaderSortOverlay"
                                     Background="#4DD8E6F8"
+                                    BorderBrush="{Binding Column.(models:GridColumnPresentationState.HeaderBorderBrush), RelativeSource={RelativeSource TemplatedParent}}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     Visibility="Collapsed"
                                     IsHitTestVisible="False" />
@@ -521,7 +523,7 @@
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
-                            <Border BorderBrush="{TemplateBinding BorderBrush}"
+                            <Border BorderBrush="{Binding Column.(models:GridColumnPresentationState.ColumnBorderBrush), RelativeSource={RelativeSource TemplatedParent}}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     IsHitTestVisible="False" />
                         </Grid>
@@ -541,12 +543,6 @@
                             </DataTrigger>
                             <Trigger Property="models:GridSelectionVisualState.IsCurrentRow" Value="True">
                                 <Setter TargetName="CurrentRowFill" Property="Visibility" Value="Visible" />
-                            </Trigger>
-                            <Trigger Property="models:GridSelectionVisualState.IsReadOnlyCell" Value="True">
-                                <Setter TargetName="ReadOnlyOverlay" Property="Visibility" Value="Visible" />
-                            </Trigger>
-                            <Trigger Property="models:GridSelectionVisualState.IsCalculatedCell" Value="True">
-                                <Setter TargetName="CalculatedOverlay" Property="Visibility" Value="Visible" />
                             </Trigger>
                             <Trigger Property="models:GridSelectionVisualState.IsLockedCell" Value="True">
                                 <Setter TargetName="LockedOverlay" Property="Visibility" Value="Visible" />

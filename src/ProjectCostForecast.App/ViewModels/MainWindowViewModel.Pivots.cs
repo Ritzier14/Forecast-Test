@@ -56,7 +56,7 @@ public sealed partial class MainWindowViewModel
             {
                 TaskNumber = line.TaskNumber,
                 ResourceName = line.ResourceName,
-                ProjectCode = line.ProjectCode
+                ProjectCode = line.ReportingCategory
             })
             .Where(row => row.Total != 0)
             .OrderBy(row => row.TaskNumber)
@@ -66,8 +66,8 @@ public sealed partial class MainWindowViewModel
         ReplaceCollection(ActualsMonthlyPivotRows, actualRows);
         ReplaceCollection(ForecastMonthlyPivotRows, forecastRows);
         ReplaceCollection(CategoryMonthlyPivotRows, ForecastLines
-            .Where(line => !string.IsNullOrWhiteSpace(line.ProjectCode))
-            .GroupBy(line => line.ProjectCode, StringComparer.OrdinalIgnoreCase)
+            .Where(line => !string.IsNullOrWhiteSpace(line.ReportingCategory))
+            .GroupBy(line => line.ReportingCategory, StringComparer.OrdinalIgnoreCase)
             .Select(group => new MonthlyPivotRow(group
                 .SelectMany(line => line.MonthlyForecasts)
                 .Where(forecast => !string.IsNullOrWhiteSpace(forecast.PeriodLabel))

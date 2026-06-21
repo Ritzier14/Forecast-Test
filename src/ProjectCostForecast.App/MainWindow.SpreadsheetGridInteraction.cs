@@ -1005,6 +1005,21 @@ public partial class MainWindow
                 };
                 deleteLine.Click += (_, _) => viewModel.DeleteForecastLine(forecastLine);
                 menu.Items.Add(deleteLine);
+
+                if (string.Equals(cell.Column.Header?.ToString(), "Task", StringComparison.OrdinalIgnoreCase))
+                {
+                    menu.Items.Add(new Separator());
+                    var editTasks = new MenuItem { Header = "Edit project task codes" };
+                    editTasks.Click += (_, _) => OpenTaskCategoryEditor(TaskCategoryEditorTab.TaskCodes);
+                    menu.Items.Add(editTasks);
+                }
+                else if (string.Equals(cell.Column.Header?.ToString(), "Category", StringComparison.OrdinalIgnoreCase))
+                {
+                    menu.Items.Add(new Separator());
+                    var editCategories = new MenuItem { Header = "Edit categories" };
+                    editCategories.Click += (_, _) => OpenTaskCategoryEditor(TaskCategoryEditorTab.Categories);
+                    menu.Items.Add(editCategories);
+                }
             }
 
             if (ReferenceEquals(grid, LedgerTransactionsGrid) || ReferenceEquals(grid, LedgerMonthlyPivotGrid))
@@ -1025,6 +1040,24 @@ public partial class MainWindow
         }
 
         return menu;
+    }
+
+    private void OpenTaskCategoryEditor(TaskCategoryEditorTab initialTab)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var window = new TaskCategoryEditorWindow(viewModel, initialTab)
+        {
+            Owner = this
+        };
+        if (window.ShowDialog() == true)
+        {
+            QueueRefreshForecastGroupHeaderPresenters();
+            QueueSpreadsheetSelectionUpdate(ForecastLinesGrid, refreshAllVisuals: true);
+        }
     }
 
     private void OpenManualForecastCommentEditor(ForecastLine line)
@@ -1174,6 +1207,7 @@ public partial class MainWindow
                 return;
             }
 
+            SelectGridRowContext(ForecastLinesGrid, line);
             ForecastLinesGrid.ScrollIntoView(line);
             ForecastLinesGrid.UpdateLayout();
             var info = new DataGridCellInfo(line, resourceColumn);

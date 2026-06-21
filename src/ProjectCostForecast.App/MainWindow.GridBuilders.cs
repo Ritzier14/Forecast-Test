@@ -213,8 +213,7 @@ public partial class MainWindow
         ForecastYearBandCanvas.Width = ForecastGridHost.ActualWidth;
         ForecastYearBandCanvas.Height = ForecastYearBandHeight;
         ForecastYearBandCanvas.Visibility = Visibility.Visible;
-        var visibleForecastGridHeight = GetForecastVisibleGridHeight();
-        var overlayContentHeight = ForecastYearBandHeight + ForecastLinesGrid.ColumnHeaderHeight + visibleForecastGridHeight;
+        var overlayContentHeight = GetForecastOverlayBottomY();
         ForecastFreezeBoundaryCanvas.Width = ForecastGridHost.ActualWidth;
         ForecastFreezeBoundaryCanvas.Height = overlayContentHeight;
         ForecastFreezeBoundaryCanvas.Visibility = Visibility.Visible;
@@ -339,17 +338,20 @@ public partial class MainWindow
             && boundaryX >= 0
             && boundaryX <= ForecastGridHost.ActualWidth)
         {
-            var fullHeightFreezeLine = new Rectangle
+            var freezeLineLeft = Math.Round(boundaryX - 2, MidpointRounding.AwayFromZero);
+            var freezeLine = new Rectangle
             {
                 Width = 4,
-                Height = gridGuideHeight + 1,
+                Height = Math.Max(0, gridGuideHeight),
                 Fill = BrushFactory.Frozen(0x25, 0x63, 0xEB),
+                SnapsToDevicePixels = true,
                 IsHitTestVisible = false
             };
 
-            Canvas.SetLeft(fullHeightFreezeLine, boundaryX - 2);
-            Canvas.SetTop(fullHeightFreezeLine, -1);
-            ForecastFreezeBoundaryCanvas.Children.Add(fullHeightFreezeLine);
+            Canvas.SetLeft(freezeLine, freezeLineLeft);
+            Canvas.SetTop(freezeLine, 0);
+            Panel.SetZIndex(freezeLine, 50);
+            ForecastFreezeBoundaryCanvas.Children.Add(freezeLine);
 
             var label = new Border
             {
@@ -366,23 +368,40 @@ public partial class MainWindow
                 }
             };
 
-            Canvas.SetLeft(label, Math.Max(0, boundaryX + 6));
+            Canvas.SetLeft(label, Math.Max(0, Math.Round(boundaryX, MidpointRounding.AwayFromZero) + 6));
             Canvas.SetTop(label, 2);
-            ForecastYearBandCanvas.Children.Add(label);
+            Panel.SetZIndex(label, 60);
+            ForecastFreezeBoundaryCanvas.Children.Add(label);
         }
 
         return true;
     }
 
-    private double GetForecastVisibleGridHeight()
+    private double GetForecastOverlayBottomY()
     {
-        var scrollViewer = _forecastGridScrollViewer ??= FindChild<ScrollViewer>(ForecastLinesGrid);
-        if (scrollViewer is not null && scrollViewer.ViewportHeight > 0)
+        var horizontalScrollBar = FindChildren<ScrollBar>(ForecastLinesGrid)
+            .FirstOrDefault(scrollBar => scrollBar.Orientation == Orientation.Horizontal && scrollBar.IsVisible);
+        var bottomElement = horizontalScrollBar as FrameworkElement
+            ?? ForecastAddRowStrip as FrameworkElement
+            ?? FindChild<ScrollContentPresenter>(ForecastLinesGrid) as FrameworkElement;
+
+        if (bottomElement is not null)
         {
-            return scrollViewer.ViewportHeight;
+            try
+            {
+                var top = bottomElement.TransformToAncestor(ForecastGridHost).Transform(new Point(0, 0)).Y;
+                if (top > 0)
+                {
+                    return Math.Max(ForecastYearBandHeight, Math.Min(ForecastGridHost.ActualHeight, top));
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Fall through to a conservative host-height calculation while layout settles.
+            }
         }
 
-        return Math.Max(0, ForecastLinesGrid.ActualHeight);
+        return Math.Max(0, ForecastGridHost.ActualHeight);
     }
 
     private void QueueRebuildForecastYearBands()
@@ -593,8 +612,8 @@ public partial class MainWindow
 
         grid.Columns.Add(CreateManualLineIndicatorColumn());
         AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("Task", nameof(ForecastLine.TaskNumber), 110, numeric: false, leftPadding: 33), 90), MainWindowViewModel.ForecastFreezeTaskKey);
-        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateEditableTextColumn("Resource", nameof(ForecastLine.ResourceName), 220), 140), MainWindowViewModel.ForecastFreezeResourceKey);
-        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("Category", nameof(ForecastLine.ProjectCode), 160, numeric: false), 110), MainWindowViewModel.ForecastFreezeCategoryKey);
+        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateEditableTextColumn("Resource", nameof(ForecastLine.ResourceName), 220, leftPadding: 33), 140), MainWindowViewModel.ForecastFreezeResourceKey);
+        AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateForecastCategoryColumn(160), 110), MainWindowViewModel.ForecastFreezeCategoryKey);
         AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("CTD", BuildAccountingBinding(nameof(ForecastLine.CostToDateSummary), showCurrency: viewModel.ShowCurrencySymbols), 90), 72), MainWindowViewModel.ForecastFreezeCostToDateKey);
         AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("Month Cost", BuildAccountingBinding(nameof(ForecastLine.CurrentMonthCost), showCurrency: viewModel.ShowCurrencySymbols), 95), 78), MainWindowViewModel.ForecastFreezeMonthCostKey);
         AddForecastGridColumn(grid, freezeCandidates, ApplyMinimumWidth(CreateReadOnlyTextColumn("Last Forecast", BuildAccountingBinding(nameof(ForecastLine.LastMonthForecast), showCurrency: viewModel.ShowCurrencySymbols), 105), 84), MainWindowViewModel.ForecastFreezeLastForecastKey);
@@ -911,7 +930,7 @@ public partial class MainWindow
         };
     }
 
-    private static DataGridTextColumn CreateEditableTextColumn(string header, string path, double width)
+    private static DataGridTextColumn CreateEditableTextColumn(string header, string path, double width, double leftPadding = 4)
     {
         return new DataGridTextColumn
         {
@@ -923,8 +942,8 @@ public partial class MainWindow
             },
             Width = width,
             IsReadOnly = false,
-            ElementStyle = CreatePlainTextStyle(),
-            EditingElementStyle = CreateEditingTextStyle()
+            ElementStyle = CreatePlainTextStyle(leftPadding),
+            EditingElementStyle = CreateEditingTextStyle(leftPadding)
         };
     }
 
@@ -962,11 +981,11 @@ public partial class MainWindow
         return style;
     }
 
-    private static Style CreateEditingTextStyle()
+    private static Style CreateEditingTextStyle(double leftPadding = 6)
     {
         var style = new Style(typeof(TextBox));
         style.Setters.Add(new Setter(Control.FontSizeProperty, 11.0));
-        style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(6, 2, 6, 2)));
+        style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(leftPadding, 2, 6, 2)));
         style.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
         return style;
     }
@@ -1003,11 +1022,59 @@ public partial class MainWindow
     {
         if (e.EditAction == DataGridEditAction.Commit
             && e.Column?.Header is string header
-            && string.Equals(header, "Resource", StringComparison.Ordinal)
             && DataContext is MainWindowViewModel viewModel)
         {
-            Dispatcher.BeginInvoke(() => viewModel.RecalculateCommand.Execute(null), DispatcherPriority.Background);
+            if (string.Equals(header, "Resource", StringComparison.Ordinal))
+            {
+                Dispatcher.BeginInvoke(() => viewModel.RecalculateCommand.Execute(null), DispatcherPriority.Background);
+            }
+            else if (string.Equals(header, "Category", StringComparison.Ordinal)
+                && e.Row.Item is ForecastLine line)
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    viewModel.EnsureProjectCategory(line.ReportingCategory);
+                    viewModel.RefreshTaskCategoryMetadata();
+                    QueueRefreshForecastGroupHeaderPresenters();
+                }, DispatcherPriority.Background);
+            }
         }
+    }
+
+    private static DataGridTemplateColumn CreateForecastCategoryColumn(double width)
+    {
+        var displayFactory = new FrameworkElementFactory(typeof(TextBlock));
+        displayFactory.SetBinding(TextBlock.TextProperty, new Binding(nameof(ForecastLine.ReportingCategory)));
+        displayFactory.SetValue(TextBlock.FontSizeProperty, 11.0);
+        displayFactory.SetValue(TextBlock.PaddingProperty, new Thickness(33, 2, 6, 2));
+        displayFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        displayFactory.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
+
+        var editorFactory = new FrameworkElementFactory(typeof(ComboBox));
+        editorFactory.SetValue(ComboBox.IsEditableProperty, true);
+        editorFactory.SetValue(ComboBox.StaysOpenOnEditProperty, true);
+        editorFactory.SetValue(Control.FontSizeProperty, 11.0);
+        editorFactory.SetValue(Control.PaddingProperty, new Thickness(29, 0, 4, 0));
+        editorFactory.SetValue(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center);
+        editorFactory.SetBinding(ItemsControl.ItemsSourceProperty, new Binding("DataContext.ProjectCategoryNames")
+        {
+            RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(DataGrid), 1)
+        });
+        editorFactory.SetBinding(ComboBox.TextProperty, new Binding(nameof(ForecastLine.ReportingCategory))
+        {
+            Mode = BindingMode.TwoWay,
+            UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+        });
+
+        return new DataGridTemplateColumn
+        {
+            Header = "Category",
+            Width = width,
+            IsReadOnly = false,
+            SortMemberPath = nameof(ForecastLine.ReportingCategory),
+            CellTemplate = new DataTemplate { VisualTree = displayFactory },
+            CellEditingTemplate = new DataTemplate { VisualTree = editorFactory }
+        };
     }
 
     private DataGridTemplateColumn CreateSelectableReadOnlyTextColumn(string header, string path, double width, double leftPadding = 4)
@@ -1637,6 +1704,18 @@ public partial class MainWindow
         if (GridColumnPresentationState.GetBaseHeaderBackground(column) is null)
         {
             GridColumnPresentationState.SetBaseHeaderBackground(column, GridColumnPresentationState.GetHeaderBackground(column));
+        }
+
+        if (GridColumnPresentationState.GetColumnBorderBrush(column) is null
+            || ReferenceEquals(GridColumnPresentationState.GetColumnBorderBrush(column), Brushes.Transparent))
+        {
+            GridColumnPresentationState.SetColumnBorderBrush(column, BrushFactory.Frozen("#D9E2EC"));
+        }
+
+        if (GridColumnPresentationState.GetHeaderBorderBrush(column) is null
+            || ReferenceEquals(GridColumnPresentationState.GetHeaderBorderBrush(column), Brushes.Transparent))
+        {
+            GridColumnPresentationState.SetHeaderBorderBrush(column, BrushFactory.Frozen("#D9E2EC"));
         }
     }
 

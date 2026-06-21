@@ -20,6 +20,16 @@ namespace ProjectCostForecast.App;
 
 public partial class MainWindow
 {
+    private void AddForecastRowButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        BeginEditingForecastResourceCell(viewModel.InsertForecastLine(null, below: true));
+    }
+
     private void ForecastLinesGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is not DependencyObject source)

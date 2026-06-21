@@ -42,8 +42,8 @@ public sealed partial class MainWindowViewModel
         });
 
         var categoryGroups = ForecastLines
-            .Where(line => !string.IsNullOrWhiteSpace(line.ProjectCode))
-            .GroupBy(line => line.ProjectCode)
+            .Where(line => !string.IsNullOrWhiteSpace(line.ReportingCategory))
+            .GroupBy(line => line.ReportingCategory)
             .OrderBy(group => group.Key)
             .Select(group =>
             {

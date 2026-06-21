@@ -18,13 +18,41 @@ public sealed class ForecastLine : ObservableModel
     private decimal _totalBudgetVariance;
     private string _manualAllMonthComment = string.Empty;
     private bool _useManualAllMonthComment;
+    private string _reportingCategoryOverride = string.Empty;
+    private string _taskName = string.Empty;
+    private string _reportingCategory = string.Empty;
 
     public int RowNumber { get; set; }
     public string TaskNumber { get; set; } = string.Empty;
     public string ResourceName { get; set; } = string.Empty;
     public string ProjectCode { get; set; } = string.Empty;
+    public string ReportingCategoryOverride
+    {
+        get => _reportingCategoryOverride;
+        set => SetProperty(ref _reportingCategoryOverride, value?.Trim() ?? string.Empty);
+    }
+
     public double FormatGroup { get; set; }
     public bool IsManuallyAdded { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string TaskName
+    {
+        get => _taskName;
+        private set => SetProperty(ref _taskName, value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string ReportingCategory
+    {
+        get => _reportingCategory;
+        set
+        {
+            var next = value?.Trim() ?? string.Empty;
+            ReportingCategoryOverride = next;
+            SetProperty(ref _reportingCategory, next);
+        }
+    }
 
     public decimal CostToDate { get => _costToDate; set => SetProperty(ref _costToDate, value); }
     public decimal TotalBudgetVarianceQuick { get; set; }
@@ -57,6 +85,14 @@ public sealed class ForecastLine : ObservableModel
 
     [System.Text.Json.Serialization.JsonIgnore]
     public bool HasManualAllMonthComment => !string.IsNullOrWhiteSpace(ManualAllMonthComment);
+
+    public void SetResolvedTaskMetadata(string taskName, string reportingCategory)
+    {
+        TaskName = string.IsNullOrWhiteSpace(taskName) ? "Unnamed task" : taskName.Trim();
+        SetProperty(ref _reportingCategory, string.IsNullOrWhiteSpace(reportingCategory)
+            ? TaskName
+            : reportingCategory.Trim(), nameof(ReportingCategory));
+    }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public string AllMonthComments => UseManualAllMonthComment && HasManualAllMonthComment

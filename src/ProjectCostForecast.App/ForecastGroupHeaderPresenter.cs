@@ -153,13 +153,11 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
         ForecastGroupHeaderSummary summary)
     {
         var rect = new Rect(left, 0, width, HeaderHeight);
-        drawingContext.DrawRectangle(palette.Background, null, rect);
-        if (GridColumnHighlightState.GetIsHighlighted(column))
-        {
-            drawingContext.DrawRectangle(HighlightFill, null, rect);
-        }
+        var background = ResolveCellBackground(column, palette.Background);
+        var borderBrush = ResolveCellBorderBrush(column, palette.Border);
+        drawingContext.DrawRectangle(background, null, rect);
 
-        var pen = new Pen(palette.Border, 1);
+        var pen = new Pen(borderBrush, 1);
         pen.Freeze();
         drawingContext.DrawLine(pen, new Point(left + width - 0.5, 0), new Point(left + width - 0.5, HeaderHeight));
         drawingContext.DrawLine(pen, new Point(left, HeaderHeight - 0.5), new Point(left + width, HeaderHeight - 0.5));
@@ -209,6 +207,22 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
         drawingContext.DrawText(formatted, new Point(Math.Max(left + 2, textLeft), (HeaderHeight - formatted.Height) / 2));
     }
 
+    private static Brush ResolveCellBackground(DataGridColumn column, Brush fallback)
+    {
+        var columnBackground = GridColumnPresentationState.GetColumnBackground(column);
+        return columnBackground is SolidColorBrush solid && solid.Color != Colors.White
+            ? columnBackground
+            : fallback;
+    }
+
+    private static Brush ResolveCellBorderBrush(DataGridColumn column, Brush fallback)
+    {
+        var columnBorder = GridColumnPresentationState.GetColumnBorderBrush(column);
+        return columnBorder is SolidColorBrush solid && solid.Color != Colors.Transparent
+            ? columnBorder
+            : fallback;
+    }
+
     private void DrawChevron(DrawingContext drawingContext, double left, double width)
     {
         var centerX = left + (width / 2);
@@ -245,7 +259,8 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
 
         return column.Header?.ToString() switch
         {
-            "Task" => GroupName,
+            "Task" => summary.TaskNumber,
+            "Resource" => summary.TaskName,
             "Category" => summary.Category,
             "CTD" => FormatAmount(summary.CostToDate),
             "Month Cost" => FormatAmount(summary.CurrentMonthCost),
@@ -352,15 +367,29 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
         }
 
         var x = e.GetPosition(this).X;
-        if (!TryGetColumnBounds(IsTaskColumn, out var taskLeft, out var taskWidth)
-            || x < taskLeft
-            || x > taskLeft + taskWidth)
+        var inTaskArea = TryGetColumnBounds(IsTaskColumn, out var taskLeft, out var taskWidth)
+            && x >= taskLeft
+            && x <= taskLeft + taskWidth;
+        _registeredOwner.OpenForecastGroupHeaderContextMenu(
+            this,
+            GroupName,
+            _summary.Category,
+            inTaskArea,
+            IsExpanded);
+        e.Handled = true;
+    }
+
+    public bool IsExpanded => FindAncestor<Expander>(this)?.IsExpanded == true;
+
+    public void SetExpandedState(bool isExpanded)
+    {
+        var expander = FindAncestor<Expander>(this);
+        if (expander is null)
         {
             return;
         }
 
-        _registeredOwner.OpenForecastGroupHeaderIconContextMenu(this, GroupName, _summary.Category);
-        e.Handled = true;
+        expander.IsExpanded = isExpanded;
     }
 
     private bool TryGetColumnBounds(Func<DataGridColumn, bool> predicate, out double left, out double width)
@@ -479,6 +508,9 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
             || propertyName is nameof(ForecastLine.TaskNumber)
                 or nameof(ForecastLine.ResourceName)
                 or nameof(ForecastLine.ProjectCode)
+                or nameof(ForecastLine.TaskName)
+                or nameof(ForecastLine.ReportingCategory)
+                or nameof(ForecastLine.ReportingCategoryOverride)
                 or nameof(ForecastLine.CostToDate)
                 or nameof(ForecastLine.CostToDateSummary)
                 or nameof(ForecastLine.CurrentMonthCost)
@@ -638,6 +670,8 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
 
         private ForecastGroupHeaderSummary(
             int lineCount,
+            string taskNumber,
+            string taskName,
             string category,
             decimal costToDate,
             decimal currentMonthCost,
@@ -650,6 +684,8 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
             Dictionary<string, decimal> monthTotals)
         {
             LineCount = lineCount;
+            TaskNumber = taskNumber;
+            TaskName = taskName;
             Category = category;
             CostToDate = costToDate;
             CurrentMonthCost = currentMonthCost;
@@ -663,6 +699,8 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
         }
 
         public int LineCount { get; }
+        public string TaskNumber { get; }
+        public string TaskName { get; }
         public string Category { get; }
         public decimal CostToDate { get; }
         public decimal CurrentMonthCost { get; }
@@ -716,7 +754,9 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
 
             return new ForecastGroupHeaderSummary(
                 lines.Count,
-                lines.FirstOrDefault()?.ProjectCode ?? string.Empty,
+                lines.FirstOrDefault()?.TaskNumber ?? string.Empty,
+                lines.FirstOrDefault()?.TaskName ?? string.Empty,
+                lines.FirstOrDefault()?.ReportingCategory ?? string.Empty,
                 costToDate,
                 currentMonthCost,
                 lastMonthForecast,
