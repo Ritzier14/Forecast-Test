@@ -501,6 +501,14 @@ AssertEqual(viewModel.Header.CurrentPeriod, viewModel.RawTransactionsMonthlyPivo
 viewModel.SetSelectedWorkspaceContentKey("GroupByMonth");
 AssertTrue(viewModel.ShowRawTransactionsGroupedByMonth, "Raw transactions workspace can switch to group-by-month mode");
 AssertTrue(!viewModel.ShowRawTransactionsPivotByMonth, "Raw transactions group-by-month mode exits pivot mode");
+var pivotBuilderViewModel = new MainWindowViewModel();
+var projectCodePivotField = pivotBuilderViewModel.PivotFields.Single(field => field.Key == "ProjectCode");
+AssertTrue(!pivotBuilderViewModel.TryAddPivotFieldToArea("Filters", projectCodePivotField), "Pivot builder rejects duplicate fields across areas");
+var projectCodeRowField = pivotBuilderViewModel.PivotRowFields.Single(field => field.Key == "ProjectCode");
+AssertTrue(pivotBuilderViewModel.TryMovePivotFieldToArea("Filters", projectCodeRowField), "Pivot builder moves fields between areas");
+AssertTrue(pivotBuilderViewModel.PivotFilterFields.Any(field => field.Key == "ProjectCode"), "Moved pivot field lands in the target area");
+AssertTrue(!pivotBuilderViewModel.PivotRowFields.Any(field => field.Key == "ProjectCode"), "Moved pivot field leaves the source area");
+AssertEqual("Sum of Amount", pivotBuilderViewModel.PivotValueFields.Single(field => field.Key == "Amount").DisplayName, "Pivot value fields default to Sum");
 
 var rawImportPath = Path.Combine(Path.GetTempPath(), $"project-cost-forecast-import-{Guid.NewGuid():N}.csv");
 File.WriteAllText(

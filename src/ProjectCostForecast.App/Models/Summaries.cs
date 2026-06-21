@@ -92,6 +92,10 @@ public sealed class PivotAreaField : ObservableModel
     public string Key { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public bool IsNumeric { get; init; }
+    public string Aggregation { get; init; } = string.Empty;
+    public string DisplayName => string.Equals(Aggregation, "Sum", StringComparison.OrdinalIgnoreCase)
+        ? $"Sum of {Name}"
+        : Name;
     public ObservableCollection<string> FilterValues { get; } = new BatchObservableCollection<string>([PivotBuilderAllFilterValue]);
 
     public string SelectedFilterValue

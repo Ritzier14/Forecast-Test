@@ -1220,12 +1220,14 @@
                                         <DockPanel LastChildFill="True">
                                             <StackPanel DockPanel.Dock="Top">
                                                 <TextBlock Text="PivotTable Fields" FontWeight="SemiBold" FontSize="14" />
-                                                <TextBlock Text="Choose fields and send them to an area." Foreground="{StaticResource MutedTextBrush}" FontSize="11" Margin="0,2,0,8" />
+                                                <TextBlock Text="Drag fields into an area, or use the buttons below." Foreground="{StaticResource MutedTextBrush}" FontSize="11" Margin="0,2,0,8" />
                                                 <ListBox ItemsSource="{Binding PivotFields}"
                                                          SelectedItem="{Binding SelectedPivotField, Mode=TwoWay}"
                                                          DisplayMemberPath="Name"
                                                          Height="150"
-                                                         BorderBrush="{StaticResource SoftBorderBrush}" />
+                                                         BorderBrush="{StaticResource SoftBorderBrush}"
+                                                         PreviewMouseLeftButtonDown="PivotDragList_PreviewMouseLeftButtonDown"
+                                                         PreviewMouseMove="PivotFieldList_PreviewMouseMove" />
                                                 <UniformGrid Columns="2" Margin="0,8,0,12">
                                                     <Button Content="Rows" Command="{Binding AddPivotRowFieldCommand}" Margin="0,0,4,4" />
                                                     <Button Content="Columns" Command="{Binding AddPivotColumnFieldCommand}" Margin="4,0,0,4" />
@@ -1239,19 +1241,17 @@
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="*" />
                                                     <RowDefinition Height="*" />
-                                                    <RowDefinition Height="*" />
-                                                    <RowDefinition Height="*" />
                                                 </Grid.RowDefinitions>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
 
-                                                <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" Background="White" Padding="6" Margin="0,0,0,6">
+                                                <Border Grid.Row="0" Grid.Column="0" Tag="Filters" AllowDrop="True" DragOver="PivotDropArea_DragOver" Drop="PivotDropArea_Drop" BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" Background="White" Padding="6" Margin="0,0,6,6" CornerRadius="8">
                                                     <DockPanel LastChildFill="True">
                                                         <Button DockPanel.Dock="Right" Content="Remove" Command="{Binding RemovePivotFilterFieldCommand}" Padding="6,3" Margin="6,0,0,0" />
                                                         <TextBlock DockPanel.Dock="Top" Text="Filters" Foreground="{StaticResource MutedTextBrush}" FontWeight="SemiBold" Margin="0,0,0,4" />
-                                                        <ListBox ItemsSource="{Binding PivotFilterFields}" SelectedItem="{Binding SelectedPivotFilterField, Mode=TwoWay}" BorderThickness="0">
+                                                        <ListBox ItemsSource="{Binding PivotFilterFields}" SelectedItem="{Binding SelectedPivotFilterField, Mode=TwoWay}" BorderThickness="0" Background="Transparent" PreviewMouseLeftButtonDown="PivotDragList_PreviewMouseLeftButtonDown" PreviewMouseMove="PivotAreaList_PreviewMouseMove">
                                                             <ListBox.ItemTemplate>
                                                                 <DataTemplate>
                                                                     <Grid Margin="0,0,0,4">
@@ -1268,25 +1268,25 @@
                                                     </DockPanel>
                                                 </Border>
 
-                                                <Border Grid.Row="1" Grid.Column="0" BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" Background="White" Padding="6" Margin="0,0,6,6">
-                                                    <DockPanel LastChildFill="True">
-                                                        <Button DockPanel.Dock="Bottom" Content="Remove" Command="{Binding RemovePivotRowFieldCommand}" Padding="6,3" Margin="0,6,0,0" />
-                                                        <TextBlock DockPanel.Dock="Top" Text="Rows" Foreground="{StaticResource MutedTextBrush}" FontWeight="SemiBold" />
-                                                        <ListBox ItemsSource="{Binding PivotRowFields}" SelectedItem="{Binding SelectedPivotRowField, Mode=TwoWay}" DisplayMemberPath="Name" BorderThickness="0" />
-                                                    </DockPanel>
-                                                </Border>
-                                                <Border Grid.Row="1" Grid.Column="1" BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" Background="White" Padding="6" Margin="0,0,0,6">
+                                                <Border Grid.Row="0" Grid.Column="1" Tag="Columns" AllowDrop="True" DragOver="PivotDropArea_DragOver" Drop="PivotDropArea_Drop" BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" Background="White" Padding="6" Margin="0,0,0,6" CornerRadius="8">
                                                     <DockPanel LastChildFill="True">
                                                         <Button DockPanel.Dock="Bottom" Content="Remove" Command="{Binding RemovePivotColumnFieldCommand}" Padding="6,3" Margin="0,6,0,0" />
                                                         <TextBlock DockPanel.Dock="Top" Text="Columns" Foreground="{StaticResource MutedTextBrush}" FontWeight="SemiBold" />
-                                                        <ListBox ItemsSource="{Binding PivotColumnFields}" SelectedItem="{Binding SelectedPivotColumnField, Mode=TwoWay}" DisplayMemberPath="Name" BorderThickness="0" />
+                                                        <ListBox ItemsSource="{Binding PivotColumnFields}" SelectedItem="{Binding SelectedPivotColumnField, Mode=TwoWay}" DisplayMemberPath="DisplayName" BorderThickness="0" Background="Transparent" PreviewMouseLeftButtonDown="PivotDragList_PreviewMouseLeftButtonDown" PreviewMouseMove="PivotAreaList_PreviewMouseMove" />
                                                     </DockPanel>
                                                 </Border>
-                                                <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Grid.RowSpan="2" BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" Background="White" Padding="6">
+                                                <Border Grid.Row="1" Grid.Column="0" Tag="Rows" AllowDrop="True" DragOver="PivotDropArea_DragOver" Drop="PivotDropArea_Drop" BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" Background="White" Padding="6" Margin="0,0,6,0" CornerRadius="8">
+                                                    <DockPanel LastChildFill="True">
+                                                        <Button DockPanel.Dock="Bottom" Content="Remove" Command="{Binding RemovePivotRowFieldCommand}" Padding="6,3" Margin="0,6,0,0" />
+                                                        <TextBlock DockPanel.Dock="Top" Text="Rows" Foreground="{StaticResource MutedTextBrush}" FontWeight="SemiBold" />
+                                                        <ListBox ItemsSource="{Binding PivotRowFields}" SelectedItem="{Binding SelectedPivotRowField, Mode=TwoWay}" DisplayMemberPath="DisplayName" BorderThickness="0" Background="Transparent" PreviewMouseLeftButtonDown="PivotDragList_PreviewMouseLeftButtonDown" PreviewMouseMove="PivotAreaList_PreviewMouseMove" />
+                                                    </DockPanel>
+                                                </Border>
+                                                <Border Grid.Row="1" Grid.Column="1" Tag="Values" AllowDrop="True" DragOver="PivotDropArea_DragOver" Drop="PivotDropArea_Drop" BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" Background="White" Padding="6" CornerRadius="8">
                                                     <DockPanel LastChildFill="True">
                                                         <Button DockPanel.Dock="Bottom" Content="Remove" Command="{Binding RemovePivotValueFieldCommand}" Padding="6,3" Margin="0,6,0,0" />
                                                         <TextBlock DockPanel.Dock="Top" Text="Values" Foreground="{StaticResource MutedTextBrush}" FontWeight="SemiBold" />
-                                                        <ListBox ItemsSource="{Binding PivotValueFields}" SelectedItem="{Binding SelectedPivotValueField, Mode=TwoWay}" DisplayMemberPath="Name" BorderThickness="0" />
+                                                        <ListBox ItemsSource="{Binding PivotValueFields}" SelectedItem="{Binding SelectedPivotValueField, Mode=TwoWay}" DisplayMemberPath="DisplayName" BorderThickness="0" Background="Transparent" PreviewMouseLeftButtonDown="PivotDragList_PreviewMouseLeftButtonDown" PreviewMouseMove="PivotAreaList_PreviewMouseMove" />
                                                     </DockPanel>
                                                 </Border>
                                             </Grid>

@@ -371,6 +371,9 @@ public sealed partial class MainWindowViewModel
     {
         if (SelectedPivotField is null || (requireNumeric && !SelectedPivotField.IsNumeric))
         {
+            StatusText = requireNumeric
+                ? "Only numeric fields can be added to Values."
+                : "Select a pivot field first.";
             return;
         }
 
@@ -386,18 +389,83 @@ public sealed partial class MainWindowViewModel
         }
     }
 
-    private void AddPivotField(ObservableCollection<PivotAreaField> target, PivotFieldDefinition field)
+    public bool TryAddPivotFieldToArea(string areaKey, PivotFieldDefinition field)
     {
-        if (target.Any(item => string.Equals(item.Key, field.Key, StringComparison.OrdinalIgnoreCase)))
+        var target = GetPivotArea(areaKey);
+        if (target is null)
         {
-            return;
+            StatusText = "That pivot area is not available.";
+            return false;
+        }
+
+        if (ReferenceEquals(target, PivotValueFields) && !field.IsNumeric)
+        {
+            StatusText = $"{field.Name} cannot be added to Values because it is not numeric.";
+            return false;
+        }
+
+        return AddPivotField(target, field);
+    }
+
+    public bool TryMovePivotFieldToArea(string areaKey, PivotAreaField field)
+    {
+        var target = GetPivotArea(areaKey);
+        var source = GetPivotAreaContaining(field);
+        if (target is null || source is null)
+        {
+            StatusText = "That pivot field cannot be moved.";
+            return false;
+        }
+
+        if (ReferenceEquals(source, target))
+        {
+            return true;
+        }
+
+        if (ReferenceEquals(target, PivotValueFields) && !field.IsNumeric)
+        {
+            StatusText = $"{field.Name} cannot be moved to Values because it is not numeric.";
+            return false;
+        }
+
+        if (PivotFieldExistsInAnyArea(field.Key, except: source))
+        {
+            StatusText = $"{field.Name} is already used in this pivot. Remove it before adding it again.";
+            return false;
+        }
+
+        _suppressPivotRefresh = true;
+        try
+        {
+            var definition = PivotFields.FirstOrDefault(item => string.Equals(item.Key, field.Key, StringComparison.OrdinalIgnoreCase))
+                ?? new PivotFieldDefinition { Key = field.Key, Name = field.Name, IsNumeric = field.IsNumeric };
+            RemovePivotField(source, field);
+            AddPivotField(target, definition);
+        }
+        finally
+        {
+            _suppressPivotRefresh = false;
+        }
+
+        RebuildCustomPivot();
+        StatusText = $"Moved {field.Name} to {GetPivotAreaTitle(target)}.";
+        return true;
+    }
+
+    private bool AddPivotField(ObservableCollection<PivotAreaField> target, PivotFieldDefinition field)
+    {
+        if (PivotFieldExistsInAnyArea(field.Key))
+        {
+            StatusText = $"{field.Name} is already used in this pivot. Remove it before adding it again.";
+            return false;
         }
 
         var areaField = new PivotAreaField
         {
             Key = field.Key,
             Name = field.Name,
-            IsNumeric = field.IsNumeric
+            IsNumeric = field.IsNumeric,
+            Aggregation = ReferenceEquals(target, PivotValueFields) ? "Sum" : string.Empty
         };
         if (ReferenceEquals(target, PivotFilterFields))
         {
@@ -410,6 +478,9 @@ public sealed partial class MainWindowViewModel
         {
             RebuildCustomPivot();
         }
+
+        StatusText = $"Added {areaField.DisplayName} to {GetPivotAreaTitle(target)}.";
+        return true;
     }
 
     private void RemovePivotField(ObservableCollection<PivotAreaField> target, PivotAreaField? field)
@@ -425,6 +496,66 @@ public sealed partial class MainWindowViewModel
         {
             RebuildCustomPivot();
         }
+    }
+
+    private ObservableCollection<PivotAreaField>? GetPivotArea(string areaKey)
+        => areaKey switch
+        {
+            "Filters" => PivotFilterFields,
+            "Rows" => PivotRowFields,
+            "Columns" => PivotColumnFields,
+            "Values" => PivotValueFields,
+            _ => null
+        };
+
+    private ObservableCollection<PivotAreaField>? GetPivotAreaContaining(PivotAreaField field)
+    {
+        if (PivotFilterFields.Contains(field))
+        {
+            return PivotFilterFields;
+        }
+
+        if (PivotRowFields.Contains(field))
+        {
+            return PivotRowFields;
+        }
+
+        if (PivotColumnFields.Contains(field))
+        {
+            return PivotColumnFields;
+        }
+
+        if (PivotValueFields.Contains(field))
+        {
+            return PivotValueFields;
+        }
+
+        return null;
+    }
+
+    private bool PivotFieldExistsInAnyArea(string key, ObservableCollection<PivotAreaField>? except = null)
+        => new[] { PivotFilterFields, PivotRowFields, PivotColumnFields, PivotValueFields }
+            .Where(area => !ReferenceEquals(area, except))
+            .Any(area => area.Any(field => string.Equals(field.Key, key, StringComparison.OrdinalIgnoreCase)));
+
+    private string GetPivotAreaTitle(ObservableCollection<PivotAreaField> area)
+    {
+        if (ReferenceEquals(area, PivotFilterFields))
+        {
+            return "Filters";
+        }
+
+        if (ReferenceEquals(area, PivotRowFields))
+        {
+            return "Rows";
+        }
+
+        if (ReferenceEquals(area, PivotColumnFields))
+        {
+            return "Columns";
+        }
+
+        return "Values";
     }
 
     private void ClearPivotLayout()
