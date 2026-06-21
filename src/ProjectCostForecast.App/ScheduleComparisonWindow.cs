@@ -81,8 +81,9 @@ public sealed class ScheduleComparisonWindow : Window
 
     private DataGrid BuildGrid(string label, bool isBaseline)
     {
-        var grid = new DataGrid
+        var grid = new ProjectDataGrid
         {
+            Profile = ProjectDataGridProfile.ReadOnlyLedger,
             AutoGenerateColumns = false,
             CanUserAddRows = false,
             IsReadOnly = true,

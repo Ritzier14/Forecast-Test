@@ -795,6 +795,7 @@
                                                    Height="14" />
                                         </Button>
                                         <DataGrid x:Name="ForecastLinesGrid"
+                                                  local:ProjectDataGridProfiles.Profile="Forecast"
                                                   Grid.Row="1"
                                                   ItemsSource="{Binding ForecastLinesView}"
                                                   IsReadOnly="False"
@@ -899,6 +900,7 @@
 
                                     <TextBlock Grid.Row="1" Margin="4,0,0,5" FontSize="14" FontWeight="SemiBold" Text="Allocation by month (%)" />
                                     <DataGrid x:Name="ManagementResourceAllocationGrid"
+                                              local:ProjectDataGridProfiles.Profile="ManagementResource"
                                               Grid.Row="2"
                                               ItemsSource="{Binding ManagementResourceAllocationRows}"
                                               AutoGenerateColumns="False"
@@ -912,6 +914,7 @@
 
                                     <TextBlock Grid.Row="3" Margin="4,10,0,5" FontSize="14" FontWeight="SemiBold" Text="Calculated hours (160 hours per month)" />
                                     <DataGrid x:Name="ManagementResourceHoursGrid"
+                                              local:ProjectDataGridProfiles.Profile="ManagementResource"
                                               Grid.Row="4"
                                               ItemsSource="{Binding ManagementResourceHoursRows}"
                                               AutoGenerateColumns="False"
@@ -923,6 +926,7 @@
 
                                     <TextBlock Grid.Row="5" Margin="4,10,0,5" FontSize="14" FontWeight="SemiBold" Text="Monthly management cost (hours × rate)" />
                                     <DataGrid x:Name="ManagementResourceCostGrid"
+                                              local:ProjectDataGridProfiles.Profile="ManagementResource"
                                               Grid.Row="6"
                                               ItemsSource="{Binding ManagementResourceCostRows}"
                                               AutoGenerateColumns="False"
@@ -939,7 +943,8 @@
                                 <DockPanel LastChildFill="True">
                                     <ContentControl DockPanel.Dock="Top" Content="{Binding}" ContentTemplate="{StaticResource WorkspaceViewStripTemplate}" />
                                     <Grid>
-                                        <DataGrid x:Name="RawTransactionsGrid"
+                                    <DataGrid x:Name="RawTransactionsGrid"
+                                              local:ProjectDataGridProfiles.Profile="ReadOnlyLedger"
                                                   ItemsSource="{Binding RawTransactionsView}"
                                                   IsReadOnly="True"
                                                   Sorting="ColumnHighlightGrid_Sorting">
@@ -972,7 +977,8 @@
                                                 <DataGridTextColumn Header="Manual Name" Binding="{Binding ManualName}" Width="170" />
                                             </DataGrid.Columns>
                                         </DataGrid>
-                                        <DataGrid x:Name="RawTransactionsMonthlyPivotGrid"
+                                    <DataGrid x:Name="RawTransactionsMonthlyPivotGrid"
+                                              local:ProjectDataGridProfiles.Profile="Pivot"
                                                   ItemsSource="{Binding RawTransactionsMonthlyPivotRows}"
                                                   Sorting="ColumnHighlightGrid_Sorting">
                                             <DataGrid.Style>
@@ -1003,7 +1009,7 @@
                                                   Height="28" />
                                     </StackPanel>
                                     <Grid>
-                                    <DataGrid x:Name="CategoryReportGrid" ItemsSource="{Binding CategorySummariesView}">
+                                    <DataGrid x:Name="CategoryReportGrid" local:ProjectDataGridProfiles.Profile="Pivot" ItemsSource="{Binding CategorySummariesView}">
                                         <DataGrid.Style><Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding ShowSummaryViewByMonth}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></DataGrid.Style>
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Category" Binding="{Binding ProjectCode}" Width="190" />
@@ -1016,7 +1022,7 @@
                                             <DataGridTextColumn Header="Month Var" Binding="{Binding MonthForecastVariance, Converter={StaticResource AccountingNoDecimalsConverter}}" Width="120" />
                                         </DataGrid.Columns>
                                     </DataGrid>
-                                    <DataGrid x:Name="CategoryMonthlyPivotGrid" ItemsSource="{Binding CategoryMonthlyPivotRows}" Sorting="ColumnHighlightGrid_Sorting">
+                                    <DataGrid x:Name="CategoryMonthlyPivotGrid" local:ProjectDataGridProfiles.Profile="Pivot" ItemsSource="{Binding CategoryMonthlyPivotRows}" Sorting="ColumnHighlightGrid_Sorting">
                                         <DataGrid.Style><Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding ShowSummaryViewByMonth}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></DataGrid.Style>
                                     </DataGrid>
                                     </Grid>
@@ -1210,6 +1216,7 @@
                                     </Grid.ColumnDefinitions>
                                     <Border Grid.Column="0" BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" Background="White">
                                         <DataGrid x:Name="CustomPivotGrid"
+                                                  local:ProjectDataGridProfiles.Profile="Pivot"
                                                   ItemsSource="{Binding PivotResultRows}"
                                                   AutoGenerateColumns="False"
                                                   HeadersVisibility="Column"
@@ -1316,7 +1323,7 @@
                                 <TabItem.Header><StackPanel Orientation="Horizontal" Tag="Audit" MouseRightButtonUp="WorkspaceTabHeader_MouseRightButtonUp"><Image x:Name="AuditTabHeaderIcon" Source="/Assets/Icons/png/ic_tab_audit_16.png" Width="16" Height="16" Margin="0,0,7,0" Tag="Audit"/><TextBlock Text="Audit"/></StackPanel></TabItem.Header>
                                 <DockPanel LastChildFill="True">
                                 <ContentControl DockPanel.Dock="Top" Content="{Binding}" ContentTemplate="{StaticResource WorkspaceViewStripTemplate}" />
-                                <DataGrid x:Name="AuditGrid" ItemsSource="{Binding AuditEvents}">
+                                <DataGrid x:Name="AuditGrid" local:ProjectDataGridProfiles.Profile="ReadOnlyLedger" ItemsSource="{Binding AuditEvents}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="Changed" Binding="{Binding ChangedAt}" Width="155" />
                                         <DataGridTextColumn Header="User" Binding="{Binding ChangedBy}" Width="110" />
@@ -1400,6 +1407,7 @@
                                             <ColumnDefinition x:Name="ScheduleActivityPanelColumn" Width="0" />
                                         </Grid.ColumnDefinitions>
                                         <DataGrid x:Name="ScheduleGrid"
+                                                  local:ProjectDataGridProfiles.Profile="Schedule"
                                                   Grid.Column="0"
                                                   ItemsSource="{Binding ScheduleActivities}"
                                                   SelectedItem="{Binding SelectedScheduleActivity, Mode=TwoWay}"
@@ -1613,7 +1621,7 @@
                                                         <TextBlock Text="Hammock members" FontWeight="SemiBold" Margin="0,0,0,4" />
                                                         <TextBox Text="{Binding SelectedScheduleActivity.HammockMemberText, UpdateSourceTrigger=LostFocus}" Margin="0,0,0,10" />
                                                         <TextBlock Text="Predecessors" FontWeight="SemiBold" Margin="0,0,0,4" />
-                                                        <DataGrid x:Name="ScheduleActivityPredecessorsGrid" ItemsSource="{Binding SelectedSchedulePredecessorLinks}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" Height="120" Margin="0,0,0,6">
+                                                        <DataGrid x:Name="ScheduleActivityPredecessorsGrid" local:ProjectDataGridProfiles.Profile="ReadOnlyLedger" ItemsSource="{Binding SelectedSchedulePredecessorLinks}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" Height="120" Margin="0,0,0,6">
                                                             <DataGrid.Columns>
                                                                 <DataGridTextColumn Header="ID" Binding="{Binding PredecessorId}" Width="*" />
                                                                 <DataGridTextColumn Header="Type" Binding="{Binding TypeLabel}" Width="55" />
@@ -1625,7 +1633,7 @@
                                                             <Button Content="Delete" Padding="8,3" Click="ScheduleActivityDeletePredecessor_Click" />
                                                         </StackPanel>
                                                         <TextBlock Text="Successors" FontWeight="SemiBold" Margin="0,0,0,4" />
-                                                        <DataGrid x:Name="ScheduleActivitySuccessorsGrid" ItemsSource="{Binding SelectedScheduleSuccessorLinks}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" Height="120" Margin="0,0,0,6">
+                                                        <DataGrid x:Name="ScheduleActivitySuccessorsGrid" local:ProjectDataGridProfiles.Profile="ReadOnlyLedger" ItemsSource="{Binding SelectedScheduleSuccessorLinks}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" Height="120" Margin="0,0,0,6">
                                                             <DataGrid.Columns>
                                                                 <DataGridTextColumn Header="ID" Binding="{Binding SuccessorId}" Width="*" />
                                                                 <DataGridTextColumn Header="Type" Binding="{Binding TypeLabel}" Width="55" />
@@ -1747,6 +1755,7 @@
                                     <ContentControl DockPanel.Dock="Top" Content="{Binding}" ContentTemplate="{StaticResource DetailWorkspaceViewStripTemplate}" />
                                     <Grid>
                                         <DataGrid x:Name="LedgerTransactionsGrid"
+                                                  local:ProjectDataGridProfiles.Profile="ReadOnlyLedger"
                                                   ItemsSource="{Binding LedgerTransactionsView}"
                                                   IsReadOnly="True"
                                                   Sorting="ColumnHighlightGrid_Sorting">
@@ -1788,6 +1797,7 @@
                                             </DataGrid.Columns>
                                         </DataGrid>
                                         <DataGrid x:Name="LedgerMonthlyPivotGrid"
+                                                  local:ProjectDataGridProfiles.Profile="Pivot"
                                                   ItemsSource="{Binding LedgerMonthlyPivotRows}"
                                                   Sorting="ColumnHighlightGrid_Sorting">
                                             <DataGrid.Style>
@@ -1809,6 +1819,7 @@
                                 <DockPanel LastChildFill="True">
                                     <ContentControl DockPanel.Dock="Top" Content="{Binding}" ContentTemplate="{StaticResource DetailWorkspaceViewStripTemplate}" />
                                     <DataGrid x:Name="SelectedMonthlyForecastsGrid"
+                                              local:ProjectDataGridProfiles.Profile="Forecast"
                                               ItemsSource="{Binding SelectedMonthlyForecasts}"
                                               IsReadOnly="False"
                                               Sorting="ColumnHighlightGrid_Sorting"

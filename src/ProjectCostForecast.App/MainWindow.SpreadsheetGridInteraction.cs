@@ -78,7 +78,7 @@ public partial class MainWindow
     {
         if (root is DataGrid grid)
         {
-            if (ReferenceEquals(grid, ScheduleGrid))
+            if (!ProjectDataGridProfiles.UsesSpreadsheetInteractions(grid))
             {
                 return;
             }
@@ -849,9 +849,7 @@ public partial class MainWindow
 
     private bool SupportsSpreadsheetTypeOverwrite(DataGrid grid)
     {
-        return IsManagementResourceGrid(grid)
-            || ReferenceEquals(grid, ForecastLinesGrid)
-            || ReferenceEquals(grid, SelectedMonthlyForecastsGrid);
+        return ProjectDataGridProfiles.SupportsTypeOverwrite(grid);
     }
 
     private void SpreadsheetGrid_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
