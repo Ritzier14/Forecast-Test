@@ -713,25 +713,7 @@
 
                 <Border Grid.Column="0" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="12">
                     <DockPanel LastChildFill="True">
-                        <Border DockPanel.Dock="Top" Background="#FFF5F5" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="7" Padding="6,4" Margin="0,0,0,8">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding ActivePeriodWarnings.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <ItemsControl ItemsSource="{Binding ActivePeriodWarnings}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding}" Foreground="#B91C1C" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap" Margin="2,1" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </Border>
+                        <local:WarningBar DockPanel.Dock="Top" ItemsSource="{Binding ActivePeriodWarnings}" />
 
                         <TabControl x:Name="WorkspaceTabControl"
                                     Style="{StaticResource ForecastWorkspaceTabControlStyle}"
@@ -769,13 +751,10 @@
                                                 BorderBrush="#DCE4EE"
                                                 BorderThickness="1"
                                                 CornerRadius="10" />
-                                        <Canvas x:Name="ForecastYearBandCanvas"
-                                                Grid.Row="0"
-                                                ClipToBounds="True"
-                                                IsHitTestVisible="True"
-                                                SnapsToDevicePixels="True"
-                                                UseLayoutRounding="True"
-                                                Panel.ZIndex="10" />
+                                        <local:BandOverlayCanvas x:Name="ForecastYearBandCanvas"
+                                                                 Grid.Row="0"
+                                                                 IsHitTestVisible="True"
+                                                                 Panel.ZIndex="10" />
                                         <Button Grid.Row="0"
                                                 x:Name="ForecastGroupToggleButton"
                                                 Width="24"
@@ -846,13 +825,9 @@
                                                 </GroupStyle>
                                             </DataGrid.GroupStyle>
                                         </DataGrid>
-                                        <Canvas x:Name="ForecastFreezeBoundaryCanvas"
-                                                Grid.RowSpan="2"
-                                                ClipToBounds="True"
-                                                IsHitTestVisible="False"
-                                                SnapsToDevicePixels="True"
-                                                UseLayoutRounding="True"
-                                                Panel.ZIndex="30" />
+                                        <local:BandOverlayCanvas x:Name="ForecastFreezeBoundaryCanvas"
+                                                                 Grid.RowSpan="2"
+                                                                 Panel.ZIndex="30" />
                                         <Border x:Name="ForecastAddRowStrip"
                                                 Grid.Row="1"
                                                 Height="34"
@@ -862,19 +837,12 @@
                                                 BorderBrush="#DCE4EE"
                                                 BorderThickness="0,1,0,0"
                                                 Panel.ZIndex="35">
-                                            <Button x:Name="AddForecastRowButton"
-                                                    HorizontalAlignment="Left"
-                                                    VerticalAlignment="Center"
-                                                    Margin="10,0,0,0"
-                                                    Style="{StaticResource ForecastStatePillButtonStyle}"
-                                                    Click="AddForecastRowButton_Click">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="+"
-                                                               Margin="0,0,5,0"
-                                                               FontWeight="SemiBold" />
-                                                    <TextBlock Text="Add row" />
-                                                </StackPanel>
-                                            </Button>
+                                            <local:AddRowButton x:Name="AddForecastRowButton"
+                                                                HorizontalAlignment="Left"
+                                                                VerticalAlignment="Center"
+                                                                Margin="10,0,0,0"
+                                                                Style="{StaticResource ForecastStatePillButtonStyle}"
+                                                                Click="AddForecastRowButton_Click" />
                                         </Border>
                                     </Grid>
                                 </DockPanel>
