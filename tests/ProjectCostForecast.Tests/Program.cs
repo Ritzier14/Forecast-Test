@@ -265,11 +265,17 @@ viewModel.SetHoveredForecastLine(hoveredLine);
 AssertEqual("Flex Projects L / WA57102001", viewModel.LedgerTitle, "Hovering a row previews that resource drilldown");
 viewModel.ClearHoveredForecastLine();
 AssertEqual("Stanley Drake / WA57102001", viewModel.LedgerTitle, "Clearing hover returns drilldown to the selected row");
-AssertEqual("Oct 25", viewModel.LedgerChartXAxisLabels.First().Text, "Spend curve starts at first project cost month");
-AssertEqual("Oct 26", viewModel.LedgerChartXAxisLabels.Last().Text, "Spend curve trims trailing zero forecast periods");
+AssertEqual("Oct 25\n26-04", viewModel.LedgerChartXAxisLabels.First().Text, "Spend curve starts at first project cost month");
+AssertEqual("Oct 26\n27-04", viewModel.LedgerChartXAxisLabels.Last().Text, "Spend curve trims trailing zero forecast periods");
+AssertTrue(viewModel.LedgerChartXAxisLabels.All(label => label.Text.Contains('\n')), "Spend curve labels include calendar month and FY period");
 AssertEqual(13, viewModel.LedgerChartXAxisLabels.Count, "Spend curve shows one x-axis tick per month in range");
 AssertTrue(viewModel.LedgerChartCanvasWidth > 800, "Spend curve widens beyond viewport so monthly labels can scroll");
-AssertTrue(viewModel.LedgerChartXAxisLabels.All(label => !label.Text.EndsWith("27", StringComparison.OrdinalIgnoreCase) && !label.Text.EndsWith("28", StringComparison.OrdinalIgnoreCase)), "Spend curve axis excludes zero-only future years");
+AssertTrue(viewModel.LedgerChartXAxisLabels.All(label =>
+{
+    var calendarLabel = label.Text.Split('\n')[0];
+    return !calendarLabel.EndsWith("27", StringComparison.OrdinalIgnoreCase)
+        && !calendarLabel.EndsWith("28", StringComparison.OrdinalIgnoreCase);
+}), "Spend curve axis excludes zero-only future years");
 
 var autoImportPath = Path.Combine(Path.GetTempPath(), $"project-cost-forecast-auto-import-{Guid.NewGuid():N}.csv");
 File.WriteAllText(

@@ -311,7 +311,7 @@ public sealed partial class MainWindowViewModel
             {
                 X = x - 24,
                 Y = plotBottom + 8,
-                Text = monthStart.ToString("MMM yy")
+                Text = $"{monthStart:MMM yy}\n{FormatFiscalPeriodForCalendarMonth(monthStart)}"
             });
         }
 
@@ -404,6 +404,13 @@ public sealed partial class MainWindowViewModel
     private static int CountMonthsInclusive(DateOnly domainStart, DateOnly domainEnd)
     {
         return ((domainEnd.Year - domainStart.Year) * 12) + domainEnd.Month - domainStart.Month + 1;
+    }
+
+    private static string FormatFiscalPeriodForCalendarMonth(DateOnly monthStart)
+    {
+        var fiscalYear = monthStart.Month >= 7 ? monthStart.Year + 1 : monthStart.Year;
+        var fiscalMonth = monthStart.Month >= 7 ? monthStart.Month - 6 : monthStart.Month + 6;
+        return FiscalPeriod.FormatLabel(fiscalYear, fiscalMonth);
     }
 
     private double MapChartX(DateOnly date, DateOnly domainStart, DateOnly domainEnd)

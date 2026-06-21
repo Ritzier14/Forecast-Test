@@ -397,8 +397,8 @@ public partial class MainWindow
     {
         return header switch
         {
-            "Monthly forecast" => "Ledger Monthly Forecast",
-            "Spend curve" => "Ledger Spend Curve",
+            "Monthly forecast" or "Monthly Forecast" => "Ledger Monthly Forecast",
+            "Spend curve" or "Spend Curve" => "Ledger Spend Curve",
             _ => "Ledger Costs"
         };
     }

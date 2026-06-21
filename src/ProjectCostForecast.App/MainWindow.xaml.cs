@@ -263,6 +263,7 @@ public partial class MainWindow : Window
         HandleHighlightScopeChange(previousWorkspaceKey, viewModel.ActiveWorkspaceKey, isDetailScope: false);
         QueueApplyCurrentWorkspaceViewColumnState();
         QueueAttachInteractiveGridHandlers();
+        ApplyDetailWorkspaceAvailability(viewModel);
         if (ReferenceEquals(tabItem, ManagementResourcesTab))
         {
             QueueSynchronizeManagementResourceGrids();

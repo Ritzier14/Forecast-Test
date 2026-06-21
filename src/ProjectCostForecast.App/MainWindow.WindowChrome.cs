@@ -28,14 +28,7 @@ public partial class MainWindow
 
         WindowState = viewModel.StartInFullScreen ? WindowState.Maximized : WindowState.Normal;
 
-        if (viewModel.IsDetailPanelCollapsed)
-        {
-            CollapseDetailWorkspacePanel();
-        }
-        else
-        {
-            ExpandDetailWorkspacePanel();
-        }
+        ApplyDetailWorkspaceAvailability(viewModel);
     }
 
     private void KpiCard_MouseRightButtonUp(object sender, MouseButtonEventArgs e)

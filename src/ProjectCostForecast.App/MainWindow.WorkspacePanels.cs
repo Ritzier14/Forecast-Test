@@ -211,6 +211,27 @@ public partial class MainWindow
         ExpandDetailWorkspacePanel();
     }
 
+    private void CollapsedDetailWorkspaceHost_MouseEnter(object sender, MouseEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel { IsDetailPanelCollapsed: true }
+            && !IsDetailWorkspaceSuppressed())
+        {
+            ShowTransientDetailWorkspacePanel();
+        }
+    }
+
+    private void CollapsedDetailWorkspaceHost_MouseLeave(object sender, MouseEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel { IsDetailPanelCollapsed: true }
+            && !IsMouseOverDetailWorkspace())
+        {
+            CollapseDetailWorkspacePanel();
+        }
+    }
+
+    private bool IsMouseOverDetailWorkspace()
+        => DetailWorkspaceShell.IsMouseOver || CollapsedDetailWorkspaceHost.IsMouseOver;
+
     private void CollapseDetailWorkspacePanel()
     {
         if (DetailWorkspaceColumn.Width.Value > 0)
@@ -246,6 +267,29 @@ public partial class MainWindow
         }
     }
 
+    private void ShowTransientDetailWorkspacePanel()
+    {
+        DetailWorkspaceShell.Visibility = Visibility.Visible;
+        CollapsedDetailWorkspaceHost.Visibility = Visibility.Visible;
+        DetailWorkspacePanel.Visibility = Visibility.Visible;
+        DetailWorkspaceShell.Background = BrushFactory.Frozen("#F8FAFD");
+        DetailWorkspaceShell.BorderBrush = BrushFactory.Frozen("#DCE4EE");
+        DetailWorkspaceShell.BorderThickness = new Thickness(1);
+        DetailWorkspaceShell.Padding = new Thickness(4);
+        DetailWorkspaceShell.CornerRadius = new CornerRadius(14);
+        DetailWorkspaceRail.Margin = new Thickness(8, 0, 0, 0);
+        DetailWorkspaceRail.Background = BrushFactory.Frozen("#FCFCFD");
+        DetailWorkspaceRail.BorderBrush = BrushFactory.Frozen("#DCE4EE");
+        DetailWorkspaceRail.BorderThickness = new Thickness(1);
+        DetailWorkspaceRail.CornerRadius = new CornerRadius(12);
+        DetailWorkspaceRail.Padding = new Thickness(5);
+        DetailWorkspaceRail.Width = 52;
+        DetailWorkspaceContentColumn.Width = new GridLength(1, GridUnitType.Star);
+        DetailWorkspaceColumn.Width = _detailWorkspaceExpandedWidth.Value > 0
+            ? _detailWorkspaceExpandedWidth
+            : new GridLength(1.25, GridUnitType.Star);
+    }
+
     private void ExpandDetailWorkspacePanel()
     {
         DetailWorkspaceShell.Visibility = Visibility.Visible;
@@ -254,7 +298,7 @@ public partial class MainWindow
         DetailWorkspaceShell.Background = BrushFactory.Frozen("#F8FAFD");
         DetailWorkspaceShell.BorderBrush = BrushFactory.Frozen("#DCE4EE");
         DetailWorkspaceShell.BorderThickness = new Thickness(1);
-        DetailWorkspaceShell.Padding = new Thickness(8);
+        DetailWorkspaceShell.Padding = new Thickness(4);
         DetailWorkspaceShell.CornerRadius = new CornerRadius(14);
         DetailWorkspaceRail.Margin = new Thickness(8, 0, 0, 0);
         DetailWorkspaceRail.Background = BrushFactory.Frozen("#FCFCFD");
@@ -275,6 +319,45 @@ public partial class MainWindow
         if (DataContext is MainWindowViewModel viewModel)
         {
             viewModel.SetDetailPanelCollapsed(false);
+        }
+    }
+
+    private void SuppressDetailWorkspacePanel()
+    {
+        DetailWorkspaceShell.Visibility = Visibility.Collapsed;
+        CollapsedDetailWorkspaceHost.Visibility = Visibility.Collapsed;
+        DetailWorkspacePanel.Visibility = Visibility.Collapsed;
+        WorkspaceGridSplitter.Visibility = Visibility.Collapsed;
+        WorkspaceSplitterColumn.Width = new GridLength(0);
+        DetailWorkspaceContentColumn.Width = new GridLength(0);
+        DetailWorkspaceColumn.Width = new GridLength(0);
+    }
+
+    private bool IsDetailWorkspaceSuppressed()
+        => DataContext is MainWindowViewModel viewModel
+        && string.Equals(viewModel.ActiveWorkspaceKey, "Schedule", StringComparison.OrdinalIgnoreCase);
+
+    private void ApplyDetailWorkspaceAvailability(MainWindowViewModel viewModel)
+    {
+        if (string.Equals(viewModel.ActiveWorkspaceKey, "Schedule", StringComparison.OrdinalIgnoreCase))
+        {
+            SuppressDetailWorkspacePanel();
+            return;
+        }
+
+        if (string.Equals(viewModel.ActiveWorkspaceKey, "Pivot Builder", StringComparison.OrdinalIgnoreCase))
+        {
+            CollapseDetailWorkspacePanel();
+            return;
+        }
+
+        if (viewModel.IsDetailPanelCollapsed)
+        {
+            CollapseDetailWorkspacePanel();
+        }
+        else
+        {
+            ExpandDetailWorkspacePanel();
         }
     }
 }
