@@ -5,6 +5,8 @@ namespace ProjectCostForecast.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
+    private bool _syncingManagementResources;
+
     public bool IsManagementResource(ForecastLine line)
     {
         return ManagementResources.Any(resource => MatchesManagementResource(resource, line));
@@ -19,13 +21,7 @@ public sealed partial class MainWindowViewModel
             return existing;
         }
 
-        var matchingTransactions = Transactions
-            .Where(transaction => CalculationService.MatchesForecastLine(transaction, line))
-            .ToList();
-        var units = matchingTransactions.Sum(transaction => transaction.Units);
-        var rate = units == 0
-            ? matchingTransactions.Where(transaction => transaction.UnitRate != 0).Select(transaction => transaction.UnitRate).DefaultIfEmpty().Average()
-            : matchingTransactions.Sum(transaction => transaction.Amount) / units;
+        var rate = CalculateManagementResourceDefaultRate(line);
 
         var resource = new ManagementResource
         {
@@ -33,10 +29,12 @@ public sealed partial class MainWindowViewModel
             TaskNumber = line.TaskNumber,
             ResourceName = line.ResourceName,
             ProjectCode = line.ProjectCode,
-            HourlyRate = Math.Max(0, rate),
             SourceLine = line
         };
+        resource.SetCalculatedHourlyRate(rate, resetCurrentRate: true);
+        resource.MonthlyHours = ManagementResource.StandardMonthlyHours;
         resource.EnsurePeriods(_dataset.ForecastPeriods);
+        PopulateManagementAllocationFromForecastLine(resource, line);
         resource.PropertyChanged += ManagementResource_PropertyChanged;
 
         ManagementResources.Add(resource);
@@ -89,6 +87,11 @@ public sealed partial class MainWindowViewModel
         foreach (var resource in loadedResources)
         {
             resource.SourceLine = _dataset.ForecastLines.FirstOrDefault(line => MatchesManagementResource(resource, line));
+            if (resource.SourceLine is not null)
+            {
+                resource.SetCalculatedHourlyRate(CalculateManagementResourceDefaultRate(resource.SourceLine), resetCurrentRate: !resource.IsHourlyRateOverridden);
+            }
+
             resource.EnsurePeriods(_dataset.ForecastPeriods);
             resource.PropertyChanged += ManagementResource_PropertyChanged;
         }
@@ -116,6 +119,15 @@ public sealed partial class MainWindowViewModel
         NotifyManagementResourceRows(ManagementResourceAllocationRows, resource, e.PropertyName);
         NotifyManagementResourceRows(ManagementResourceHoursRows, resource, e.PropertyName);
         NotifyManagementResourceRows(ManagementResourceCostRows, resource, e.PropertyName);
+        if (!_syncingManagementResources
+            && resource.SourceLine is not null
+            && (string.Equals(e.PropertyName, "Item[]", StringComparison.Ordinal)
+                || string.Equals(e.PropertyName, nameof(ManagementResource.HourlyRate), StringComparison.Ordinal)
+                || string.Equals(e.PropertyName, nameof(ManagementResource.MonthlyHours), StringComparison.Ordinal)))
+        {
+            SyncForecastLineFromManagementResource(resource);
+        }
+
         IsDirty = true;
     }
 
@@ -158,5 +170,114 @@ public sealed partial class MainWindowViewModel
         return string.Equals(resource.TaskNumber, line.TaskNumber, StringComparison.OrdinalIgnoreCase)
             && string.Equals(resource.ResourceName, line.ResourceName, StringComparison.OrdinalIgnoreCase)
             && string.Equals(resource.ProjectCode, line.ProjectCode, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public decimal CalculateManagementResourceDefaultRate(ForecastLine line)
+    {
+        var resourceTransactions = Transactions
+            .Where(transaction => CalculationService.MatchesForecastResource(transaction, line) && transaction.UnitRate > 0)
+            .ToList();
+        if (resourceTransactions.Count == 0)
+        {
+            return 0;
+        }
+
+        var periodOrder = _dataset.ForecastPeriods
+            .Where(period => !string.IsNullOrWhiteSpace(period.Label))
+            .Select((period, index) => new { period.Label, Order = period.StartDate?.DayNumber ?? index })
+            .ToDictionary(item => item.Label, item => item.Order, StringComparer.OrdinalIgnoreCase);
+        var lastTwoPeriods = resourceTransactions
+            .Select(transaction => transaction.FyPeriod)
+            .Where(period => !string.IsNullOrWhiteSpace(period))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(period => periodOrder.GetValueOrDefault(period, int.MinValue))
+            .Take(2)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (lastTwoPeriods.Count == 0)
+        {
+            return 0;
+        }
+
+        var latestPeriod = lastTwoPeriods
+            .OrderByDescending(period => periodOrder.GetValueOrDefault(period, int.MinValue))
+            .First();
+
+        return resourceTransactions
+            .Where(transaction => lastTwoPeriods.Contains(transaction.FyPeriod))
+            .GroupBy(transaction => transaction.UnitRate)
+            .Select(group => new
+            {
+                Rate = group.Key,
+                Count = group.Count(),
+                LatestCount = group.Count(transaction => string.Equals(transaction.FyPeriod, latestPeriod, StringComparison.OrdinalIgnoreCase))
+            })
+            .OrderByDescending(group => group.Count)
+            .ThenByDescending(group => group.LatestCount)
+            .ThenByDescending(group => group.Rate)
+            .First()
+            .Rate;
+    }
+
+    public void ResetManagementResourceRate(ManagementResource resource)
+    {
+        resource.ResetHourlyRate();
+    }
+
+    public void SynchronizeManagementResourcesFromForecastLines(IEnumerable<ForecastLine> lines)
+    {
+        var changedLines = lines.ToHashSet(ReferenceEqualityComparer.Instance);
+        if (changedLines.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            _syncingManagementResources = true;
+            foreach (var resource in ManagementResources.Where(resource => resource.SourceLine is not null && changedLines.Contains(resource.SourceLine)))
+            {
+                PopulateManagementAllocationFromForecastLine(resource, resource.SourceLine!);
+                NotifyManagementResourceRows(ManagementResourceAllocationRows, resource, "Item[]");
+                NotifyManagementResourceRows(ManagementResourceHoursRows, resource, "Item[]");
+                NotifyManagementResourceRows(ManagementResourceCostRows, resource, "Item[]");
+            }
+        }
+        finally
+        {
+            _syncingManagementResources = false;
+        }
+    }
+
+    private void PopulateManagementAllocationFromForecastLine(ManagementResource resource, ForecastLine line)
+    {
+        foreach (var period in _dataset.ForecastPeriods.Where(period => !string.IsNullOrWhiteSpace(period.Label)))
+        {
+            var percentage = resource.CalculatePercentageFromCost(line[period.Label]);
+            resource.SetAllocation(period.Label, percentage);
+        }
+    }
+
+    private void SyncForecastLineFromManagementResource(ManagementResource resource)
+    {
+        if (resource.SourceLine is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _syncingManagementResources = true;
+            foreach (var period in _dataset.ForecastPeriods.Where(period => !string.IsNullOrWhiteSpace(period.Label)))
+            {
+                resource.SourceLine[period.Label] = Math.Round(resource.CalculateForecastCost(period.Label), 0);
+            }
+
+            resource.SourceLine.NotifyMonthForecastValuesChanged();
+            RecalculateForecastLinesForSpreadsheetEdit([resource.SourceLine]);
+        }
+        finally
+        {
+            _syncingManagementResources = false;
+        }
     }
 }

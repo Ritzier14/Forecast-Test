@@ -14,6 +14,9 @@ public sealed class ManagementResource : ObservableModel
     public const decimal StandardMonthlyHours = 160m;
 
     private decimal _hourlyRate;
+    private decimal _calculatedHourlyRate;
+    private decimal _monthlyHours = StandardMonthlyHours;
+    private bool _isHourlyRateOverridden;
 
     public int SourceRowNumber { get; set; }
     public string TaskNumber { get; set; } = string.Empty;
@@ -32,8 +35,71 @@ public sealed class ManagementResource : ObservableModel
             if (SetProperty(ref _hourlyRate, Math.Max(0, value)))
             {
                 OnPropertyChanged("Item[]");
+                OnPropertyChanged(nameof(RateStatus));
             }
         }
+    }
+
+    public decimal CalculatedHourlyRate
+    {
+        get => _calculatedHourlyRate;
+        set
+        {
+            if (SetProperty(ref _calculatedHourlyRate, Math.Max(0, value)))
+            {
+                OnPropertyChanged(nameof(RateStatus));
+            }
+        }
+    }
+
+    public bool IsHourlyRateOverridden
+    {
+        get => _isHourlyRateOverridden;
+        set
+        {
+            if (SetProperty(ref _isHourlyRateOverridden, value))
+            {
+                OnPropertyChanged(nameof(RateStatus));
+            }
+        }
+    }
+
+    public decimal MonthlyHours
+    {
+        get => _monthlyHours <= 0 ? StandardMonthlyHours : _monthlyHours;
+        set
+        {
+            if (SetProperty(ref _monthlyHours, Math.Max(1, value)))
+            {
+                OnPropertyChanged("Item[]");
+            }
+        }
+    }
+
+    [JsonIgnore]
+    public string RateStatus => IsHourlyRateOverridden ? "Overridden" : "Calculated";
+
+    public void SetCalculatedHourlyRate(decimal rate, bool resetCurrentRate)
+    {
+        CalculatedHourlyRate = rate;
+        if (resetCurrentRate || HourlyRate == 0)
+        {
+            _hourlyRate = Math.Max(0, rate);
+            OnPropertyChanged(nameof(HourlyRate));
+            OnPropertyChanged("Item[]");
+        }
+    }
+
+    public void OverrideHourlyRate(decimal rate)
+    {
+        HourlyRate = rate;
+        IsHourlyRateOverridden = true;
+    }
+
+    public void ResetHourlyRate()
+    {
+        IsHourlyRateOverridden = false;
+        HourlyRate = CalculatedHourlyRate;
     }
 
     [JsonIgnore]
@@ -114,7 +180,16 @@ public sealed class ManagementResource : ObservableModel
             string.Equals(item.PeriodLabel, periodKey, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static decimal CalculateHours(decimal percentage) => StandardMonthlyHours * percentage / 100m;
+    public decimal CalculateForecastCost(string periodKey) =>
+        GetValue(ManagementResourceMetric.AllocationPercentage, periodKey) * MonthlyHours * HourlyRate / 100m;
+
+    public decimal CalculatePercentageFromCost(decimal amount)
+    {
+        var capacity = MonthlyHours * HourlyRate;
+        return capacity <= 0 ? 0 : Math.Clamp(amount / capacity * 100m, 0, 100);
+    }
+
+    private decimal CalculateHours(decimal percentage) => MonthlyHours * percentage / 100m;
 }
 
 public sealed class ManagementResourceAllocation
@@ -142,8 +217,16 @@ public sealed class ManagementResourceTableRow : ObservableModel
     public decimal HourlyRate
     {
         get => Resource.HourlyRate;
-        set => Resource.HourlyRate = value;
+        set => Resource.OverrideHourlyRate(value);
     }
+
+    public decimal MonthlyHours
+    {
+        get => Resource.MonthlyHours;
+        set => Resource.MonthlyHours = value;
+    }
+
+    public string RateStatus => Resource.RateStatus;
 
     public decimal this[string periodKey]
     {
@@ -162,6 +245,17 @@ public sealed class ManagementResourceTableRow : ObservableModel
         if (string.Equals(propertyName, nameof(ManagementResource.HourlyRate), StringComparison.Ordinal))
         {
             OnPropertyChanged(nameof(HourlyRate));
+        }
+
+        if (string.Equals(propertyName, nameof(ManagementResource.MonthlyHours), StringComparison.Ordinal))
+        {
+            OnPropertyChanged(nameof(MonthlyHours));
+        }
+
+        if (string.Equals(propertyName, nameof(ManagementResource.RateStatus), StringComparison.Ordinal)
+            || string.Equals(propertyName, nameof(ManagementResource.IsHourlyRateOverridden), StringComparison.Ordinal))
+        {
+            OnPropertyChanged(nameof(RateStatus));
         }
 
         OnPropertyChanged("Item[]");

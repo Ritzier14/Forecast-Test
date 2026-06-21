@@ -188,6 +188,11 @@ AssertEqual(1, viewModel.ManagementResources.Count, "Forecast resource can be ad
 AssertEqual(50m, viewModel.ManagementResourceAllocationRows.Single()[managementPeriod], "Management allocation table stores percentage by month");
 AssertEqual(80m, viewModel.ManagementResourceHoursRows.Single()[managementPeriod], "Management hours use 160 hours per month");
 AssertEqual(10000m, viewModel.ManagementResourceCostRows.Single()[managementPeriod], "Management monthly cost uses hours times rate");
+managementResource[managementPeriod] = 25m;
+AssertEqual(5000m, managementSourceLine[managementPeriod], "Editing management percentage updates the matching forecast month value");
+managementSourceLine[managementPeriod] = 2500m;
+viewModel.SynchronizeManagementResourcesFromForecastLines([managementSourceLine]);
+AssertEqual(12.5m, managementResource[managementPeriod], "Editing forecast month value recalculates management percentage");
 viewModel.AddManagementResource(managementSourceLine);
 AssertEqual(1, viewModel.ManagementResources.Count, "Management resource cannot be added twice");
 var managementProjectPath = Path.Combine(Path.GetTempPath(), $"project-cost-management-{Guid.NewGuid():N}.json");
@@ -196,13 +201,38 @@ try
     var managementDataset = new ProjectDataset { ManagementResources = [managementResource] };
     new ProjectFileService().Save(managementProjectPath, managementDataset);
     var reloadedManagementResource = new ProjectFileService().Load(managementProjectPath).ManagementResources.Single();
-    AssertEqual(50m, reloadedManagementResource[managementPeriod], "Management allocations persist in the project file");
+    AssertEqual(12.5m, reloadedManagementResource[managementPeriod], "Management allocations persist in the project file");
     AssertEqual(125m, reloadedManagementResource.HourlyRate, "Management hourly rate persists in the project file");
 }
 finally
 {
     File.Delete(managementProjectPath);
 }
+var rateViewModel = new MainWindowViewModel();
+var ratePeriods = rateViewModel.CtcMonthForecastColumns.Where(column => !column.IsTotal).Select(column => column.Key).TakeLast(2).ToArray();
+var ratePreviousPeriod = ratePeriods[0];
+var rateLatestPeriod = ratePeriods[1];
+var rateLine = new ForecastLine { RowNumber = 900001, TaskNumber = "RATE-001", ResourceName = "Rate Person", ProjectCode = "Rate Test" };
+rateLine.MonthlyForecasts.Add(new MonthlyForecast { PeriodLabel = rateLatestPeriod, Amount = 12000m });
+rateViewModel.Transactions.Add(new CostTransaction { FyPeriod = ratePreviousPeriod, ManualName = "Rate Person", UnitRate = 150m });
+rateViewModel.Transactions.Add(new CostTransaction { FyPeriod = ratePreviousPeriod, ManualName = "Rate Person", UnitRate = 150m });
+rateViewModel.Transactions.Add(new CostTransaction { FyPeriod = ratePreviousPeriod, ManualName = "Rate Person", UnitRate = 999m });
+rateViewModel.Transactions.Add(new CostTransaction { FyPeriod = rateLatestPeriod, ManualName = "Rate Person", UnitRate = 150m });
+rateViewModel.Transactions.Add(new CostTransaction { FyPeriod = rateLatestPeriod, ManualName = "Rate Person", UnitRate = 175m });
+AssertEqual(150m, rateViewModel.CalculateManagementResourceDefaultRate(rateLine), "Management default rate uses the most frequent exact raw rate from the last two periods");
+var rateResource = rateViewModel.AddManagementResource(rateLine);
+AssertEqual(150m, rateResource.HourlyRate, "Management resource starts on the calculated default rate");
+AssertEqual(50m, rateResource[rateLatestPeriod], "Management allocation starts from existing forecast value divided by rate times monthly hours");
+rateResource.OverrideHourlyRate(175m);
+AssertTrue(rateResource.IsHourlyRateOverridden, "Management resource rate override is tracked");
+rateViewModel.ResetManagementResourceRate(rateResource);
+AssertEqual(150m, rateResource.HourlyRate, "Management resource rate can reset to calculated rate");
+var tieLine = new ForecastLine { RowNumber = 900002, TaskNumber = "RATE-002", ResourceName = "Tie Person", ProjectCode = "Rate Test" };
+rateViewModel.Transactions.Add(new CostTransaction { FyPeriod = ratePreviousPeriod, ManualName = "Tie Person", UnitRate = 200m });
+rateViewModel.Transactions.Add(new CostTransaction { FyPeriod = ratePreviousPeriod, ManualName = "Tie Person", UnitRate = 200m });
+rateViewModel.Transactions.Add(new CostTransaction { FyPeriod = rateLatestPeriod, ManualName = "Tie Person", UnitRate = 250m });
+rateViewModel.Transactions.Add(new CostTransaction { FyPeriod = rateLatestPeriod, ManualName = "Tie Person", UnitRate = 250m });
+AssertEqual(250m, rateViewModel.CalculateManagementResourceDefaultRate(tieLine), "Management default rate tie resolves to the rate most frequent in the latest period");
 var hoveredLine = viewModel.ForecastLines.Single(line =>
     string.Equals(line.TaskNumber, "WA57102001", StringComparison.OrdinalIgnoreCase)
     && string.Equals(line.ResourceName, "Flex Projects L", StringComparison.OrdinalIgnoreCase));

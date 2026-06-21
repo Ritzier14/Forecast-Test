@@ -714,6 +714,19 @@ public partial class MainWindow
             Width = 88,
             IsReadOnly = metric != ManagementResourceMetric.AllocationPercentage
         });
+        grid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Hours/mo",
+            Binding = new Binding(nameof(ManagementResourceTableRow.MonthlyHours))
+            {
+                Mode = metric == ManagementResourceMetric.AllocationPercentage ? BindingMode.TwoWay : BindingMode.OneWay,
+                UpdateSourceTrigger = UpdateSourceTrigger.LostFocus,
+                StringFormat = "{0:0.##}"
+            },
+            Width = 82,
+            IsReadOnly = metric != ManagementResourceMetric.AllocationPercentage
+        });
+        grid.Columns.Add(CreateReadOnlyTextColumn("Rate source", nameof(ManagementResourceTableRow.RateStatus), 95, numeric: false));
         var ctdColumn = CreateReadOnlyTextColumn(
             "CTD",
             BuildAccountingBinding("Resource.SourceLine.CostToDateSummary", showCurrency: viewModel.ShowCurrencySymbols),

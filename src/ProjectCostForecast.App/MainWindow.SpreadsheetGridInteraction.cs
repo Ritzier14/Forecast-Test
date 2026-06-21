@@ -975,6 +975,19 @@ public partial class MainWindow
         if (cell.DataContext is ManagementResourceTableRow managementRow)
         {
             menu.Items.Add(new Separator());
+            var resetRate = new MenuItem
+            {
+                Header = "Reset rate to calculated",
+                IsEnabled = managementRow.Resource.IsHourlyRateOverridden
+            };
+            resetRate.Click += (_, _) =>
+            {
+                if (DataContext is MainWindowViewModel managementViewModel)
+                {
+                    managementViewModel.ResetManagementResourceRate(managementRow.Resource);
+                }
+            };
+            menu.Items.Add(resetRate);
             var remove = new MenuItem { Header = "Remove management resource" };
             remove.Click += (_, _) =>
             {
@@ -2301,6 +2314,7 @@ public partial class MainWindow
             if (viewModel is not null)
             {
                 viewModel.RecalculateForecastLinesForSpreadsheetEdit(changedForecastLines);
+                viewModel.SynchronizeManagementResourcesFromForecastLines(changedForecastLines);
             }
             else
             {
