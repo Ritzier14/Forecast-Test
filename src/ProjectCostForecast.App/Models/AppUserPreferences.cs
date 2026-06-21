@@ -7,6 +7,8 @@ public sealed class AppUserPreferences
     public bool StartMaximized { get; set; } = true;
     public bool ShowImportAutoCreatePreview { get; set; } = true;
     public bool DetailPanelCollapsed { get; set; }
+    public bool DetailPanelPinned { get; set; }
+    public double DetailPanelRailWidth { get; set; } = 44;
     public string SelectedProjectCode { get; set; } = "All";
     public string SelectedPeriod { get; set; } = "All";
     public bool ShowOnlyLinesWithActualCost { get; set; }

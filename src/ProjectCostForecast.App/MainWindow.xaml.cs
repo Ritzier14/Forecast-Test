@@ -106,6 +106,8 @@ public partial class MainWindow : Window
     private WorkspaceViewTab? _workspaceDraggedView;
     private UIElement? _dimmedDragElement;
     private GridLength _detailWorkspaceExpandedWidth = new(1.25, GridUnitType.Star);
+    private DispatcherTimer? _detailWorkspaceHoverTimer;
+    private bool _detailWorkspaceOverlayOpen;
     private bool _forecastYearBandRebuildQueued;
     private bool _forecastGroupHeaderRefreshQueued;
     private string _forecastOverlayGeometrySignature = string.Empty;

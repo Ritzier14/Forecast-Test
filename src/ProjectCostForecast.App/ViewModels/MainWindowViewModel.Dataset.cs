@@ -170,6 +170,31 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(IsDetailPanelCollapsed));
     }
 
+    public void SetDetailPanelPinned(bool pinned)
+    {
+        if (_userPreferences.DetailPanelPinned == pinned)
+        {
+            return;
+        }
+
+        _userPreferences.DetailPanelPinned = pinned;
+        SaveUserPreferences();
+        OnPropertyChanged(nameof(IsDetailPanelPinned));
+    }
+
+    public void SetDetailPanelRailWidth(double width)
+    {
+        var normalized = Math.Clamp(width, 36, 92);
+        if (Math.Abs(_userPreferences.DetailPanelRailWidth - normalized) < 0.5)
+        {
+            return;
+        }
+
+        _userPreferences.DetailPanelRailWidth = normalized;
+        SaveUserPreferences();
+        OnPropertyChanged(nameof(DetailPanelRailWidth));
+    }
+
     public void SetStartInFullScreen(bool startInFullScreen)
     {
         if (_userPreferences.StartMaximized == startInFullScreen)

@@ -361,6 +361,8 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public bool StartInFullScreen => _userPreferences.StartMaximized;
 
     public bool IsDetailPanelCollapsed => _userPreferences.DetailPanelCollapsed;
+    public bool IsDetailPanelPinned => _userPreferences.DetailPanelPinned;
+    public double DetailPanelRailWidth => Math.Clamp(_userPreferences.DetailPanelRailWidth <= 0 ? 44 : _userPreferences.DetailPanelRailWidth, 36, 92);
 
     public PivotFieldDefinition? SelectedPivotField
     {

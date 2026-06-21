@@ -135,6 +135,16 @@ viewModel.SetForecastFreezeColumn("MONTH:26-11");
 AssertEqual("MONTH:26-11", viewModel.ForecastFreezeColumnKey, "Forecast grid freeze column can be changed");
 viewModel.ResetForecastFreezeColumn();
 AssertEqual(MainWindowViewModel.DefaultForecastFreezeColumnKey, viewModel.ForecastFreezeColumnKey, "Forecast grid freeze reset returns to the forecast start boundary");
+viewModel.SetDetailPanelRailWidth(72);
+AssertEqual(72d, viewModel.DetailPanelRailWidth, "Collapsed detail rail width persists on the view model");
+viewModel.SetDetailPanelRailWidth(8);
+AssertEqual(36d, viewModel.DetailPanelRailWidth, "Collapsed detail rail width clamps to the minimum");
+viewModel.SetDetailPanelRailWidth(160);
+AssertEqual(92d, viewModel.DetailPanelRailWidth, "Collapsed detail rail width clamps to the maximum");
+viewModel.SetDetailPanelPinned(true);
+AssertTrue(viewModel.IsDetailPanelPinned, "Detail panel pin state can be enabled globally");
+viewModel.SetDetailPanelPinned(false);
+AssertTrue(!viewModel.IsDetailPanelPinned, "Detail panel pin state can be disabled globally");
 
 var metadataDataset = new ProjectDataset
 {

@@ -203,12 +203,42 @@ public partial class MainWindow
 
     private void HideDetailWorkspacePanel_Click(object sender, RoutedEventArgs e)
     {
-        CollapseDetailWorkspacePanel();
+        CollapseDetailWorkspacePanel(clearPin: true);
     }
 
     private void DetailWorkspaceCollapsedTab_Click(object sender, RoutedEventArgs e)
     {
-        ExpandDetailWorkspacePanel();
+        if (DataContext is MainWindowViewModel { IsDetailPanelCollapsed: false })
+        {
+            CollapseDetailWorkspacePanel(clearPin: true);
+        }
+        else
+        {
+            ExpandDetailWorkspacePanel(pin: false);
+        }
+    }
+
+    private void DetailWorkspacePinButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var nextPinned = !viewModel.IsDetailPanelPinned;
+        viewModel.SetDetailPanelPinned(nextPinned);
+        if (nextPinned)
+        {
+            ExpandDetailWorkspacePanel(pin: true);
+        }
+        else if (viewModel.IsDetailPanelCollapsed)
+        {
+            CollapseDetailWorkspacePanel(clearPin: false);
+        }
+        else
+        {
+            ExpandDetailWorkspacePanel(pin: false);
+        }
     }
 
     private void CollapsedDetailWorkspaceHost_MouseEnter(object sender, MouseEventArgs e)
@@ -216,29 +246,56 @@ public partial class MainWindow
         if (DataContext is MainWindowViewModel { IsDetailPanelCollapsed: true }
             && !IsDetailWorkspaceSuppressed())
         {
-            ShowTransientDetailWorkspacePanel();
+            QueueTransientDetailWorkspacePanel();
         }
     }
 
     private void CollapsedDetailWorkspaceHost_MouseLeave(object sender, MouseEventArgs e)
     {
-        if (DataContext is MainWindowViewModel { IsDetailPanelCollapsed: true }
-            && !IsMouseOverDetailWorkspace())
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
         {
-            CollapseDetailWorkspacePanel();
+            if (DataContext is MainWindowViewModel { IsDetailPanelCollapsed: true, IsDetailPanelPinned: false }
+                && !IsMouseOverDetailWorkspace())
+            {
+                CollapseDetailWorkspacePanel(clearPin: false);
+            }
+        }));
+    }
+
+    private void DetailWorkspaceShell_MouseLeave(object sender, MouseEventArgs e)
+    {
+        if (_detailWorkspaceOverlayOpen
+            && DataContext is MainWindowViewModel { IsDetailPanelPinned: false }
+            && !CollapsedDetailWorkspaceHost.IsMouseOver)
+        {
+            CollapseDetailWorkspacePanel(clearPin: false);
         }
+    }
+
+    private void CollapsedDetailRailResizeThumb_DragDelta(object sender, DragDeltaEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var nextWidth = Math.Clamp(CollapsedDetailWorkspaceHost.Width - e.HorizontalChange, 36, 92);
+        viewModel.SetDetailPanelRailWidth(nextWidth);
+        ApplyCollapsedRailWidth(viewModel);
     }
 
     private bool IsMouseOverDetailWorkspace()
         => DetailWorkspaceShell.IsMouseOver || CollapsedDetailWorkspaceHost.IsMouseOver;
 
-    private void CollapseDetailWorkspacePanel()
+    private void CollapseDetailWorkspacePanel(bool clearPin)
     {
         if (DetailWorkspaceColumn.Width.Value > 0)
         {
             _detailWorkspaceExpandedWidth = DetailWorkspaceColumn.Width;
         }
 
+        _detailWorkspaceOverlayOpen = false;
+        StopDetailWorkspaceHoverTimer();
         DetailWorkspaceShell.Visibility = Visibility.Collapsed;
         CollapsedDetailWorkspaceHost.Visibility = Visibility.Visible;
         DetailWorkspacePanel.Visibility = Visibility.Collapsed;
@@ -260,18 +317,53 @@ public partial class MainWindow
         WorkspaceGridSplitter.Visibility = Visibility.Collapsed;
         WorkspaceSplitterColumn.Width = new GridLength(0);
         DetailWorkspaceContentColumn.Width = new GridLength(0);
-        DetailWorkspaceColumn.Width = new GridLength(40);
         if (DataContext is MainWindowViewModel viewModel)
         {
+            ApplyCollapsedRailWidth(viewModel);
             viewModel.SetDetailPanelCollapsed(true);
+            if (clearPin)
+            {
+                viewModel.SetDetailPanelPinned(false);
+            }
+
+            ApplyPinButtonVisual(viewModel);
         }
+    }
+
+    private void QueueTransientDetailWorkspacePanel()
+    {
+        StopDetailWorkspaceHoverTimer();
+        _detailWorkspaceHoverTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(320)
+        };
+        _detailWorkspaceHoverTimer.Tick += (_, _) =>
+        {
+            StopDetailWorkspaceHoverTimer();
+            if (CollapsedDetailWorkspaceHost.IsMouseOver
+                && DataContext is MainWindowViewModel { IsDetailPanelCollapsed: true, IsDetailPanelPinned: false })
+            {
+                ShowTransientDetailWorkspacePanel();
+            }
+        };
+        _detailWorkspaceHoverTimer.Start();
+    }
+
+    private void StopDetailWorkspaceHoverTimer()
+    {
+        _detailWorkspaceHoverTimer?.Stop();
+        _detailWorkspaceHoverTimer = null;
     }
 
     private void ShowTransientDetailWorkspacePanel()
     {
+        _detailWorkspaceOverlayOpen = true;
         DetailWorkspaceShell.Visibility = Visibility.Visible;
         CollapsedDetailWorkspaceHost.Visibility = Visibility.Visible;
         DetailWorkspacePanel.Visibility = Visibility.Visible;
+        Panel.SetZIndex(DetailWorkspaceShell, 40);
+        DetailWorkspaceShell.HorizontalAlignment = HorizontalAlignment.Right;
+        DetailWorkspaceShell.Width = Math.Max(420, ActualWidth * 0.28);
         DetailWorkspaceShell.Background = BrushFactory.Frozen("#F8FAFD");
         DetailWorkspaceShell.BorderBrush = BrushFactory.Frozen("#DCE4EE");
         DetailWorkspaceShell.BorderThickness = new Thickness(1);
@@ -285,16 +377,22 @@ public partial class MainWindow
         DetailWorkspaceRail.Padding = new Thickness(5);
         DetailWorkspaceRail.Width = 52;
         DetailWorkspaceContentColumn.Width = new GridLength(1, GridUnitType.Star);
-        DetailWorkspaceColumn.Width = _detailWorkspaceExpandedWidth.Value > 0
-            ? _detailWorkspaceExpandedWidth
-            : new GridLength(1.25, GridUnitType.Star);
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            ApplyCollapsedRailWidth(viewModel);
+        }
     }
 
-    private void ExpandDetailWorkspacePanel()
+    private void ExpandDetailWorkspacePanel(bool pin)
     {
+        _detailWorkspaceOverlayOpen = false;
+        StopDetailWorkspaceHoverTimer();
         DetailWorkspaceShell.Visibility = Visibility.Visible;
         CollapsedDetailWorkspaceHost.Visibility = Visibility.Collapsed;
         DetailWorkspacePanel.Visibility = Visibility.Visible;
+        Panel.SetZIndex(DetailWorkspaceShell, 0);
+        DetailWorkspaceShell.ClearValue(FrameworkElement.WidthProperty);
+        DetailWorkspaceShell.HorizontalAlignment = HorizontalAlignment.Stretch;
         DetailWorkspaceShell.Background = BrushFactory.Frozen("#F8FAFD");
         DetailWorkspaceShell.BorderBrush = BrushFactory.Frozen("#DCE4EE");
         DetailWorkspaceShell.BorderThickness = new Thickness(1);
@@ -319,6 +417,11 @@ public partial class MainWindow
         if (DataContext is MainWindowViewModel viewModel)
         {
             viewModel.SetDetailPanelCollapsed(false);
+            if (pin)
+            {
+                viewModel.SetDetailPanelPinned(true);
+            }
+            ApplyPinButtonVisual(viewModel);
         }
     }
 
@@ -347,17 +450,41 @@ public partial class MainWindow
 
         if (string.Equals(viewModel.ActiveWorkspaceKey, "Pivot Builder", StringComparison.OrdinalIgnoreCase))
         {
-            CollapseDetailWorkspacePanel();
+            CollapseDetailWorkspacePanel(clearPin: false);
             return;
         }
 
-        if (viewModel.IsDetailPanelCollapsed)
+        ApplyCollapsedRailWidth(viewModel);
+        if (viewModel.IsDetailPanelPinned)
         {
-            CollapseDetailWorkspacePanel();
+            ExpandDetailWorkspacePanel(pin: true);
+        }
+        else if (viewModel.IsDetailPanelCollapsed)
+        {
+            CollapseDetailWorkspacePanel(clearPin: false);
         }
         else
         {
-            ExpandDetailWorkspacePanel();
+            ExpandDetailWorkspacePanel(pin: false);
         }
+    }
+
+    private void ApplyCollapsedRailWidth(MainWindowViewModel viewModel)
+    {
+        var width = viewModel.DetailPanelRailWidth;
+        CollapsedDetailWorkspaceHost.Width = width;
+        DetailWorkspaceColumn.Width = new GridLength(width);
+        CollapsedDetailWorkspaceButton.Width = Math.Max(28, width - 12);
+    }
+
+    private void ApplyPinButtonVisual(MainWindowViewModel viewModel)
+    {
+        DetailWorkspacePinButton.Content = viewModel.IsDetailPanelPinned ? "Pinned" : "Pin";
+        DetailWorkspacePinButton.ToolTip = viewModel.IsDetailPanelPinned
+            ? "Unpin resource drilldown"
+            : "Pin resource drilldown open";
+        DetailWorkspacePinButton.Background = viewModel.IsDetailPanelPinned
+            ? BrushFactory.Frozen("#DBEAFE")
+            : BrushFactory.Frozen("#F8FAFC");
     }
 }
