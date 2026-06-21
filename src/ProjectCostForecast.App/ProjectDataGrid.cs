@@ -137,7 +137,6 @@ public static class ProjectDataGridProfiles
     {
         SetIfUnset(grid, DataGrid.CanUserAddRowsProperty, false);
         SetIfUnset(grid, DataGrid.AutoGenerateColumnsProperty, false);
-        SetIfUnset(grid, DataGrid.HeadersVisibilityProperty, DataGridHeadersVisibility.All);
         SetIfUnset(grid, DataGrid.GridLinesVisibilityProperty, DataGridGridLinesVisibility.All);
         SetIfUnset(grid, DataGrid.HorizontalGridLinesBrushProperty, BrushFactory.Frozen("#DDE6F0"));
         SetIfUnset(grid, DataGrid.VerticalGridLinesBrushProperty, BrushFactory.Frozen("#DDE6F0"));
@@ -149,12 +148,14 @@ public static class ProjectDataGridProfiles
 
     private static void ApplyForecast(DataGrid grid)
     {
+        SetIfUnset(grid, DataGrid.HeadersVisibilityProperty, DataGridHeadersVisibility.Column);
         SetIfUnset(grid, DataGrid.SelectionModeProperty, DataGridSelectionMode.Extended);
         SetIfUnset(grid, DataGrid.SelectionUnitProperty, DataGridSelectionUnit.CellOrRowHeader);
     }
 
     private static void ApplyReadOnlyLedger(DataGrid grid)
     {
+        SetIfUnset(grid, DataGrid.HeadersVisibilityProperty, DataGridHeadersVisibility.Column);
         SetIfUnset(grid, DataGrid.IsReadOnlyProperty, true);
         SetIfUnset(grid, DataGrid.SelectionModeProperty, DataGridSelectionMode.Extended);
         SetIfUnset(grid, DataGrid.SelectionUnitProperty, DataGridSelectionUnit.CellOrRowHeader);
@@ -162,6 +163,7 @@ public static class ProjectDataGridProfiles
 
     private static void ApplyPivot(DataGrid grid)
     {
+        SetIfUnset(grid, DataGrid.HeadersVisibilityProperty, DataGridHeadersVisibility.Column);
         SetIfUnset(grid, DataGrid.IsReadOnlyProperty, true);
         SetIfUnset(grid, DataGrid.SelectionModeProperty, DataGridSelectionMode.Extended);
         SetIfUnset(grid, DataGrid.SelectionUnitProperty, DataGridSelectionUnit.CellOrRowHeader);
@@ -169,12 +171,14 @@ public static class ProjectDataGridProfiles
 
     private static void ApplyManagementResource(DataGrid grid)
     {
+        SetIfUnset(grid, DataGrid.HeadersVisibilityProperty, DataGridHeadersVisibility.Column);
         SetIfUnset(grid, DataGrid.SelectionModeProperty, DataGridSelectionMode.Extended);
         SetIfUnset(grid, DataGrid.SelectionUnitProperty, DataGridSelectionUnit.CellOrRowHeader);
     }
 
     private static void ApplySchedule(DataGrid grid)
     {
+        SetIfUnset(grid, DataGrid.HeadersVisibilityProperty, DataGridHeadersVisibility.Column);
         SetIfUnset(grid, DataGrid.SelectionModeProperty, DataGridSelectionMode.Extended);
         SetIfUnset(grid, DataGrid.SelectionUnitProperty, DataGridSelectionUnit.FullRow);
         SetIfUnset(grid, DataGrid.ClipboardCopyModeProperty, DataGridClipboardCopyMode.IncludeHeader);

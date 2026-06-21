@@ -105,7 +105,16 @@ public partial class MainWindow
     {
         if (!TryRebuildForecastYearBands())
         {
-            QueueRebuildForecastYearBands();
+            ClearForecastOverlays();
+            if (_forecastYearBandDeferredRetryCount < 8)
+            {
+                _forecastYearBandDeferredRetryCount++;
+                QueueRebuildForecastYearBands(DispatcherPriority.ApplicationIdle);
+            }
+        }
+        else
+        {
+            _forecastYearBandDeferredRetryCount = 0;
         }
     }
 
@@ -404,7 +413,7 @@ public partial class MainWindow
         return Math.Max(0, ForecastGridHost.ActualHeight);
     }
 
-    private void QueueRebuildForecastYearBands()
+    private void QueueRebuildForecastYearBands(DispatcherPriority priority = DispatcherPriority.Render)
     {
         if (_forecastYearBandRebuildQueued)
         {
@@ -412,7 +421,7 @@ public partial class MainWindow
         }
 
         _forecastYearBandRebuildQueued = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
+        Dispatcher.BeginInvoke(priority, new Action(() =>
         {
             _forecastYearBandRebuildQueued = false;
             RebuildForecastYearBands();

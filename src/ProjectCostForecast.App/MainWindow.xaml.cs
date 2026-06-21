@@ -109,6 +109,7 @@ public partial class MainWindow : Window
     private DispatcherTimer? _detailWorkspaceHoverTimer;
     private bool _detailWorkspaceOverlayOpen;
     private bool _forecastYearBandRebuildQueued;
+    private int _forecastYearBandDeferredRetryCount;
     private bool _forecastGroupHeaderRefreshQueued;
     private string _forecastOverlayGeometrySignature = string.Empty;
     private bool _forecastOverlaysCleared = true;
