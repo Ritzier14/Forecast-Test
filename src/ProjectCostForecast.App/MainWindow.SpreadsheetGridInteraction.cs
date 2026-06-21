@@ -901,7 +901,16 @@ public partial class MainWindow
             return;
         }
 
-        SelectSingleGridCell(grid, cell.DataContext, cell.Column, scrollIntoView: false, focusCell: false);
+        var clickedInfo = new DataGridCellInfo(cell.DataContext, cell.Column);
+        if (!grid.SelectedCells.Contains(clickedInfo))
+        {
+            SelectSingleGridCell(grid, cell.DataContext, cell.Column, scrollIntoView: false, focusCell: false);
+        }
+        else
+        {
+            grid.CurrentCell = clickedInfo;
+        }
+
         var menu = BuildSpreadsheetCellContextMenu(grid, cell);
         cell.ContextMenu = menu;
         menu.PlacementTarget = cell;

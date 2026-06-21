@@ -1375,7 +1375,8 @@
                                                        IsChecked="{Binding ShowScheduleBaselineComparison, Mode=TwoWay}"
                                                        VerticalAlignment="Center"
                                                        Margin="0,2,6,2" />
-                                             <Button Content="Pop out comparison" Padding="8,3" Margin="0,2,14,2" Click="SchedulePopoutComparison_Click" />
+                                             <Button Content="Baseline Comparison" Padding="8,3" Margin="0,2,6,2" Click="SchedulePopoutComparison_Click" />
+                                             <Button Content="Activity" Padding="8,3" Margin="0,2,14,2" Click="ScheduleActivityPanel_Click" />
                                              <Button Content="Calendars..." Padding="8,3" Margin="0,2,14,2" Click="ScheduleCalendars_Click" />
                                              <TextBlock Text="Progress" VerticalAlignment="Center" Margin="0,0,4,0" />
                                              <Button Content="0%" Padding="7,3" Margin="0,2,2,2" Click="ScheduleProgress0_Click" />
@@ -1395,6 +1396,8 @@
                                             <ColumnDefinition Width="11*" MinWidth="320" />
                                             <ColumnDefinition Width="8" />
                                             <ColumnDefinition Width="9*" MinWidth="260" />
+                                            <ColumnDefinition x:Name="ScheduleActivityPanelSplitterColumn" Width="0" />
+                                            <ColumnDefinition x:Name="ScheduleActivityPanelColumn" Width="0" />
                                         </Grid.ColumnDefinitions>
                                         <DataGrid x:Name="ScheduleGrid"
                                                   Grid.Column="0"
@@ -1525,6 +1528,122 @@
                                                              MouseLeftButtonDown="GanttBodyCanvas_MouseLeftButtonDown"
                                                              MouseMove="GanttBodyCanvas_MouseMove"
                                                              MouseLeftButtonUp="GanttBodyCanvas_MouseLeftButtonUp" />
+                                                </ScrollViewer>
+                                            </DockPanel>
+                                        </Border>
+                                        <GridSplitter x:Name="ScheduleActivityPanelSplitter" Grid.Column="3" Width="8" HorizontalAlignment="Stretch" Background="Transparent" Visibility="Collapsed" />
+                                        <Border x:Name="ScheduleActivityPanel"
+                                                Grid.Column="4"
+                                                Visibility="Collapsed"
+                                                BorderBrush="{StaticResource SoftBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="10"
+                                                Background="White"
+                                                Padding="12">
+                                            <DockPanel LastChildFill="True">
+                                                <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock Text="Activity" FontSize="16" FontWeight="Bold" Foreground="#0F172A" />
+                                                        <TextBlock Text="{Binding SelectedScheduleActivity.Id, TargetNullValue=No activity selected}" Foreground="{StaticResource MutedTextBrush}" />
+                                                    </StackPanel>
+                                                    <Button Grid.Column="1" Content="×" Width="28" Height="28" MinWidth="0" Padding="0" BorderThickness="0" Background="Transparent" FontSize="18" Click="ScheduleActivityPanelClose_Click" />
+                                                </Grid>
+                                                <TextBlock Text="Select an activity row or Gantt bar to edit its details."
+                                                           Foreground="{StaticResource MutedTextBrush}"
+                                                           TextWrapping="Wrap">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding SelectedScheduleActivity}" Value="{x:Null}">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                                    <ScrollViewer.Style>
+                                                        <Style TargetType="ScrollViewer">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding SelectedScheduleActivity}" Value="{x:Null}">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ScrollViewer.Style>
+                                                    <StackPanel>
+                                                        <TextBlock Text="Name" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                        <TextBox Text="{Binding SelectedScheduleActivity.Name, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
+                                                        <UniformGrid Columns="2" Margin="0,0,0,10">
+                                                            <StackPanel Margin="0,0,6,0">
+                                                                <TextBlock Text="Type" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                                <ComboBox ItemsSource="{x:Static vm:MainWindowViewModel.ScheduleKindOptions}" SelectedItem="{Binding SelectedScheduleActivity.Kind, UpdateSourceTrigger=PropertyChanged}" />
+                                                            </StackPanel>
+                                                            <StackPanel Margin="6,0,0,0">
+                                                                <TextBlock Text="Duration" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                                <TextBox Text="{Binding SelectedScheduleActivity.DurationDays, UpdateSourceTrigger=LostFocus}" />
+                                                            </StackPanel>
+                                                        </UniformGrid>
+                                                        <TextBlock Text="Calendar" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                        <ComboBox ItemsSource="{Binding ScheduleCalendars}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedScheduleActivity.CalendarId, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
+                                                        <TextBlock Text="Outline level" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                        <TextBox Text="{Binding SelectedScheduleActivity.OutlineLevel, UpdateSourceTrigger=LostFocus}" Margin="0,0,0,10" />
+                                                        <UniformGrid Columns="2" Margin="0,0,0,10">
+                                                            <StackPanel Margin="0,0,6,0">
+                                                                <TextBlock Text="Start" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                                <TextBlock Text="{Binding SelectedScheduleActivity.EarlyStart, Converter={StaticResource DateOnlyText}}" Foreground="{StaticResource MutedTextBrush}" />
+                                                            </StackPanel>
+                                                            <StackPanel Margin="6,0,0,0">
+                                                                <TextBlock Text="Finish" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                                <TextBlock Text="{Binding SelectedScheduleActivity.EarlyFinish, Converter={StaticResource DateOnlyText}}" Foreground="{StaticResource MutedTextBrush}" />
+                                                            </StackPanel>
+                                                        </UniformGrid>
+                                                        <TextBlock Text="Constraint" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                        <ComboBox ItemsSource="{x:Static vm:MainWindowViewModel.ScheduleConstraintOptions}" SelectedItem="{Binding SelectedScheduleActivity.ConstraintType, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
+                                                        <TextBlock Text="Constraint date" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                        <TextBox Text="{Binding SelectedScheduleActivity.ConstraintDate, Converter={StaticResource DateOnlyText}, UpdateSourceTrigger=LostFocus}" Margin="0,0,0,10" />
+                                                        <TextBlock Text="Predecessor text" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                        <TextBox Text="{Binding SelectedScheduleActivity.PredecessorText, UpdateSourceTrigger=LostFocus}" Margin="0,0,0,10" />
+                                                        <TextBlock Text="Hammock members" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                        <TextBox Text="{Binding SelectedScheduleActivity.HammockMemberText, UpdateSourceTrigger=LostFocus}" Margin="0,0,0,10" />
+                                                        <TextBlock Text="Predecessors" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                        <DataGrid x:Name="ScheduleActivityPredecessorsGrid" ItemsSource="{Binding SelectedSchedulePredecessorLinks}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" Height="120" Margin="0,0,0,6">
+                                                            <DataGrid.Columns>
+                                                                <DataGridTextColumn Header="ID" Binding="{Binding PredecessorId}" Width="*" />
+                                                                <DataGridTextColumn Header="Type" Binding="{Binding TypeLabel}" Width="55" />
+                                                                <DataGridTextColumn Header="Lag" Binding="{Binding LagDays}" Width="55" />
+                                                            </DataGrid.Columns>
+                                                        </DataGrid>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                                            <Button Content="Add from clipboard" Padding="8,3" Margin="0,0,6,0" Click="ScheduleActivityAddPredecessor_Click" />
+                                                            <Button Content="Delete" Padding="8,3" Click="ScheduleActivityDeletePredecessor_Click" />
+                                                        </StackPanel>
+                                                        <TextBlock Text="Successors" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                        <DataGrid x:Name="ScheduleActivitySuccessorsGrid" ItemsSource="{Binding SelectedScheduleSuccessorLinks}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" Height="120" Margin="0,0,0,6">
+                                                            <DataGrid.Columns>
+                                                                <DataGridTextColumn Header="ID" Binding="{Binding SuccessorId}" Width="*" />
+                                                                <DataGridTextColumn Header="Type" Binding="{Binding TypeLabel}" Width="55" />
+                                                                <DataGridTextColumn Header="Lag" Binding="{Binding LagDays}" Width="55" />
+                                                            </DataGrid.Columns>
+                                                        </DataGrid>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                                            <Button Content="Copy this as source" Padding="8,3" Margin="0,0,6,0" Click="ScheduleActivityCopyAsSource_Click" />
+                                                            <Button Content="Delete" Padding="8,3" Click="ScheduleActivityDeleteSuccessor_Click" />
+                                                        </StackPanel>
+                                                        <TextBlock Text="Progress" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                        <TextBox Text="{Binding SelectedScheduleActivity.PercentComplete, UpdateSourceTrigger=LostFocus}" Margin="0,0,0,10" />
+                                                        <TextBlock Text="Baseline start" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                        <TextBox Text="{Binding SelectedScheduleActivity.BaselineStart, Converter={StaticResource DateOnlyText}, UpdateSourceTrigger=LostFocus}" Margin="0,0,0,8" />
+                                                        <TextBlock Text="Baseline finish" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                        <TextBox Text="{Binding SelectedScheduleActivity.BaselineFinish, Converter={StaticResource DateOnlyText}, UpdateSourceTrigger=LostFocus}" Margin="0,0,0,10" />
+                                                        <TextBlock Text="{Binding SelectedScheduleActivityValidationText}" Foreground="#DC2626" TextWrapping="Wrap" />
+                                                    </StackPanel>
                                                 </ScrollViewer>
                                             </DockPanel>
                                         </Border>

@@ -149,7 +149,9 @@ public sealed class ScheduleComparisonWindow : Window
             _baselineGrid.ItemsSource = rows;
             var slipping = rows.Count(row => row.VarianceDays > 0);
             var ahead = rows.Count(row => row.VarianceDays < 0);
-            _summaryText.Text = $"Baseline: {baseline?.Name ?? "None"}   Slipping: {slipping}   Ahead: {ahead}   Critical: {snapshots.Count(activity => activity.IsCritical)}";
+            _summaryText.Text = baseline is null
+                ? "No active baseline captured yet. Capture a baseline before comparing."
+                : $"Baseline: {baseline.Name}   Slipping: {slipping}   Ahead: {ahead}   Critical: {snapshots.Count(activity => activity.IsCritical)}";
         }
         catch (OperationCanceledException)
         {

@@ -11,6 +11,26 @@ namespace ProjectCostForecast.App;
 public partial class MainWindow
 {
     private ScheduleComparisonWindow? _scheduleComparisonWindow;
+
+    private void ScheduleActivityPanel_Click(object sender, RoutedEventArgs e)
+    {
+        var opening = ScheduleActivityPanel.Visibility != Visibility.Visible;
+        SetScheduleActivityPanelOpen(opening);
+    }
+
+    private void ScheduleActivityPanelClose_Click(object sender, RoutedEventArgs e)
+    {
+        SetScheduleActivityPanelOpen(false);
+    }
+
+    private void SetScheduleActivityPanelOpen(bool open)
+    {
+        ScheduleActivityPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        ScheduleActivityPanelSplitter.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        ScheduleActivityPanelSplitterColumn.Width = open ? new GridLength(8) : new GridLength(0);
+        ScheduleActivityPanelColumn.Width = open ? new GridLength(360) : new GridLength(0);
+    }
+
     private void ScheduleInsertAbove_Click(object sender, RoutedEventArgs e)
     {
         if (GanttViewModel is { } viewModel)
@@ -216,6 +236,54 @@ public partial class MainWindow
         _scheduleComparisonWindow = new ScheduleComparisonWindow(viewModel) { Owner = this };
         _scheduleComparisonWindow.Closed += (_, _) => _scheduleComparisonWindow = null;
         _scheduleComparisonWindow.Show();
+    }
+
+    private void ScheduleActivityAddPredecessor_Click(object sender, RoutedEventArgs e)
+    {
+        if (GanttViewModel?.SelectedScheduleActivity is not { } activity)
+        {
+            return;
+        }
+
+        if (!GanttViewModel.PasteScheduleLinkTo(activity) && GanttViewModel.ScheduleLinkClipboardActivities.Count > 0)
+        {
+            MessageBox.Show(this, GanttViewModel.StatusText, "Add predecessor", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void ScheduleActivityDeletePredecessor_Click(object sender, RoutedEventArgs e)
+    {
+        if (GanttViewModel?.SelectedScheduleActivity is not { } activity
+            || ScheduleActivityPredecessorsGrid.SelectedItem is not ActivityLink link)
+        {
+            return;
+        }
+
+        GanttViewModel.BreakScheduleLink(activity, link.PredecessorId);
+    }
+
+    private void ScheduleActivityCopyAsSource_Click(object sender, RoutedEventArgs e)
+    {
+        if (GanttViewModel?.SelectedScheduleActivity is { } activity)
+        {
+            GanttViewModel.CopyScheduleLinkSource(activity);
+        }
+    }
+
+    private void ScheduleActivityDeleteSuccessor_Click(object sender, RoutedEventArgs e)
+    {
+        if (GanttViewModel?.SelectedScheduleActivity is not { } activity
+            || ScheduleActivitySuccessorsGrid.SelectedItem is not ActivityLink link)
+        {
+            return;
+        }
+
+        var successor = GanttViewModel.ScheduleActivities.FirstOrDefault(item =>
+            string.Equals(item.Id, link.SuccessorId, StringComparison.OrdinalIgnoreCase));
+        if (successor is not null)
+        {
+            GanttViewModel.BreakScheduleLink(successor, activity.Id);
+        }
     }
 
     private void BeginEditingScheduleActivityNameCell(ScheduleActivity activity)

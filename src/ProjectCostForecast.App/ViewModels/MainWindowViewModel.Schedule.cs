@@ -50,7 +50,15 @@ public sealed partial class MainWindowViewModel
     public ScheduleActivity? SelectedScheduleActivity
     {
         get => _selectedScheduleActivity;
-        set => SetProperty(ref _selectedScheduleActivity, value);
+        set
+        {
+            if (SetProperty(ref _selectedScheduleActivity, value))
+            {
+                OnPropertyChanged(nameof(SelectedSchedulePredecessorLinks));
+                OnPropertyChanged(nameof(SelectedScheduleSuccessorLinks));
+                OnPropertyChanged(nameof(SelectedScheduleActivityValidationText));
+            }
+        }
     }
 
     public ScheduleEditMode ScheduleEditMode
@@ -108,6 +116,22 @@ public sealed partial class MainWindowViewModel
             return $"Activities {schedulable.Count}  Critical {critical}  Complete {complete}  Open ends {openEnds}  Warnings {warnings}";
         }
     }
+
+    public IReadOnlyList<ActivityLink> SelectedSchedulePredecessorLinks => SelectedScheduleActivity is null
+        ? []
+        : ScheduleDataRef.Links
+            .Where(link => string.Equals(link.SuccessorId, SelectedScheduleActivity.Id, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    public IReadOnlyList<ActivityLink> SelectedScheduleSuccessorLinks => SelectedScheduleActivity is null
+        ? []
+        : ScheduleDataRef.Links
+            .Where(link => string.Equals(link.PredecessorId, SelectedScheduleActivity.Id, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    public string SelectedScheduleActivityValidationText => SelectedScheduleActivity is null
+        ? string.Empty
+        : SelectedScheduleActivity.ScheduleNote;
 
     public DateTime? ScheduleProjectStartDate
     {
@@ -213,6 +237,9 @@ public sealed partial class MainWindowViewModel
 
         ScheduleRecalculated?.Invoke(this, EventArgs.Empty);
         OnPropertyChanged(nameof(ScheduleHealthText));
+        OnPropertyChanged(nameof(SelectedSchedulePredecessorLinks));
+        OnPropertyChanged(nameof(SelectedScheduleSuccessorLinks));
+        OnPropertyChanged(nameof(SelectedScheduleActivityValidationText));
     }
 
     private void MarkScheduleDirtyAndRecalculate()

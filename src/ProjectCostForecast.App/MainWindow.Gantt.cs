@@ -22,7 +22,7 @@ public partial class MainWindow
     private static readonly Brush GanttGhostBrush = BrushFactory.Frozen(0x93, 0xC5, 0xFD);
     private static readonly Brush GanttHeadingBrush = BrushFactory.Frozen(0x11, 0x18, 0x27);
     private static readonly Brush GanttHammockBrush = BrushFactory.Frozen(0x0F, 0x76, 0x6E);
-    private static readonly Brush GanttBaselineBrush = BrushFactory.Frozen(0xF5, 0x9E, 0x0B);
+    private static readonly Brush GanttBaselineBrush = BrushFactory.Frozen(0x94, 0xA3, 0xB8);
     private static readonly Brush GanttFloatBrush = BrushFactory.Frozen(0x94, 0xA3, 0xB8);
     private static readonly Brush GanttLinkBrush = BrushFactory.Frozen(0x64, 0x74, 0x8B);
     private static readonly Brush GanttSlipBrush = BrushFactory.Frozen(0xDC, 0x26, 0x26);
@@ -827,14 +827,15 @@ public partial class MainWindow
             var baselineBar = new Rectangle
             {
                 Width = Math.Max(2, ((baselineFinish.DayNumber - baselineStart.DayNumber + 1) * _ganttDayWidth)),
-                Height = 5,
+                Height = 4,
                 Fill = GanttBaselineBrush,
+                Opacity = 0.85,
                 RadiusX = 2,
                 RadiusY = 2,
                 ToolTip = $"{activity.Id} baseline: {baselineStart:d/MM/yyyy} → {baselineFinish:d/MM/yyyy}"
             };
             Canvas.SetLeft(baselineBar, GanttDateToX(baselineStart, rangeStart));
-            Canvas.SetTop(baselineBar, rowTop + GanttRowHeight - 7);
+            Canvas.SetTop(baselineBar, rowTop + GanttRowHeight - 6);
             GanttBodyCanvas.Children.Add(baselineBar);
         }
 
@@ -918,7 +919,7 @@ public partial class MainWindow
             default:
             {
                 var fill = activity.IsCritical ? GanttCriticalBrush : GanttTaskBrush;
-                var container = new Grid { Width = barWidth, Height = 10 };
+                var container = new Grid { Width = barWidth, Height = 12 };
                 container.Children.Add(new Rectangle
                 {
                     Fill = fill,
@@ -932,7 +933,7 @@ public partial class MainWindow
                     container.Children.Add(new Rectangle
                     {
                         Fill = activity.IsCritical ? GanttCriticalProgressBrush : GanttTaskProgressBrush,
-                        Height = 4,
+                        Height = 5,
                         Margin = new Thickness(1, 0, 0, 0),
                         VerticalAlignment = VerticalAlignment.Center,
                         HorizontalAlignment = HorizontalAlignment.Left,
@@ -941,7 +942,7 @@ public partial class MainWindow
                 }
 
                 bar = container;
-                Canvas.SetTop(bar, rowTop + (GanttRowHeight / 2) - 5);
+                Canvas.SetTop(bar, rowTop + (GanttRowHeight / 2) - 6);
                 break;
             }
         }
