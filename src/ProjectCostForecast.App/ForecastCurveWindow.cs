@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using ProjectCostForecast.App.Models;
+using ProjectCostForecast.App.ViewModels;
 
 namespace ProjectCostForecast.App;
 
@@ -18,6 +19,8 @@ public sealed class ForecastCurveWindow : Window
     private readonly Canvas _canvas;
     private readonly ObservableCollection<ForecastCurveValueRow> _rows;
     private readonly ObservableCollection<ForecastCurveSummaryRow> _summaryRows;
+    private readonly MainWindowViewModel? _viewModel;
+    private readonly string _resourceName;
     private readonly List<FrameworkElement> _points = [];
     private readonly List<Rectangle> _monthlyBars = [];
     private readonly List<Button> _lockButtons = [];
@@ -30,8 +33,10 @@ public sealed class ForecastCurveWindow : Window
     private int _dragIndex = -1;
     private decimal _axisMax;
 
-    public ForecastCurveWindow(string resourceName, string costCode, IReadOnlyList<ForecastCurvePoint> points)
+    public ForecastCurveWindow(string resourceName, string costCode, IReadOnlyList<ForecastCurvePoint> points, MainWindowViewModel? viewModel = null)
     {
+        _viewModel = viewModel;
+        _resourceName = resourceName;
         _rows = new ObservableCollection<ForecastCurveValueRow>(points.Select(point => new ForecastCurveValueRow
         {
             PeriodKey = point.PeriodKey,
@@ -95,10 +100,32 @@ public sealed class ForecastCurveWindow : Window
         };
         foreach (var preset in ForecastCurvePresets.All)
         {
-            var item = new ComboBoxItem { Content = preset, Tag = preset };
+            var item = new ComboBoxItem { Content = BuildPresetLabel(preset, "Built-in"), Tag = preset };
             item.MouseEnter += (_, _) => PreviewPreset(preset);
             item.MouseLeave += (_, _) => ClearPresetPreview();
             _presetBox.Items.Add(item);
+        }
+
+        if (_viewModel?.UserForecastCurvePresets.Count > 0)
+        {
+            _presetBox.Items.Add(new ComboBoxItem
+            {
+                Content = "User Presets",
+                IsEnabled = false,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = BrushFactory.Frozen("#94A3B8")
+            });
+            foreach (var preset in _viewModel.UserForecastCurvePresets)
+            {
+                var item = new ComboBoxItem
+                {
+                    Content = BuildPresetLabel(preset.Name, $"{preset.MonthCount} months"),
+                    Tag = preset
+                };
+                item.MouseEnter += (_, _) => PreviewUserPreset(preset);
+                item.MouseLeave += (_, _) => ClearPresetPreview();
+                _presetBox.Items.Add(item);
+            }
         }
 
         _presetBox.SelectedIndex = 0;
@@ -155,6 +182,27 @@ public sealed class ForecastCurveWindow : Window
         AddEffectRangeButton(presetPanel, "Nearby", 2, isSelected: true);
         AddEffectRangeButton(presetPanel, "Wide", 4);
         AddEffectRangeButton(presetPanel, "Full", int.MaxValue);
+        if (_viewModel is not null)
+        {
+            var savePreset = new Button
+            {
+                Content = "Save preset",
+                MinWidth = 92,
+                Padding = new Thickness(8, 3, 8, 3),
+                Margin = new Thickness(12, 0, 0, 0)
+            };
+            savePreset.Click += (_, _) => SaveCurrentPreset();
+            presetPanel.Children.Add(savePreset);
+            var managePresets = new Button
+            {
+                Content = "Manage",
+                MinWidth = 76,
+                Padding = new Thickness(8, 3, 8, 3),
+                Margin = new Thickness(4, 0, 0, 0)
+            };
+            managePresets.Click += (_, _) => ManagePresets();
+            presetPanel.Children.Add(managePresets);
+        }
         Grid.SetRow(presetPanel, 1);
         root.Children.Add(presetPanel);
 
@@ -286,7 +334,18 @@ public sealed class ForecastCurveWindow : Window
 
     private void ApplySelectedPreset()
     {
+        if (_presetBox.SelectedItem is ComboBoxItem { Tag: UserForecastCurvePreset userPreset })
+        {
+            ApplyUserPreset(userPreset);
+            return;
+        }
+
         var preset = GetSelectedPreset();
+        if (string.IsNullOrWhiteSpace(preset))
+        {
+            return;
+        }
+
         var values = BuildPresetValues(preset);
         _presetPreviewValues = null;
         for (var index = 0; index < _rows.Count; index++)
@@ -306,12 +365,18 @@ public sealed class ForecastCurveWindow : Window
     {
         return _presetBox.SelectedItem is ComboBoxItem { Tag: string preset }
             ? preset
-            : ForecastCurvePresets.Existing;
+            : string.Empty;
     }
 
     private void PreviewPreset(string preset)
     {
         _presetPreviewValues = BuildPresetValues(preset);
+        DrawChart();
+    }
+
+    private void PreviewUserPreset(UserForecastCurvePreset preset)
+    {
+        _presetPreviewValues = BuildUserPresetValues(preset);
         DrawChart();
     }
 
@@ -332,6 +397,130 @@ public sealed class ForecastCurveWindow : Window
         }
 
         return result;
+    }
+
+    private List<decimal> BuildUserPresetValues(UserForecastCurvePreset preset)
+    {
+        var unlockedIndexes = Enumerable.Range(0, _rows.Count).Where(index => !_rows[index].IsLocked).ToList();
+        var result = _rows.Select(row => row.NewValue).ToList();
+        if (unlockedIndexes.Count == 0)
+        {
+            return result;
+        }
+
+        var sourceValues = unlockedIndexes.Select(index => _rows[index].ExistingValue).ToList();
+        var presetValues = ForecastCurvePresets.ApplyUserPreset(preset, sourceValues);
+        for (var index = 0; index < unlockedIndexes.Count; index++)
+        {
+            result[unlockedIndexes[index]] = presetValues[index];
+        }
+
+        return result;
+    }
+
+    private void ApplyUserPreset(UserForecastCurvePreset preset)
+    {
+        var values = BuildUserPresetValues(preset);
+        _presetPreviewValues = null;
+        for (var index = 0; index < _rows.Count; index++)
+        {
+            if (!_rows[index].IsLocked)
+            {
+                _rows[index].NewValue = values[index];
+            }
+        }
+
+        _newCumulative = ForecastCurveMath.BuildCumulative(_rows.Select(row => row.NewValue));
+        RefreshSummaryRows();
+        DrawChart();
+    }
+
+    private void SaveCurrentPreset()
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        var window = new SaveForecastCurvePresetWindow(_viewModel, _resourceName, _rows.Select(row => row.NewValue).ToList())
+        {
+            Owner = this
+        };
+        if (window.ShowDialog() == true)
+        {
+            RebuildPresetSelector();
+        }
+    }
+
+    private void ManagePresets()
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        var window = new ManageForecastCurvePresetsWindow(_viewModel) { Owner = this };
+        if (window.ShowDialog() == true)
+        {
+            RebuildPresetSelector();
+        }
+    }
+
+    private void RebuildPresetSelector()
+    {
+        _presetBox.Items.Clear();
+        foreach (var preset in ForecastCurvePresets.All)
+        {
+            var item = new ComboBoxItem { Content = BuildPresetLabel(preset, "Built-in"), Tag = preset };
+            item.MouseEnter += (_, _) => PreviewPreset(preset);
+            item.MouseLeave += (_, _) => ClearPresetPreview();
+            _presetBox.Items.Add(item);
+        }
+
+        if (_viewModel?.UserForecastCurvePresets.Count > 0)
+        {
+            _presetBox.Items.Add(new ComboBoxItem
+            {
+                Content = "User Presets",
+                IsEnabled = false,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = BrushFactory.Frozen("#94A3B8")
+            });
+            foreach (var preset in _viewModel.UserForecastCurvePresets)
+            {
+                var item = new ComboBoxItem { Content = BuildPresetLabel(preset.Name, $"{preset.MonthCount} months"), Tag = preset };
+                item.MouseEnter += (_, _) => PreviewUserPreset(preset);
+                item.MouseLeave += (_, _) => ClearPresetPreview();
+                _presetBox.Items.Add(item);
+            }
+        }
+
+        _presetBox.SelectedIndex = 0;
+    }
+
+    private static FrameworkElement BuildPresetLabel(string name, string detail)
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal };
+        panel.Children.Add(new Canvas
+        {
+            Width = 28,
+            Height = 16,
+            Margin = new Thickness(0, 0, 7, 0),
+            Children =
+            {
+                new Polyline
+                {
+                    Points = new PointCollection([new Point(1, 13), new Point(8, 10), new Point(15, 5), new Point(27, 2)]),
+                    Stroke = BrushFactory.Frozen("#2563EB"),
+                    StrokeThickness = 2
+                }
+            }
+        });
+        var text = new StackPanel();
+        text.Children.Add(new TextBlock { Text = name, FontWeight = FontWeights.SemiBold });
+        text.Children.Add(new TextBlock { Text = detail, FontSize = 10, Foreground = BrushFactory.Frozen("#64748B") });
+        panel.Children.Add(text);
+        return panel;
     }
 
     private void ClearPresetPreview()
@@ -770,6 +959,89 @@ public static class ForecastCurvePresets
         var weightTotal = weights.Sum();
         var result = weights.Select(weight => Math.Round(total * (decimal)(weight / weightTotal), 0)).ToList();
         result[^1] += total - result.Sum();
+        return result;
+    }
+
+    public static IReadOnlyList<decimal> CaptureShape(IReadOnlyList<decimal> values)
+    {
+        if (values.Count == 0)
+        {
+            return [];
+        }
+
+        var total = values.Sum();
+        if (total == 0)
+        {
+            var even = Math.Round(1m / values.Count, 8);
+            var weights = Enumerable.Repeat(even, values.Count).ToList();
+            weights[^1] += 1m - weights.Sum();
+            return weights;
+        }
+
+        var result = values.Select(value => Math.Round(value / total, 8)).ToList();
+        result[^1] += 1m - result.Sum();
+        return result;
+    }
+
+    public static IReadOnlyList<decimal> ApplyUserPreset(UserForecastCurvePreset preset, IReadOnlyList<decimal> existingValues)
+    {
+        if (existingValues.Count == 0)
+        {
+            return [];
+        }
+
+        if (preset.Weights.Count == 0)
+        {
+            return existingValues.ToList();
+        }
+
+        var targetTotal = existingValues.Sum();
+        if (targetTotal == 0)
+        {
+            return Enumerable.Repeat(0m, existingValues.Count).ToList();
+        }
+
+        var weights = ResampleWeights(preset.Weights, existingValues.Count);
+        var result = weights.Select(weight => Math.Round(targetTotal * weight, 0)).ToList();
+        result[^1] += targetTotal - result.Sum();
+        return result;
+    }
+
+    private static List<decimal> ResampleWeights(IReadOnlyList<decimal> weights, int targetCount)
+    {
+        if (weights.Count == targetCount)
+        {
+            return weights.ToList();
+        }
+
+        if (targetCount == 1)
+        {
+            return [1m];
+        }
+
+        if (weights.Count == 1)
+        {
+            return Enumerable.Repeat(Math.Round(1m / targetCount, 8), targetCount).ToList();
+        }
+
+        var result = new List<decimal>(targetCount);
+        for (var index = 0; index < targetCount; index++)
+        {
+            var position = (double)index * (weights.Count - 1) / (targetCount - 1);
+            var left = (int)Math.Floor(position);
+            var right = Math.Min(weights.Count - 1, left + 1);
+            var blend = (decimal)(position - left);
+            result.Add(Math.Round(weights[left] + ((weights[right] - weights[left]) * blend), 8));
+        }
+
+        var total = result.Sum();
+        if (total == 0)
+        {
+            return Enumerable.Repeat(Math.Round(1m / targetCount, 8), targetCount).ToList();
+        }
+
+        result = result.Select(weight => Math.Round(weight / total, 8)).ToList();
+        result[^1] += 1m - result.Sum();
         return result;
     }
 

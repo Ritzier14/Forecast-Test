@@ -251,6 +251,34 @@
             <Setter Property="Height" Value="1" />
         </Style>
 
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="BorderBrush" Value="#CBD5E1" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="9,4" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Foreground" Value="#334155" />
+        </Style>
+
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Padding" Value="11,7" />
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="Foreground" Value="#334155" />
+            <Setter Property="MinHeight" Value="30" />
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="#F1F5F9" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#EAF2FF" />
+                    <Setter Property="Foreground" Value="#1D4ED8" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="#94A3B8" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <Style TargetType="DataGrid">
             <Setter Property="AutoGenerateColumns" Value="False" />
             <Setter Property="CanUserAddRows" Value="False" />

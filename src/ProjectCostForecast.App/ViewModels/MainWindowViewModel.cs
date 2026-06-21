@@ -139,6 +139,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
         _userPreferences.KpiIconColorHexes ??= new(StringComparer.OrdinalIgnoreCase);
         _userPreferences.WorkspaceTabIconKeys ??= new(StringComparer.OrdinalIgnoreCase);
         _userPreferences.WorkspaceTabIconColorHexes ??= new(StringComparer.OrdinalIgnoreCase);
+        _userPreferences.ForecastCurvePresets ??= [];
         _suppressPreferenceSave = true;
 
         ForecastLines = CreateCollection<ForecastLine>();
@@ -216,6 +217,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
         PivotFilterFields = CreateCollection<PivotAreaField>();
         PivotResultColumns = CreateCollection<PivotResultColumn>();
         PivotResultRows = CreateCollection<PivotResultRow>();
+        UserForecastCurvePresets = CreateCollection<UserForecastCurvePreset>(_userPreferences.ForecastCurvePresets);
         SelectedLedgerChartRangeOption = LedgerChartRangeOptions.FirstOrDefault();
 
         ForecastLinesView = CollectionViewSource.GetDefaultView(ForecastLines);
@@ -326,6 +328,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public ObservableCollection<PivotAreaField> PivotFilterFields { get; }
     public ObservableCollection<PivotResultColumn> PivotResultColumns { get; }
     public ObservableCollection<PivotResultRow> PivotResultRows { get; }
+    public ObservableCollection<UserForecastCurvePreset> UserForecastCurvePresets { get; }
     public ICollectionView ForecastLinesView { get; }
     public ICollectionView RawTransactionsView { get; }
     public ICollectionView LedgerTransactionsView { get; }

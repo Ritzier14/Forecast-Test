@@ -264,6 +264,18 @@ AssertTrue(wideCurve[0] != 100m && wideCurve[5] != 100m, "Wide adjustment reache
 var lockedCurve = ForecastCurveMath.AdjustMonthlyCurve([100m, 100m, 100m, 100m], 1, 260m, 4, [false, true, false, false]);
 AssertEqual(100m, lockedCurve[1], "Locked curve months stay fixed during adjustment");
 AssertEqual(400m, lockedCurve.Sum(), "Locked curve adjustment redistributes value across unlocked months");
+var capturedCurveShape = ForecastCurvePresets.CaptureShape([10m, 30m, 60m]);
+AssertEqual(1m, capturedCurveShape.Sum(), "User curve preset captures normalized shape only");
+var userCurvePreset = new UserForecastCurvePreset { Name = "Test shape", MonthCount = 3, Weights = capturedCurveShape.ToList() };
+var appliedUserCurve = ForecastCurvePresets.ApplyUserPreset(userCurvePreset, [100m, 100m, 100m]);
+AssertEqual(300m, appliedUserCurve.Sum(), "User curve preset scales to the current selected total");
+AssertTrue(appliedUserCurve[0] < appliedUserCurve[1] && appliedUserCurve[1] < appliedUserCurve[2], "User curve preset keeps the saved shape");
+var savedUserPresetCount = viewModel.UserForecastCurvePresets.Count;
+var savedUserPreset = viewModel.SaveForecastCurvePreset("Reusable curve", "test note", "Stanley Drake", 300m, capturedCurveShape);
+AssertEqual(savedUserPresetCount + 1, viewModel.UserForecastCurvePresets.Count, "User curve preset is stored at app-preference level");
+AssertEqual("Reusable curve", savedUserPreset.Name, "User curve preset keeps its name metadata");
+viewModel.DeleteForecastCurvePreset(savedUserPreset);
+AssertEqual(savedUserPresetCount, viewModel.UserForecastCurvePresets.Count, "User curve preset can be deleted");
 viewModel.SetHoveredForecastLine(hoveredLine);
 AssertEqual("Flex Projects L / WA57102001", viewModel.LedgerTitle, "Hovering a row previews that resource drilldown");
 viewModel.ClearHoveredForecastLine();

@@ -30,4 +30,19 @@ public sealed class AppUserPreferences
     public Dictionary<string, string> KpiIconColorHexes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> WorkspaceTabIconKeys { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> WorkspaceTabIconColorHexes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<UserForecastCurvePreset> ForecastCurvePresets { get; set; } = [];
+}
+
+public sealed class UserForecastCurvePreset
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Name { get; set; } = "Custom curve";
+    public string Note { get; set; } = string.Empty;
+    public string ProjectName { get; set; } = string.Empty;
+    public string ResourceName { get; set; } = string.Empty;
+    public decimal ReferenceTotal { get; set; }
+    public int MonthCount { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+    public List<decimal> Weights { get; set; } = [];
 }

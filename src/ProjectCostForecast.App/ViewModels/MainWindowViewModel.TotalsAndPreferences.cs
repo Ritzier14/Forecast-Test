@@ -474,6 +474,9 @@ public sealed partial class MainWindowViewModel
         _userPreferences.SelectedCategorySortOptionKey = SelectedCategorySortOption?.Key ?? "Alphabetical";
         _userPreferences.SelectedLedgerChartRangeKey = SelectedLedgerChartRangeOption?.Key ?? "Last24";
         _userPreferences.KpiPillKeys = KpiPills.Select(pill => pill.Key).ToList();
+        _userPreferences.ForecastCurvePresets = UserForecastCurvePresets
+            .Select(CloneForecastCurvePreset)
+            .ToList();
         _userPreferencesService.Save(_userPreferences);
     }
 
