@@ -1554,6 +1554,8 @@
                                                         </Style>
                                                     </ScrollViewer.Style>
                                                     <StackPanel>
+                                                        <TextBlock Text="Activity ID" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                                        <TextBox Text="{Binding SelectedScheduleActivity.Id, UpdateSourceTrigger=LostFocus}" Margin="0,0,0,10" />
                                                         <TextBlock Text="Name" FontWeight="SemiBold" Margin="0,0,0,4" />
                                                         <TextBox Text="{Binding SelectedScheduleActivity.Name, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
                                                         <UniformGrid Columns="2" Margin="0,0,0,10">
@@ -1609,6 +1611,7 @@
                                                             </DataGrid.Columns>
                                                         </DataGrid>
                                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                                            <Button Content="Add from clipboard" Padding="8,3" Margin="0,0,6,0" Click="ScheduleActivityAddSuccessor_Click" />
                                                             <Button Content="Copy this as source" Padding="8,3" Margin="0,0,6,0" Click="ScheduleActivityCopyAsSource_Click" />
                                                             <Button Content="Delete" Padding="8,3" Click="ScheduleActivityDeleteSuccessor_Click" />
                                                         </StackPanel>

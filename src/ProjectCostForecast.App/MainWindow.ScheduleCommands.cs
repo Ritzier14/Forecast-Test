@@ -262,6 +262,19 @@ public partial class MainWindow
         GanttViewModel.BreakScheduleLink(activity, link.PredecessorId);
     }
 
+    private void ScheduleActivityAddSuccessor_Click(object sender, RoutedEventArgs e)
+    {
+        if (GanttViewModel?.SelectedScheduleActivity is not { } activity)
+        {
+            return;
+        }
+
+        if (!GanttViewModel.PasteScheduleSuccessorFromClipboard(activity) && GanttViewModel.ScheduleLinkClipboardActivities.Count > 0)
+        {
+            MessageBox.Show(this, GanttViewModel.StatusText, "Add successor", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void ScheduleActivityCopyAsSource_Click(object sender, RoutedEventArgs e)
     {
         if (GanttViewModel?.SelectedScheduleActivity is { } activity)

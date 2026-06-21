@@ -851,6 +851,12 @@ AssertEqual(1, scheduleEditor.ScheduleLinkClipboardActivities.Count, "Using one 
 var secondLinkClipboardTarget = scheduleEditor.AddScheduleActivityAt(ScheduleActivityKind.Task, scheduleEditor.ScheduleActivities.Count);
 AssertTrue(scheduleEditor.PasteScheduleLinkTo(secondLinkClipboardTarget), "Link clipboard source remains available for another target");
 AssertEqual(0, scheduleEditor.ScheduleLinkClipboardActivities.Count, "Link clipboard is empty after the second repeated entry is used");
+var successorClipboardSource = scheduleEditor.AddScheduleActivityAt(ScheduleActivityKind.Task, scheduleEditor.ScheduleActivities.Count);
+var successorClipboardTarget = scheduleEditor.AddScheduleActivityAt(ScheduleActivityKind.Task, scheduleEditor.ScheduleActivities.Count);
+scheduleEditor.CopyScheduleLinkSource(successorClipboardTarget);
+AssertTrue(scheduleEditor.PasteScheduleSuccessorFromClipboard(successorClipboardSource), "Activity panel can add a successor from the link clipboard");
+AssertEqual(successorClipboardSource.Id, SchedulingService.ParsePredecessors(successorClipboardTarget.PredecessorText, out _).Single().PredecessorId, "Successor clipboard paste links the selected activity as predecessor");
+AssertEqual(0, scheduleEditor.ScheduleLinkClipboardActivities.Count, "Successor clipboard paste consumes one link clipboard entry");
 scheduleEditor.RecalculateSchedule();
 AssertTrue(!scheduleEditor.TryCreateScheduleLink(insertedAbove, secondLinkClipboardTarget), "Duplicate schedule links are ignored");
 AssertTrue(!scheduleEditor.TryCreateScheduleLink(linkClipboardTarget, insertedAbove), "Link command prevents circular relationships");

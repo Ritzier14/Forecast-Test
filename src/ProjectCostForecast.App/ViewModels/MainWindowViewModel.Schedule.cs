@@ -678,6 +678,34 @@ public sealed partial class MainWindowViewModel
         return false;
     }
 
+    public bool PasteScheduleSuccessorFromClipboard(ScheduleActivity predecessor, ActivityLinkType linkType = ActivityLinkType.FinishToStart)
+    {
+        for (var index = 0; index < _scheduleLinkClipboardActivityIds.Count; index++)
+        {
+            var successorId = _scheduleLinkClipboardActivityIds[index];
+            var successor = ScheduleActivities.FirstOrDefault(activity =>
+                string.Equals(activity.Id, successorId, StringComparison.OrdinalIgnoreCase));
+            if (successor is null)
+            {
+                _scheduleLinkClipboardActivityIds.RemoveAt(index);
+                index--;
+                continue;
+            }
+
+            if (TryCreateScheduleLink(predecessor, successor, linkType, 0))
+            {
+                _scheduleLinkClipboardActivityIds.RemoveAt(index);
+                OnPropertyChanged(nameof(ScheduleLinkClipboardText));
+                OnPropertyChanged(nameof(ScheduleLinkClipboardActivities));
+                return true;
+            }
+        }
+
+        OnPropertyChanged(nameof(ScheduleLinkClipboardText));
+        OnPropertyChanged(nameof(ScheduleLinkClipboardActivities));
+        return false;
+    }
+
     public void ClearScheduleLinkClipboard()
     {
         _scheduleLinkClipboardActivityIds.Clear();
