@@ -432,19 +432,49 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        activity.PropertyChanged -= ScheduleActivity_PropertyChanged;
-        var index = ScheduleActivities.IndexOf(activity);
-        ScheduleActivities.Remove(activity);
-        AddAuditEvent("Schedule", activity.Id, "Deleted", activity.Name, string.Empty, "Deleted schedule activity");
+        DeleteScheduleActivities([activity]);
+    }
+
+    public void DeleteScheduleActivities(IReadOnlyList<ScheduleActivity> activities)
+    {
+        var targets = activities
+            .Where(activity => ScheduleActivities.Contains(activity))
+            .Distinct()
+            .OrderByDescending(activity => ScheduleActivities.IndexOf(activity))
+            .ToList();
+        if (targets.Count == 0)
+        {
+            return;
+        }
+
+        var nextIndex = targets.Min(activity => ScheduleActivities.IndexOf(activity));
+        foreach (var activity in targets)
+        {
+            activity.PropertyChanged -= ScheduleActivity_PropertyChanged;
+            ScheduleActivities.Remove(activity);
+            AddAuditEvent("Schedule", activity.Id, "Deleted", activity.Name, string.Empty, "Deleted schedule activity");
+        }
+
         SelectedScheduleActivity = ScheduleActivities.Count > 0
-            ? ScheduleActivities[Math.Min(index, ScheduleActivities.Count - 1)]
+            ? ScheduleActivities[Math.Min(nextIndex, ScheduleActivities.Count - 1)]
             : null;
+        StatusText = targets.Count == 1
+            ? $"Deleted {targets[0].Id}."
+            : $"Deleted {targets.Count} schedule activities.";
         MarkScheduleDirtyAndRecalculate();
     }
 
     public void IndentSelectedScheduleActivity(int delta)
     {
         if (SelectedScheduleActivity is { } activity)
+        {
+            activity.OutlineLevel += delta;
+        }
+    }
+
+    public void IndentScheduleActivities(IReadOnlyList<ScheduleActivity> activities, int delta)
+    {
+        foreach (var activity in activities.Where(ScheduleActivities.Contains).Distinct())
         {
             activity.OutlineLevel += delta;
         }
@@ -586,10 +616,7 @@ public sealed partial class MainWindowViewModel
 
     public void CopyScheduleLinkSource(ScheduleActivity activity)
     {
-        if (!_scheduleLinkClipboardActivityIds.Contains(activity.Id, StringComparer.OrdinalIgnoreCase))
-        {
-            _scheduleLinkClipboardActivityIds.Add(activity.Id);
-        }
+        _scheduleLinkClipboardActivityIds.Add(activity.Id);
 
         OnPropertyChanged(nameof(ScheduleLinkClipboardText));
         OnPropertyChanged(nameof(ScheduleLinkClipboardActivities));
@@ -598,16 +625,30 @@ public sealed partial class MainWindowViewModel
 
     public bool PasteScheduleLinkTo(ScheduleActivity successor, ActivityLinkType linkType = ActivityLinkType.FinishToStart)
     {
-        var createdAny = false;
-        foreach (var predecessor in ScheduleLinkClipboardActivities)
+        for (var index = 0; index < _scheduleLinkClipboardActivityIds.Count; index++)
         {
+            var predecessorId = _scheduleLinkClipboardActivityIds[index];
+            var predecessor = ScheduleActivities.FirstOrDefault(activity =>
+                string.Equals(activity.Id, predecessorId, StringComparison.OrdinalIgnoreCase));
+            if (predecessor is null)
+            {
+                _scheduleLinkClipboardActivityIds.RemoveAt(index);
+                index--;
+                continue;
+            }
+
             if (TryCreateScheduleLink(predecessor, successor, linkType, 0))
             {
-                createdAny = true;
+                _scheduleLinkClipboardActivityIds.RemoveAt(index);
+                OnPropertyChanged(nameof(ScheduleLinkClipboardText));
+                OnPropertyChanged(nameof(ScheduleLinkClipboardActivities));
+                return true;
             }
         }
 
-        return createdAny;
+        OnPropertyChanged(nameof(ScheduleLinkClipboardText));
+        OnPropertyChanged(nameof(ScheduleLinkClipboardActivities));
+        return false;
     }
 
     public void ClearScheduleLinkClipboard()

@@ -1425,6 +1425,12 @@
                                                         <DataTrigger Binding="{Binding IsHammock}" Value="True">
                                                             <Setter Property="Foreground" Value="#0F766E" />
                                                         </DataTrigger>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter Property="Background" Value="#DBEAFE" />
+                                                            <Setter Property="BorderBrush" Value="#F97316" />
+                                                            <Setter Property="BorderThickness" Value="0,1,0,1" />
+                                                            <Setter Property="Foreground" Value="#0F172A" />
+                                                        </Trigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </DataGrid.RowStyle>

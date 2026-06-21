@@ -125,11 +125,30 @@ public partial class MainWindow
 
     private void AddScheduleHammock_Click(object sender, RoutedEventArgs e) => GanttViewModel?.AddScheduleActivity(ScheduleActivityKind.Hammock);
 
-    private void DeleteScheduleActivity_Click(object sender, RoutedEventArgs e) => GanttViewModel?.DeleteSelectedScheduleActivity();
+    private void DeleteScheduleActivity_Click(object sender, RoutedEventArgs e)
+    {
+        if (GanttViewModel is { } viewModel)
+        {
+            viewModel.DeleteScheduleActivities(GetSelectedScheduleActivities());
+            RestoreScheduleGridSelection();
+        }
+    }
 
-    private void ScheduleIndent_Click(object sender, RoutedEventArgs e) => GanttViewModel?.IndentSelectedScheduleActivity(1);
+    private void ScheduleIndent_Click(object sender, RoutedEventArgs e)
+    {
+        if (GanttViewModel is { } viewModel)
+        {
+            viewModel.IndentScheduleActivities(GetSelectedScheduleActivities(), 1);
+        }
+    }
 
-    private void ScheduleOutdent_Click(object sender, RoutedEventArgs e) => GanttViewModel?.IndentSelectedScheduleActivity(-1);
+    private void ScheduleOutdent_Click(object sender, RoutedEventArgs e)
+    {
+        if (GanttViewModel is { } viewModel)
+        {
+            viewModel.IndentScheduleActivities(GetSelectedScheduleActivities(), -1);
+        }
+    }
 
     private void ScheduleMoveUp_Click(object sender, RoutedEventArgs e) => GanttViewModel?.MoveSelectedScheduleActivity(-1);
 
@@ -184,6 +203,64 @@ public partial class MainWindow
         }
 
         QueueRedrawGantt();
+    }
+
+    private void SelectScheduleActivity(ScheduleActivity activity, bool preserveSelection, bool scrollIntoView)
+    {
+        if (preserveSelection)
+        {
+            if (ScheduleGrid.SelectedItems.Contains(activity))
+            {
+                ScheduleGrid.SelectedItems.Remove(activity);
+            }
+            else
+            {
+                ScheduleGrid.SelectedItems.Add(activity);
+            }
+        }
+        else
+        {
+            ScheduleGrid.SelectedItems.Clear();
+            ScheduleGrid.SelectedItem = activity;
+        }
+
+        ScheduleGrid.CurrentItem = activity;
+        _schedulePrimarySelection = activity;
+        if (GanttViewModel is { } viewModel)
+        {
+            viewModel.SelectedScheduleActivity = activity;
+        }
+
+        if (scrollIntoView)
+        {
+            ScheduleGrid.ScrollIntoView(activity);
+        }
+
+        QueueRedrawGantt();
+    }
+
+    private IReadOnlyList<ScheduleActivity> GetSelectedScheduleActivities()
+    {
+        var selected = ScheduleGrid.SelectedItems.OfType<ScheduleActivity>().ToList();
+        if (selected.Count > 0)
+        {
+            return selected;
+        }
+
+        return GanttViewModel?.SelectedScheduleActivity is { } active
+            ? [active]
+            : [];
+    }
+
+    private void RestoreScheduleGridSelection()
+    {
+        if (GanttViewModel?.SelectedScheduleActivity is not { } active)
+        {
+            return;
+        }
+
+        ScheduleGrid.SelectedItem = active;
+        ScheduleGrid.CurrentItem = active;
     }
 
     private void EditScheduleRelationship(MainWindowViewModel viewModel, ScheduleActivity successor, ActivityLink predecessor)
@@ -726,6 +803,20 @@ public partial class MainWindow
     {
         var rowTop = rowIndex * GanttRowHeight;
         var isSelected = ScheduleGrid.SelectedItems.Contains(activity);
+        if (isSelected)
+        {
+            var selectionBand = new Rectangle
+            {
+                Width = Math.Max(GanttBodyCanvas.Width, GanttBodyScroll.ViewportWidth),
+                Height = GanttRowHeight,
+                Fill = BrushFactory.Frozen("#DBEAFE"),
+                Opacity = 0.45,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(selectionBand, 0);
+            Canvas.SetTop(selectionBand, rowTop);
+            GanttBodyCanvas.Children.Add(selectionBand);
+        }
 
         // Baseline bar beneath the current bar
         if (GanttViewModel?.ShowScheduleBaselineComparison == true
@@ -971,8 +1062,7 @@ public partial class MainWindow
     {
         if (sender is FrameworkElement { Tag: ScheduleActivity activity })
         {
-            ScheduleGrid.SelectedItem = activity;
-            ScheduleGrid.ScrollIntoView(activity);
+            SelectScheduleActivity(activity, preserveSelection: (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control, scrollIntoView: true);
             e.Handled = true;
         }
     }
@@ -986,8 +1076,7 @@ public partial class MainWindow
                 return;
             }
 
-            ScheduleGrid.SelectedItem = activity;
-            ScheduleGrid.ScrollIntoView(activity);
+            SelectScheduleActivity(activity, preserveSelection: (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control, scrollIntoView: true);
 
             var barWidth = double.IsNaN(element.Width) ? element.ActualWidth : element.Width;
             var positionInBar = e.GetPosition(element);
@@ -1205,7 +1294,10 @@ public partial class MainWindow
             var targetRow = (int)Math.Floor(position.Y / GanttRowHeight);
             if (targetRow >= 0 && targetRow < viewModel.ScheduleActivities.Count)
             {
-                viewModel.TryCreateScheduleLink(activity, viewModel.ScheduleActivities[targetRow]);
+                if (!viewModel.TryCreateScheduleLink(activity, viewModel.ScheduleActivities[targetRow]))
+                {
+                    MessageBox.Show(this, viewModel.StatusText, "Create schedule link", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
             }
             else
             {
@@ -1250,7 +1342,13 @@ public partial class MainWindow
             viewModel.SelectedScheduleActivity is not null));
         menu.Items.Add(CreateScheduleMenuItem(
             "Paste clipboard link to this row",
-            () => viewModel.PasteScheduleLinkTo(target!),
+            () =>
+            {
+                if (!viewModel.PasteScheduleLinkTo(target!) && viewModel.ScheduleLinkClipboardActivities.Count > 0)
+                {
+                    MessageBox.Show(this, viewModel.StatusText, "Paste schedule link", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            },
             target is not null && viewModel.ScheduleLinkClipboardActivities.Count > 0));
         menu.Items.Add(CreateScheduleMenuItem("Clear link clipboard", () =>
         {
@@ -1490,7 +1588,11 @@ public partial class MainWindow
         _ganttDragActivity = null;
         if (targetRow >= 0 && targetRow < viewModel.ScheduleActivities.Count)
         {
-            viewModel.PasteScheduleLinkTo(viewModel.ScheduleActivities[targetRow]);
+            if (!viewModel.PasteScheduleLinkTo(viewModel.ScheduleActivities[targetRow])
+                && viewModel.ScheduleLinkClipboardActivities.Count > 0)
+            {
+                MessageBox.Show(this, viewModel.StatusText, "Paste schedule link", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
             RefreshScheduleLinkClipboardPopup();
         }
 

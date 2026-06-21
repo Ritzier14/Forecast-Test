@@ -843,11 +843,16 @@ var movedRelationship = SchedulingService.ParsePredecessors(insertedBelow.Predec
 AssertEqual(ActivityLinkType.FinishToFinish, movedRelationship.Type, "Existing relationship type can be changed");
 AssertEqual(-1, movedRelationship.LagDays, "Existing relationship lag can be changed");
 scheduleEditor.CopyScheduleLinkSource(insertedAbove);
+scheduleEditor.CopyScheduleLinkSource(insertedAbove);
+AssertEqual(2, scheduleEditor.ScheduleLinkClipboardActivities.Count, "Link clipboard permits repeated source entries");
 var linkClipboardTarget = scheduleEditor.AddScheduleActivityAt(ScheduleActivityKind.Task, scheduleEditor.ScheduleActivities.Count);
 AssertTrue(scheduleEditor.PasteScheduleLinkTo(linkClipboardTarget), "Link clipboard connects a distant activity");
+AssertEqual(1, scheduleEditor.ScheduleLinkClipboardActivities.Count, "Using one link clipboard entry removes only that entry");
 var secondLinkClipboardTarget = scheduleEditor.AddScheduleActivityAt(ScheduleActivityKind.Task, scheduleEditor.ScheduleActivities.Count);
 AssertTrue(scheduleEditor.PasteScheduleLinkTo(secondLinkClipboardTarget), "Link clipboard source remains available for another target");
+AssertEqual(0, scheduleEditor.ScheduleLinkClipboardActivities.Count, "Link clipboard is empty after the second repeated entry is used");
 scheduleEditor.RecalculateSchedule();
+AssertTrue(!scheduleEditor.TryCreateScheduleLink(insertedAbove, secondLinkClipboardTarget), "Duplicate schedule links are ignored");
 AssertTrue(!scheduleEditor.TryCreateScheduleLink(linkClipboardTarget, insertedAbove), "Link command prevents circular relationships");
 scheduleEditor.BreakScheduleLink(insertedBelow, insertedAbove.Id);
 AssertEqual(0, SchedulingService.ParsePredecessors(insertedBelow.PredecessorText, out _).Count, "Individual relationship can be broken");

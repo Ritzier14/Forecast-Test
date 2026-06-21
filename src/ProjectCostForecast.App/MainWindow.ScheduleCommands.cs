@@ -29,25 +29,40 @@ public partial class MainWindow
 
     private void ScheduleBreakLinks_Click(object sender, RoutedEventArgs e)
     {
-        if (GanttViewModel?.SelectedScheduleActivity is { } activity)
+        if (GanttViewModel is { } viewModel)
         {
-            GanttViewModel.BreakAllScheduleLinks(activity);
+            foreach (var activity in GetSelectedScheduleActivities())
+            {
+                viewModel.BreakAllScheduleLinks(activity);
+            }
         }
     }
 
     private void ScheduleCopyLinkSource_Click(object sender, RoutedEventArgs e)
     {
-        if (GanttViewModel?.SelectedScheduleActivity is { } activity)
+        if (GanttViewModel is { } viewModel)
         {
-            GanttViewModel.CopyScheduleLinkSource(activity);
+            foreach (var activity in GetSelectedScheduleActivities())
+            {
+                viewModel.CopyScheduleLinkSource(activity);
+            }
         }
     }
 
     private void SchedulePasteLink_Click(object sender, RoutedEventArgs e)
     {
-        if (GanttViewModel?.SelectedScheduleActivity is { } activity)
+        if (GanttViewModel is { } viewModel)
         {
-            GanttViewModel.PasteScheduleLinkTo(activity);
+            var linkedAny = false;
+            foreach (var activity in GetSelectedScheduleActivities())
+            {
+                linkedAny |= viewModel.PasteScheduleLinkTo(activity);
+            }
+
+            if (!linkedAny && viewModel.ScheduleLinkClipboardActivities.Count > 0)
+            {
+                MessageBox.Show(this, viewModel.StatusText, "Paste schedule link", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
     }
 
@@ -93,7 +108,7 @@ public partial class MainWindow
             return;
         }
 
-        ScheduleGrid.SelectedItem = activity;
+        SelectScheduleActivity(activity, preserveSelection: (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control, scrollIntoView: false);
         var menu = BuildScheduleActivityContextMenu(viewModel, activity);
         menu.PlacementTarget = FindParent<DataGridCell>(source) is { } cell ? cell : ScheduleGrid;
         menu.Placement = PlacementMode.MousePoint;
@@ -123,7 +138,13 @@ public partial class MainWindow
         foreach (var linkType in MainWindowViewModel.ScheduleLinkTypeOptions)
         {
             var capturedType = linkType;
-            paste.Items.Add(CreateScheduleMenuItem(linkType.ToString(), () => viewModel.PasteScheduleLinkTo(activity, capturedType)));
+            paste.Items.Add(CreateScheduleMenuItem(linkType.ToString(), () =>
+            {
+                if (!viewModel.PasteScheduleLinkTo(activity, capturedType) && viewModel.ScheduleLinkClipboardActivities.Count > 0)
+                {
+                    MessageBox.Show(this, viewModel.StatusText, "Paste schedule link", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }));
         }
         link.Items.Add(paste);
 
@@ -171,7 +192,11 @@ public partial class MainWindow
 
         menu.Items.Add(new Separator());
         menu.Items.Add(CreateScheduleMenuItem("Open baseline comparison", () => ShowScheduleComparisonWindow(viewModel)));
-        menu.Items.Add(CreateScheduleMenuItem("Delete activity", viewModel.DeleteSelectedScheduleActivity));
+        menu.Items.Add(CreateScheduleMenuItem("Delete selected activity row(s)", () =>
+        {
+            viewModel.DeleteScheduleActivities(GetSelectedScheduleActivities());
+            RestoreScheduleGridSelection();
+        }));
         return menu;
     }
 

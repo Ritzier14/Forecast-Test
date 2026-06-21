@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using ProjectCostForecast.App.Models;
 using ProjectCostForecast.App.ViewModels;
 
@@ -49,6 +51,9 @@ public sealed class ScheduleLinkEditWindow : Window
 
         var lagPanel = new StackPanel { Margin = new Thickness(0, 0, 0, 20) };
         lagPanel.Children.Add(new TextBlock { Text = "Lead / lag days", Margin = new Thickness(0, 0, 0, 4) });
+        var lagInput = new Grid();
+        lagInput.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        lagInput.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         _lagBox = new TextBox
         {
             Text = lagDays.ToString(System.Globalization.CultureInfo.InvariantCulture),
@@ -56,7 +61,16 @@ public sealed class ScheduleLinkEditWindow : Window
             VerticalContentAlignment = VerticalAlignment.Center
         };
         _lagBox.GotKeyboardFocus += (_, _) => _lagBox.SelectAll();
-        lagPanel.Children.Add(_lagBox);
+        _lagBox.PreviewKeyDown += LagBox_PreviewKeyDown;
+        lagInput.Children.Add(_lagBox);
+        var spinner = new StackPanel { Width = 28, Margin = new Thickness(4, 0, 0, 0) };
+        var up = CreateLagRepeatButton("▲", 1);
+        var down = CreateLagRepeatButton("▼", -1);
+        spinner.Children.Add(up);
+        spinner.Children.Add(down);
+        Grid.SetColumn(spinner, 1);
+        lagInput.Children.Add(spinner);
+        lagPanel.Children.Add(lagInput);
         Grid.SetRow(lagPanel, 2);
         root.Children.Add(lagPanel);
 
@@ -104,4 +118,41 @@ public sealed class ScheduleLinkEditWindow : Window
         : ActivityLinkType.FinishToStart;
 
     public int LagDays => int.TryParse(_lagBox.Text, out var lagDays) ? lagDays : 0;
+
+    private RepeatButton CreateLagRepeatButton(string text, int delta)
+    {
+        var button = new RepeatButton
+        {
+            Content = text,
+            Height = 15,
+            MinHeight = 0,
+            Padding = new Thickness(0),
+            Delay = 350,
+            Interval = 65,
+            ToolTip = delta > 0 ? "Add one working day lag" : "Add one working day lead"
+        };
+        button.Click += (_, _) => AdjustLag(delta);
+        return button;
+    }
+
+    private void LagBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Up)
+        {
+            AdjustLag(1);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Down)
+        {
+            AdjustLag(-1);
+            e.Handled = true;
+        }
+    }
+
+    private void AdjustLag(int delta)
+    {
+        var current = LagDays;
+        _lagBox.Text = (current + delta).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        _lagBox.CaretIndex = _lagBox.Text.Length;
+    }
 }
