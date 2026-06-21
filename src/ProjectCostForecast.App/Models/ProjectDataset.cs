@@ -1,4 +1,5 @@
 using System;
+using System.Windows.Media;
 
 namespace ProjectCostForecast.App.Models;
 
@@ -44,14 +45,52 @@ public sealed class ProjectTaskCode : ObservableModel
     public bool IsRawDataCode { get; set; }
     public bool IsManualCode { get; set; }
     public int DisplayOrder { get; set; }
-    public string IconKey { get => _iconKey; set => SetProperty(ref _iconKey, value?.Trim() ?? string.Empty); }
-    public string IconColorHex { get => _iconColorHex; set => SetProperty(ref _iconColorHex, value?.Trim() ?? string.Empty); }
+    public string IconKey
+    {
+        get => _iconKey;
+        set
+        {
+            if (SetProperty(ref _iconKey, value?.Trim() ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(IconPreview));
+            }
+        }
+    }
+
+    public string IconColorHex
+    {
+        get => _iconColorHex;
+        set
+        {
+            if (SetProperty(ref _iconColorHex, value?.Trim() ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(IconPreview));
+                OnPropertyChanged(nameof(IconColorBrush));
+                OnPropertyChanged(nameof(IconColorLabel));
+            }
+        }
+    }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public bool CanEditSystemCode => !IsRawDataCode;
 
     [System.Text.Json.Serialization.JsonIgnore]
     public bool CanDelete => !IsRawDataCode;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ImageSource IconPreview => MainWindow.GetBuiltInImageSourceByPath(
+        string.IsNullOrWhiteSpace(IconKey)
+            ? "/Assets/Icons/png/ic_category_project_management_20.png"
+            : $"/Assets/Icons/png/{IconKey}",
+        IconColorHex);
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Brush IconColorBrush => BrushFactory.TryParseHexColor(IconColorHex, out var color)
+        ? new SolidColorBrush(color)
+        : BrushFactory.Frozen("#FFFFFF");
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string IconColorLabel => string.IsNullOrWhiteSpace(IconColorHex) ? "Default" : IconColorHex;
 }
 
 public sealed class ProjectCategory : ObservableModel
@@ -61,9 +100,48 @@ public sealed class ProjectCategory : ObservableModel
     private string _iconKey = string.Empty;
 
     public string Name { get => _name; set => SetProperty(ref _name, value?.Trim() ?? string.Empty); }
-    public string ColorHex { get => _colorHex; set => SetProperty(ref _colorHex, value?.Trim() ?? string.Empty); }
-    public string IconKey { get => _iconKey; set => SetProperty(ref _iconKey, value?.Trim() ?? string.Empty); }
+
+    public string ColorHex
+    {
+        get => _colorHex;
+        set
+        {
+            if (SetProperty(ref _colorHex, value?.Trim() ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(IconPreview));
+                OnPropertyChanged(nameof(ColorBrush));
+                OnPropertyChanged(nameof(ColorLabel));
+            }
+        }
+    }
+
+    public string IconKey
+    {
+        get => _iconKey;
+        set
+        {
+            if (SetProperty(ref _iconKey, value?.Trim() ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(IconPreview));
+            }
+        }
+    }
     public int DisplayOrder { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ImageSource IconPreview => MainWindow.GetBuiltInImageSourceByPath(
+        string.IsNullOrWhiteSpace(IconKey)
+            ? "/Assets/Icons/png/ic_category_project_management_20.png"
+            : $"/Assets/Icons/png/{IconKey}",
+        ColorHex);
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Brush ColorBrush => BrushFactory.TryParseHexColor(ColorHex, out var color)
+        ? new SolidColorBrush(color)
+        : BrushFactory.Frozen("#FFFFFF");
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string ColorLabel => string.IsNullOrWhiteSpace(ColorHex) ? "Default" : ColorHex;
 }
 
 public sealed class ProjectHeader
