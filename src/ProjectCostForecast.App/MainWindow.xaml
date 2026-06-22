@@ -828,6 +828,13 @@
                                         <local:BandOverlayCanvas x:Name="ForecastFreezeBoundaryCanvas"
                                                                  Grid.RowSpan="2"
                                                                  Panel.ZIndex="30" />
+                                        <Border Grid.RowSpan="2"
+                                                Background="Transparent"
+                                                BorderBrush="#CBD7E6"
+                                                BorderThickness="1"
+                                                CornerRadius="10"
+                                                IsHitTestVisible="False"
+                                                Panel.ZIndex="34" />
                                         <Border x:Name="ForecastAddRowStrip"
                                                 Grid.Row="1"
                                                 Height="34"

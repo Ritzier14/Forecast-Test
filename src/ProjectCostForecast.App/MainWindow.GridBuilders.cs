@@ -225,6 +225,7 @@ public partial class MainWindow
         var overlayContentHeight = GetForecastOverlayBottomY();
         ForecastFreezeBoundaryCanvas.Width = ForecastGridHost.ActualWidth;
         ForecastFreezeBoundaryCanvas.Height = overlayContentHeight;
+        ForecastFreezeBoundaryCanvas.Clip = new RectangleGeometry(new Rect(0, 0, ForecastGridHost.ActualWidth, overlayContentHeight));
         ForecastFreezeBoundaryCanvas.Visibility = Visibility.Visible;
 
         var groupedHeaders = yearBandColumns
@@ -469,6 +470,7 @@ public partial class MainWindow
         ForecastYearBandCanvas.Clip = null;
         ForecastFreezeBoundaryCanvas.Children.Clear();
         ForecastFreezeBoundaryCanvas.Visibility = Visibility.Collapsed;
+        ForecastFreezeBoundaryCanvas.Clip = null;
         _forecastOverlayGeometrySignature = string.Empty;
         _forecastOverlaysCleared = true;
         GridPerformanceDiagnostics.Count("forecast-overlay-clear");
