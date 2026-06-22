@@ -137,9 +137,9 @@ public static class ProjectDataGridProfiles
     {
         SetIfUnset(grid, DataGrid.CanUserAddRowsProperty, false);
         SetIfUnset(grid, DataGrid.AutoGenerateColumnsProperty, false);
-        SetIfUnset(grid, DataGrid.GridLinesVisibilityProperty, DataGridGridLinesVisibility.All);
-        SetIfUnset(grid, DataGrid.HorizontalGridLinesBrushProperty, BrushFactory.Frozen("#DDE6F0"));
-        SetIfUnset(grid, DataGrid.VerticalGridLinesBrushProperty, BrushFactory.Frozen("#DDE6F0"));
+        SetIfUnset(grid, DataGrid.GridLinesVisibilityProperty, DataGridGridLinesVisibility.None);
+        SetIfUnset(grid, DataGrid.HorizontalGridLinesBrushProperty, BrushFactory.Frozen("#EEF3F8"));
+        SetIfUnset(grid, DataGrid.VerticalGridLinesBrushProperty, BrushFactory.Frozen("#EEF3F8"));
         SetIfUnset(grid, DataGrid.EnableRowVirtualizationProperty, true);
         SetIfUnset(grid, DataGrid.EnableColumnVirtualizationProperty, true);
         SetIfUnset(grid, DataGrid.ClipboardCopyModeProperty, DataGridClipboardCopyMode.ExcludeHeader);

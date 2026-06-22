@@ -8,8 +8,8 @@
         <SolidColorBrush x:Key="PanelBackground" Color="#FFFFFF" />
         <SolidColorBrush x:Key="AccentBrush" Color="#2563EB" />
         <SolidColorBrush x:Key="AccentDarkBrush" Color="#1E3A8A" />
-        <SolidColorBrush x:Key="SoftBorderBrush" Color="#D9D9D9" />
-        <SolidColorBrush x:Key="GridLineBrush" Color="#E7EBF1" />
+        <SolidColorBrush x:Key="SoftBorderBrush" Color="#DDE6F0" />
+        <SolidColorBrush x:Key="GridLineBrush" Color="#EEF3F8" />
         <SolidColorBrush x:Key="MutedTextBrush" Color="#64748B" />
         <models:AccountingNoDecimalsConverter x:Key="AccountingNoDecimalsConverter" />
         <models:NonNegativeDoubleConverter x:Key="NonNegativeDoubleConverter" />
@@ -356,7 +356,7 @@
                                                     Grid.Column="1"
                                                     Grid.ColumnSpan="2"
                                                     Background="#F8FAFC"
-                                                    BorderBrush="#E2E8F0"
+                                                    BorderBrush="#EEF3F8"
                                                     BorderThickness="0,1,0,0"
                                                     Padding="10,3">
                                                 <TextBlock Text="{Binding Path=(models:GridSelectionStatus.Text), RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"
@@ -395,7 +395,7 @@
             <Setter Property="SnapsToDevicePixels" Value="True" />
             <Setter Property="UseLayoutRounding" Value="True" />
             <Setter Property="BorderBrush" Value="{StaticResource GridLineBrush}" />
-            <Setter Property="BorderThickness" Value="0,0,1,1" />
+            <Setter Property="BorderThickness" Value="0,0,0.5,0.5" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type DataGridColumnHeader}">
@@ -430,7 +430,7 @@
                                         Height="18"
                                         Margin="6,0,0,0"
                                         Background="#F8FAFC"
-                                        BorderBrush="#CBD5E1"
+                                        BorderBrush="#DDE6F0"
                                         BorderThickness="1"
                                         CornerRadius="5"
                                         HorizontalAlignment="Center"
@@ -500,7 +500,7 @@
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="FontSize" Value="11" />
             <Setter Property="BorderBrush" Value="{StaticResource GridLineBrush}" />
-            <Setter Property="BorderThickness" Value="0,0,1,1" />
+            <Setter Property="BorderThickness" Value="0,0,0.5,0.5" />
             <Setter Property="Background" Value="{Binding Column.(models:GridColumnPresentationState.ColumnBackground), RelativeSource={RelativeSource Self}}" />
             <Setter Property="Foreground" Value="#0F172A" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />

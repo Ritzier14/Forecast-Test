@@ -20,12 +20,12 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
     private static readonly Brush HighlightFill = BrushFactory.Frozen("#66FDE68A");
     private static readonly (Brush Background, Brush Border)[] Palette =
     [
-        (BrushFactory.Frozen("#EDF8F0"), BrushFactory.Frozen("#CFE3D4")),
-        (BrushFactory.Frozen("#FFF4E7"), BrushFactory.Frozen("#EBD8BF")),
-        (BrushFactory.Frozen("#EEF5FF"), BrushFactory.Frozen("#D2E0F1")),
-        (BrushFactory.Frozen("#F5F0FF"), BrushFactory.Frozen("#DED2F0")),
-        (BrushFactory.Frozen("#ECF9FA"), BrushFactory.Frozen("#CBE4E6")),
-        (BrushFactory.Frozen("#FFF0F5"), BrushFactory.Frozen("#EACFD9"))
+        (BrushFactory.Frozen("#EDF8F0"), BrushFactory.Frozen("#E2EEE5")),
+        (BrushFactory.Frozen("#FFF4E7"), BrushFactory.Frozen("#F1E5D6")),
+        (BrushFactory.Frozen("#EEF5FF"), BrushFactory.Frozen("#E1EAF5")),
+        (BrushFactory.Frozen("#F5F0FF"), BrushFactory.Frozen("#E8E1F5")),
+        (BrushFactory.Frozen("#ECF9FA"), BrushFactory.Frozen("#DDEEEF")),
+        (BrushFactory.Frozen("#FFF0F5"), BrushFactory.Frozen("#F2E1E8"))
     ];
     private static readonly Dictionary<string, ImageSource> CategoryIcons = new(StringComparer.OrdinalIgnoreCase);
 
@@ -157,7 +157,7 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
         var borderBrush = ResolveCellBorderBrush(column, palette.Border);
         drawingContext.DrawRectangle(background, null, rect);
 
-        var pen = new Pen(borderBrush, 1);
+        var pen = new Pen(borderBrush, 0.5);
         pen.Freeze();
         drawingContext.DrawLine(pen, new Point(left + width - 0.5, 0), new Point(left + width - 0.5, HeaderHeight));
         drawingContext.DrawLine(pen, new Point(left, HeaderHeight - 0.5), new Point(left + width, HeaderHeight - 0.5));

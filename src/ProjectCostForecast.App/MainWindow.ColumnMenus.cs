@@ -239,15 +239,15 @@ public partial class MainWindow
     private static Brush GetColumnBorderBrush(ColumnColourOption option)
     {
         return string.Equals(option.Label, "Blue", StringComparison.OrdinalIgnoreCase)
-            ? BrushFactory.Frozen("#9FB9D9")
-            : BrushFactory.Frozen("#D9E2EC");
+            ? BrushFactory.Frozen("#D7E5F5")
+            : BrushFactory.Frozen("#EEF3F8");
     }
 
     private static Brush GetHeaderBorderBrush(ColumnColourOption option)
     {
         return string.Equals(option.Label, "Blue", StringComparison.OrdinalIgnoreCase)
-            ? BrushFactory.Frozen("#8EACD2")
-            : BrushFactory.Frozen("#D9E2EC");
+            ? BrushFactory.Frozen("#CEDFF3")
+            : BrushFactory.Frozen("#E2EAF4");
     }
 
     private void AddWindowContextMenuItems(ContextMenu menu, DataGrid grid, MainWindowViewModel? viewModel)

@@ -358,7 +358,7 @@ public partial class MainWindow
             };
 
             Canvas.SetLeft(freezeLine, freezeLineLeft);
-            Canvas.SetTop(freezeLine, 0);
+            Canvas.SetTop(freezeLine, 1);
             Panel.SetZIndex(freezeLine, 50);
             ForecastFreezeBoundaryCanvas.Children.Add(freezeLine);
 
@@ -378,7 +378,7 @@ public partial class MainWindow
             };
 
             Canvas.SetLeft(label, Math.Max(0, Math.Round(boundaryX, MidpointRounding.AwayFromZero) + 6));
-            Canvas.SetTop(label, 2);
+            Canvas.SetTop(label, -1);
             Panel.SetZIndex(label, 60);
             ForecastFreezeBoundaryCanvas.Children.Add(label);
         }
@@ -388,10 +388,9 @@ public partial class MainWindow
 
     private double GetForecastOverlayBottomY()
     {
-        var horizontalScrollBar = FindChildren<ScrollBar>(ForecastLinesGrid)
-            .FirstOrDefault(scrollBar => scrollBar.Orientation == Orientation.Horizontal && scrollBar.IsVisible);
-        var bottomElement = horizontalScrollBar as FrameworkElement
-            ?? ForecastAddRowStrip as FrameworkElement
+        var bottomElement = ForecastAddRowStrip as FrameworkElement
+            ?? FindChildren<ScrollBar>(ForecastLinesGrid)
+                .FirstOrDefault(scrollBar => scrollBar.Orientation == Orientation.Horizontal && scrollBar.IsVisible) as FrameworkElement
             ?? FindChild<ScrollContentPresenter>(ForecastLinesGrid) as FrameworkElement;
 
         if (bottomElement is not null)
@@ -1731,13 +1730,13 @@ public partial class MainWindow
         if (GridColumnPresentationState.GetColumnBorderBrush(column) is null
             || ReferenceEquals(GridColumnPresentationState.GetColumnBorderBrush(column), Brushes.Transparent))
         {
-            GridColumnPresentationState.SetColumnBorderBrush(column, BrushFactory.Frozen("#D9E2EC"));
+            GridColumnPresentationState.SetColumnBorderBrush(column, BrushFactory.Frozen("#EEF3F8"));
         }
 
         if (GridColumnPresentationState.GetHeaderBorderBrush(column) is null
             || ReferenceEquals(GridColumnPresentationState.GetHeaderBorderBrush(column), Brushes.Transparent))
         {
-            GridColumnPresentationState.SetHeaderBorderBrush(column, BrushFactory.Frozen("#D9E2EC"));
+            GridColumnPresentationState.SetHeaderBorderBrush(column, BrushFactory.Frozen("#E2EAF4"));
         }
     }
 
