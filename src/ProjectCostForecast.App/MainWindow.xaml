@@ -489,12 +489,13 @@
     </Window.Resources>
     <Grid Background="#F7F9FC">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="228" />
+            <ColumnDefinition x:Name="LeftNavigationColumn" Width="228" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Background="White" BorderBrush="#E5EAF3" BorderThickness="0,0,1,0">
-            <Grid Margin="12,20,12,16">
+        <Border x:Name="LeftNavigationShell" Grid.Column="0" Background="White" BorderBrush="#E5EAF3" BorderThickness="0,0,1,0">
+            <Grid>
+            <Grid x:Name="LeftNavigationExpandedContent" Margin="12,20,12,16">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -522,7 +523,7 @@
                             <TextBlock Grid.Column="2" Text="⌃" Foreground="#1463F3" FontSize="15" />
                         </Grid>
                     </Border>
-                    <StackPanel Margin="42,7,0,20">
+                    <StackPanel x:Name="LeftNavigationForecastChildren" Margin="42,7,0,20">
                         <TextBlock Text="●   Default" Foreground="#1463F3" FontWeight="SemiBold" Margin="0,5" />
                         <TextBlock Text="○   Scenario A" Foreground="#53617F" Margin="0,5" />
                         <TextBlock Text="○   Scenario B" Foreground="#53617F" Margin="0,5" />
@@ -533,6 +534,12 @@
                         <Button Content="Save project as" Command="{Binding SaveProjectAsCommand}" ToolTip="Save the current project under a new name" Style="{StaticResource LeftForecastActionButtonStyle}" />
                         <Button Content="Clear all" Command="{Binding ClearAllCommand}" ToolTip="Clear all project records" Style="{StaticResource LeftForecastActionButtonStyle}" />
                         <Button Content="Import CSV" Command="{Binding ImportCsvCommand}" ToolTip="Import cost transactions from CSV" Style="{StaticResource LeftForecastActionButtonStyle}" />
+                        <CheckBox Content="Initial cost load"
+                                  IsChecked="{Binding CreateInitialCostLoadSavedMonths}"
+                                  ToolTip="Create saved-month snapshots for imported periods"
+                                  Foreground="#53617F"
+                                  FontSize="11"
+                                  Margin="10,2,0,4" />
                         <Button Content="Export CSV" Command="{Binding ExportTransactionsCommand}" ToolTip="Export transactions to CSV" Style="{StaticResource LeftForecastActionButtonStyle}" />
                         <Button Content="New month" Command="{Binding NewMonthCommand}" ToolTip="Set up the next forecast month" Style="{StaticResource LeftForecastActionButtonStyle}" />
                         <Button Content="View saved month" Command="{Binding ViewSavedMonthCommand}" ToolTip="Open a previously saved month" Style="{StaticResource LeftForecastActionButtonStyle}" />
@@ -550,9 +557,92 @@
                 </StackPanel>
                 </ScrollViewer>
 
-                <Border Grid.Row="3" BorderBrush="#E5EAF3" BorderThickness="0,1,0,0" Padding="14,17,8,0">
-                    <StackPanel Orientation="Horizontal"><Image Source="/Assets/Icons/png/ic_collapse_20.png" Width="20" Height="20"/><TextBlock Text="Collapse" Margin="12,0,0,0" Foreground="#596784" VerticalAlignment="Center"/></StackPanel>
-                </Border>
+                <Button x:Name="LeftNavigationCollapseButton"
+                        Grid.Row="3"
+                        Click="LeftNavigationCollapseButton_Click"
+                        Background="Transparent"
+                        BorderBrush="#E5EAF3"
+                        BorderThickness="0,1,0,0"
+                        Padding="14,17,8,0"
+                        HorizontalContentAlignment="Left"
+                        Cursor="Hand">
+                    <StackPanel Orientation="Horizontal">
+                        <Image x:Name="LeftNavigationCollapseIcon"
+                               Source="/Assets/Icons/png/ic_collapse_20.png"
+                               Width="20"
+                               Height="20"
+                               RenderTransformOrigin="0.5,0.5"/>
+                        <TextBlock x:Name="LeftNavigationCollapseText" Text="Collapse" Margin="12,0,0,0" Foreground="#596784" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+            <Grid x:Name="LeftNavigationCollapsedContent"
+                  Margin="8,20,8,16"
+                  Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Image Grid.Row="0"
+                       Source="/Assets/Icons/png/ic_app_logo_32.png"
+                       Width="32"
+                       Height="32"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,32" />
+                <StackPanel Grid.Row="1" HorizontalAlignment="Center">
+                    <Border Width="44" Height="42" CornerRadius="10" Margin="0,0,0,10" ToolTip="Overview">
+                        <Image Source="/Assets/Icons/png/ic_nav_home_20.png" Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <Border Width="44" Height="42" CornerRadius="10" Background="#EEF4FF" Margin="0,0,0,22" ToolTip="Forecasts">
+                        <Image Source="/Assets/Icons/png/ic_nav_forecasts_20.png" Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <Border Width="44" Height="42" CornerRadius="10" Margin="0,0,0,10" ToolTip="Reports">
+                        <Image Source="/Assets/Icons/png/ic_nav_reports_20.png" Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <Border Width="44" Height="42" CornerRadius="10" Margin="0,0,0,10" ToolTip="Resources">
+                        <Image Source="/Assets/Icons/png/ic_nav_resources_20.png" Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <Border Width="44" Height="42" CornerRadius="10" ToolTip="Settings">
+                        <Image Source="/Assets/Icons/png/ic_nav_settings_20.png" Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                </StackPanel>
+                <Button x:Name="LeftNavigationExpandButton"
+                        Grid.Row="2"
+                        Click="LeftNavigationCollapseButton_Click"
+                        ToolTip="Expand navigation"
+                        Width="44"
+                        Height="36"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom"
+                        Background="#F8FAFC"
+                        BorderBrush="#E5EAF3"
+                        BorderThickness="1"
+                        Padding="0"
+                        HorizontalContentAlignment="Center"
+                        Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="18"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                    <Image Source="/Assets/Icons/png/ic_collapse_20.png"
+                           Width="16"
+                           Height="16"
+                           RenderTransformOrigin="0.5,0.5">
+                        <Image.RenderTransform>
+                            <RotateTransform Angle="180" />
+                        </Image.RenderTransform>
+                    </Image>
+                </Button>
+            </Grid>
             </Grid>
         </Border>
 
@@ -775,6 +865,7 @@
                                         </Button>
                                         <DataGrid x:Name="ForecastLinesGrid"
                                                   local:ProjectDataGridProfiles.Profile="Forecast"
+                                                  local:ProjectDataGridProfiles.ShowsFooterRow="True"
                                                   Grid.Row="1"
                                                   ItemsSource="{Binding ForecastLinesView}"
                                                   IsReadOnly="False"
@@ -834,23 +925,7 @@
                                                 BorderThickness="1"
                                                 CornerRadius="10"
                                                 IsHitTestVisible="False"
-                                                Panel.ZIndex="34" />
-                                        <Border x:Name="ForecastAddRowStrip"
-                                                Grid.Row="1"
-                                                Height="34"
-                                                Margin="0,0,0,48"
-                                                VerticalAlignment="Bottom"
-                                                Background="White"
-                                                BorderBrush="#DCE4EE"
-                                                BorderThickness="0,1,0,0"
-                                                Panel.ZIndex="35">
-                                            <local:AddRowButton x:Name="AddForecastRowButton"
-                                                                HorizontalAlignment="Left"
-                                                                VerticalAlignment="Center"
-                                                                Margin="10,0,0,0"
-                                                                Style="{StaticResource ForecastStatePillButtonStyle}"
-                                                                Click="AddForecastRowButton_Click" />
-                                        </Border>
+                                                Panel.ZIndex="40" />
                                     </Grid>
                                 </DockPanel>
                             </TabItem>
@@ -1939,7 +2014,7 @@
 
                         <Border x:Name="DetailWorkspaceRail"
                                 Grid.Column="1"
-                                Width="52"
+                                Width="42"
                                 Margin="8,0,0,0"
                                 VerticalAlignment="Stretch"
                                 Background="#FCFCFD"
@@ -1948,7 +2023,7 @@
                                 CornerRadius="12"
                                 Padding="5">
                             <Button x:Name="DetailWorkspaceCollapsedTab"
-                                    Click="DetailWorkspaceCollapsedTab_Click"
+                                    Click="DetailWorkspaceCollapseButton_Click"
                                     ToolTip="Collapse resource drilldown"
                                     Background="#F8FAFC"
                                     BorderBrush="#D7E0EA"
@@ -1956,8 +2031,8 @@
                                     Foreground="#475569"
                                     FontWeight="SemiBold"
                                     Cursor="Hand"
-                                    Width="32"
-                                    Height="90"
+                                    Width="30"
+                                    Height="54"
                                     Padding="0"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Top">
@@ -1966,29 +2041,29 @@
                                         <Border Background="{TemplateBinding Background}"
                                                 BorderBrush="{TemplateBinding BorderBrush}"
                                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                                CornerRadius="16"
+                                                CornerRadius="15"
                                                 SnapsToDevicePixels="True">
                                             <ContentPresenter HorizontalAlignment="Center"
                                                               VerticalAlignment="Center" />
                                         </Border>
                                     </ControlTemplate>
                                 </Button.Template>
-                                <TextBlock Text="&lt; Collapse" FontSize="13">
-                                    <TextBlock.LayoutTransform>
-                                        <RotateTransform Angle="-90" />
-                                    </TextBlock.LayoutTransform>
-                                </TextBlock>
+                                <TextBlock Text="›"
+                                           FontSize="24"
+                                           FontWeight="SemiBold"
+                                           LineHeight="24"
+                                           Foreground="#475569"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
                             </Button>
                         </Border>
                     </Grid>
                 </Border>
                 <Border x:Name="CollapsedDetailWorkspaceHost"
                         Grid.Column="2"
-                        Width="40"
+                        Width="44"
                         Visibility="Collapsed"
-                        Background="Transparent"
-                        MouseEnter="CollapsedDetailWorkspaceHost_MouseEnter"
-                        MouseLeave="CollapsedDetailWorkspaceHost_MouseLeave">
+                        Background="Transparent">
                     <Grid>
                     <primitives:Thumb x:Name="CollapsedDetailRailResizeThumb"
                                       Width="6"
@@ -1998,7 +2073,7 @@
                                       DragDelta="CollapsedDetailRailResizeThumb_DragDelta"
                                       ToolTip="Resize detail rail" />
                     <Button x:Name="CollapsedDetailWorkspaceButton"
-                            Click="DetailWorkspaceCollapsedTab_Click"
+                            Click="DetailWorkspaceExpandButton_Click"
                             ToolTip="Expand resource drilldown"
                             Background="#F8FAFC"
                             BorderBrush="#D7E0EA"
@@ -2007,10 +2082,11 @@
                             FontWeight="SemiBold"
                             Cursor="Hand"
                             Width="32"
-                            Height="90"
+                            Height="54"
                             Padding="0"
                             HorizontalAlignment="Center"
-                            VerticalAlignment="Top">
+                            VerticalAlignment="Top"
+                            Panel.ZIndex="1">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border Background="{TemplateBinding Background}"
@@ -2023,11 +2099,13 @@
                                 </Border>
                             </ControlTemplate>
                         </Button.Template>
-                        <TextBlock Text="Expand >" FontSize="13">
-                            <TextBlock.LayoutTransform>
-                                <RotateTransform Angle="-90" />
-                            </TextBlock.LayoutTransform>
-                        </TextBlock>
+                        <TextBlock Text="‹"
+                                   FontSize="24"
+                                   FontWeight="SemiBold"
+                                   LineHeight="24"
+                                   Foreground="#475569"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
                     </Button>
                     </Grid>
                 </Border>

@@ -114,6 +114,10 @@ public partial class MainWindow
         {
             menu.Items.Add(new Separator());
 
+            var editTasks = new MenuItem { Header = "Edit project task codes" };
+            editTasks.Click += (_, _) => ExecuteAfterClosingMenu(editTasks, () => OpenTaskCategoryEditor(TaskCategoryEditorTab.TaskCodes));
+            menu.Items.Add(editTasks);
+
             var changeIcon = new MenuItem { Header = "Change icon" };
             changeIcon.Click += (_, _) => ExecuteAfterClosingMenu(changeIcon, () =>
                 OpenBuiltInIconPicker(

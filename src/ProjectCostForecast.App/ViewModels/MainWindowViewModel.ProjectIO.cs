@@ -176,6 +176,9 @@ public sealed partial class MainWindowViewModel
 
             AddItems(Transactions, newTransactions);
             EnsureForecastLinesForImportedTransactions(newTransactions);
+            var initialCostLoadSnapshotCount = CreateInitialCostLoadSavedMonths
+                ? CreateInitialCostLoadSnapshots(newTransactions)
+                : 0;
 
             AddAuditEvent(
                 "TransactionImport",
@@ -184,9 +187,15 @@ public sealed partial class MainWindowViewModel
                 "0",
                 newTransactions.Count.ToString(),
                 duplicateCount == 0 ? "Imported raw transaction file" : $"Imported raw transaction file; skipped {duplicateCount} duplicate row(s)");
-            RecalculateAndRefresh(markDirty: true, reason: duplicateCount == 0
+            var importReason = duplicateCount == 0
                 ? $"Imported {newTransactions.Count} new transaction rows"
-                : $"Imported {newTransactions.Count} new transaction rows and skipped {duplicateCount} duplicate row(s)");
+                : $"Imported {newTransactions.Count} new transaction rows and skipped {duplicateCount} duplicate row(s)";
+            if (initialCostLoadSnapshotCount > 0)
+            {
+                importReason += $"; created {initialCostLoadSnapshotCount} saved month snapshot(s)";
+            }
+
+            RecalculateAndRefresh(markDirty: true, reason: importReason);
         }
         catch (Exception ex)
         {
@@ -216,6 +225,67 @@ public sealed partial class MainWindowViewModel
         }
 
         return newTransactions;
+    }
+
+    private int CreateInitialCostLoadSnapshots(IReadOnlyCollection<CostTransaction> importedTransactions)
+    {
+        var periods = importedTransactions
+            .Select(transaction => CalculationService.Normalise(transaction.FyPeriod))
+            .Where(period => FiscalPeriod.SortKey(period) != int.MaxValue)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(FiscalPeriod.SortKey)
+            .ToList();
+        if (periods.Count == 0)
+        {
+            return 0;
+        }
+
+        SyncDatasetFromCollections();
+        var originalTransactions = _dataset.Transactions;
+        var originalCurrentPeriod = Header.CurrentPeriod;
+        var snapshots = new List<SavedMonthSnapshot>();
+
+        try
+        {
+            foreach (var period in periods)
+            {
+                var cutoffSortKey = FiscalPeriod.SortKey(period);
+                _dataset.Transactions = Transactions
+                    .Where(transaction =>
+                    {
+                        var transactionSortKey = FiscalPeriod.SortKey(transaction.FyPeriod);
+                        return transactionSortKey != int.MaxValue && transactionSortKey <= cutoffSortKey;
+                    })
+                    .ToList();
+                Header.CurrentPeriod = period;
+                _calculationService.Recalculate(_dataset);
+                ReplaceCollection(ForecastLines, _dataset.ForecastLines);
+
+                snapshots.Add(BuildSavedMonthSnapshot(period));
+            }
+        }
+        finally
+        {
+            _dataset.Transactions = originalTransactions;
+            Header.CurrentPeriod = originalCurrentPeriod;
+            _calculationService.Recalculate(_dataset);
+            ReplaceCollection(ForecastLines, _dataset.ForecastLines);
+            OnPropertyChanged(nameof(Header));
+        }
+
+        foreach (var snapshot in snapshots.OrderBy(snapshot => FiscalPeriod.SortKey(snapshot.Period)))
+        {
+            SavedMonthSnapshots.Insert(0, snapshot);
+            AddAuditEvent(
+                "SavedMonth",
+                snapshot.Period,
+                "InitialCostLoad",
+                string.Empty,
+                snapshot.SavedAt.ToString("s"),
+                $"Created saved month from initial cost load through {snapshot.Period}");
+        }
+
+        return snapshots.Count;
     }
 
     private void EnsureForecastLinesForImportedTransactions(IEnumerable<CostTransaction> transactions)

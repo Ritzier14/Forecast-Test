@@ -263,6 +263,7 @@ public sealed class ForecastMonthColumnDefinition
     public Brush PrimaryBackground { get; init; } = Brushes.White;
     public Brush SecondaryBackground { get; init; } = Brushes.White;
     public Brush ValueBackground { get; init; } = Brushes.White;
+    public Brush ValueBorderBrush { get; init; } = BrushFactory.Frozen("#EEF3F8");
     public Brush ValueForeground { get; init; } = Brushes.Black;
     public Visibility LeftSolidSeparatorVisibility { get; init; } = Visibility.Collapsed;
     public Visibility RightSolidSeparatorVisibility { get; init; } = Visibility.Collapsed;

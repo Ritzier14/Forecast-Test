@@ -128,6 +128,11 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
         }
 
         var viewportWidth = _scrollViewer?.ViewportWidth ?? grid.ActualWidth;
+        drawingContext.DrawRectangle(
+            palette.Background,
+            null,
+            new Rect(horizontalOffset, 0, Math.Max(0, viewportWidth), HeaderHeight));
+
         var scrollingClip = new Rect(horizontalOffset + frozenLeft, 0, Math.Max(0, viewportWidth - frozenLeft), HeaderHeight);
         drawingContext.PushClip(new RectangleGeometry(scrollingClip));
         foreach (var layout in columnLayouts.Where(layout => !layout.Frozen))
@@ -153,16 +158,22 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
         ForecastGroupHeaderSummary summary)
     {
         var rect = new Rect(left, 0, width, HeaderHeight);
-        var background = ResolveCellBackground(column, palette.Background);
+        var background = ResolveCellBackground(column);
         var borderBrush = ResolveCellBorderBrush(column, palette.Border);
-        drawingContext.DrawRectangle(background, null, rect);
+        if (background is not null)
+        {
+            drawingContext.DrawRectangle(background, null, rect);
+        }
 
         var pen = new Pen(borderBrush, 0.5);
         pen.Freeze();
         drawingContext.DrawLine(pen, new Point(left + width - 0.5, 0), new Point(left + width - 0.5, HeaderHeight));
         drawingContext.DrawLine(pen, new Point(left, HeaderHeight - 0.5), new Point(left + width, HeaderHeight - 0.5));
         drawingContext.DrawLine(pen, new Point(left, 0.5), new Point(left + width, 0.5));
-        if (string.Equals(column.Header?.ToString(), "!", StringComparison.Ordinal))
+        if (string.Equals(
+                GridColumnRoleState.GetRole(column),
+                GridColumnRoleState.ForecastRowSelector,
+                StringComparison.Ordinal))
         {
             DrawChevron(drawingContext, left, width);
             return;
@@ -207,12 +218,12 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
         drawingContext.DrawText(formatted, new Point(Math.Max(left + 2, textLeft), (HeaderHeight - formatted.Height) / 2));
     }
 
-    private static Brush ResolveCellBackground(DataGridColumn column, Brush fallback)
+    private static Brush? ResolveCellBackground(DataGridColumn column)
     {
         var columnBackground = GridColumnPresentationState.GetColumnBackground(column);
         return columnBackground is SolidColorBrush solid && solid.Color != Colors.White
             ? columnBackground
-            : fallback;
+            : null;
     }
 
     private static Brush ResolveCellBorderBrush(DataGridColumn column, Brush fallback)

@@ -219,7 +219,10 @@ public partial class MainWindow
                 targetColumns.Select(GridColumnPresentationState.GetHeaderColorSpec).FirstOrDefault(spec => !string.IsNullOrWhiteSpace(spec)),
                 colorSpec =>
                 {
-                    var brush = string.IsNullOrWhiteSpace(colorSpec)
+                    var usesSharedGradient = BrushFactory.TryParseAdvancedHeaderGradientSpec(colorSpec, out _);
+                    var brush = usesSharedGradient
+                        ? Brushes.Transparent
+                        : string.IsNullOrWhiteSpace(colorSpec)
                         ? CreateGridHeaderGradient()
                         : BrushFactory.FrozenHeaderGradient(colorSpec);
                     foreach (var targetColumn in targetColumns)
@@ -309,6 +312,10 @@ public partial class MainWindow
             };
             showZeroAsBlank.Click += (_, _) => viewModel.SetSelectedForecastShowZeroAsBlank(showZeroAsBlank.IsChecked);
             menu.Items.Add(showZeroAsBlank);
+
+            var copyForecastWidths = new MenuItem { Header = "Copy forecast column widths" };
+            copyForecastWidths.Click += (_, _) => CopyForecastColumnWidthsToClipboard();
+            menu.Items.Add(copyForecastWidths);
         }
 
         if (viewModel is not null
@@ -387,6 +394,36 @@ public partial class MainWindow
             collapseAll.Click += (_, _) => SetGroupedExpandState(grid, false);
             menu.Items.Add(collapseAll);
         }
+    }
+
+    private void CopyForecastColumnWidthsToClipboard()
+    {
+        var lines = new List<string>
+        {
+            "ForecastLinesGrid column width report",
+            $"Grid ActualWidth={ForecastLinesGrid.ActualWidth.ToString("0.##", CultureInfo.InvariantCulture)}",
+            $"Grid ActualHeight={ForecastLinesGrid.ActualHeight.ToString("0.##", CultureInfo.InvariantCulture)}",
+            $"Columns={ForecastLinesGrid.Columns.Count}",
+            "DisplayIndex\tHeader\tKey\tWidth\tActualWidth\tVisibility"
+        };
+
+        foreach (var column in ForecastLinesGrid.Columns.OrderBy(column => column.DisplayIndex))
+        {
+            var width = column.Width.DisplayValue;
+            var actualWidth = column.ActualWidth > 0 ? column.ActualWidth : width;
+            lines.Add(string.Join(
+                "\t",
+                column.DisplayIndex.ToString(CultureInfo.InvariantCulture),
+                GetForecastColumnMenuLabel(column),
+                GetColumnPersistenceKey(column),
+                width.ToString("0.##", CultureInfo.InvariantCulture),
+                actualWidth.ToString("0.##", CultureInfo.InvariantCulture),
+                column.Visibility));
+        }
+
+        var report = string.Join(Environment.NewLine, lines);
+        Clipboard.SetText(report);
+        MessageBox.Show(this, report, "Forecast column widths copied", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void AddColumnOptionsMenuItems(ContextMenu menu, DataGrid grid, DataGridColumnHeader header)
@@ -642,6 +679,23 @@ public partial class MainWindow
             && header.Column.Header is ForecastMonthColumnDefinition { IsTotal: false } monthColumn)
         {
             menu.Items.Add(BuildForecastHeaderColourMenu(viewModel, monthColumn));
+        }
+
+        if (viewModel is not null && ReferenceEquals(grid, ForecastLinesGrid))
+        {
+            var headerText = header.Column.Header?.ToString() ?? string.Empty;
+            if (string.Equals(headerText, "Task", StringComparison.OrdinalIgnoreCase))
+            {
+                var editTasks = new MenuItem { Header = "Edit project task codes" };
+                editTasks.Click += (_, _) => ExecuteAfterClosingMenu(editTasks, () => OpenTaskCategoryEditor(TaskCategoryEditorTab.TaskCodes));
+                menu.Items.Add(editTasks);
+            }
+            else if (string.Equals(headerText, "Category", StringComparison.OrdinalIgnoreCase))
+            {
+                var editCategories = new MenuItem { Header = "Edit project categories" };
+                editCategories.Click += (_, _) => ExecuteAfterClosingMenu(editCategories, () => OpenTaskCategoryEditor(TaskCategoryEditorTab.Categories));
+                menu.Items.Add(editCategories);
+            }
         }
 
         if (viewModel is not null && IsHighlightableGrid(grid))

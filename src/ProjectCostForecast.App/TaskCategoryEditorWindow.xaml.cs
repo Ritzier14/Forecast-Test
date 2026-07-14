@@ -49,6 +49,7 @@ public partial class TaskCategoryEditorWindow : Window
 
     private readonly MainWindowViewModel _viewModel;
     private readonly Dictionary<ProjectCategory, string> _categoryOriginalNames;
+    private readonly string? _initialCategorySelection;
     private Point? _taskDragStart;
     private ProjectTaskCode? _taskDragSource;
     private Point? _gridRightDragStart;
@@ -56,15 +57,24 @@ public partial class TaskCategoryEditorWindow : Window
     private double _gridVerticalScrollStartOffset;
     private bool _gridRightDragging;
     private ScrollViewer? _activeGridScrollViewer;
+    private bool _refreshingInlineEdit;
 
-    public TaskCategoryEditorWindow(MainWindowViewModel viewModel, TaskCategoryEditorTab initialTab)
+    public TaskCategoryEditorWindow(MainWindowViewModel viewModel, TaskCategoryEditorTab initialTab, string? initialCategorySelection = null)
     {
         InitializeComponent();
         _viewModel = viewModel;
+        _initialCategorySelection = initialCategorySelection;
         DataContext = viewModel;
         _categoryOriginalNames = viewModel.ProjectCategories.ToDictionary(category => category, category => category.Name);
         SetActiveTab(initialTab);
+        Loaded += (_, _) =>
+        {
+            InitialiseEditorColumnPresentation();
+            SelectInitialCategory();
+        };
     }
+
+    public TaskCategoryEditorResult? Result { get; private set; }
 
     private void EditorTabButton_Click(object sender, RoutedEventArgs e)
     {
@@ -101,6 +111,25 @@ public partial class TaskCategoryEditorWindow : Window
         {
             DragMove();
         }
+    }
+
+    private void WindowChrome_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || e.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        if (FindParent<ButtonBase>(source) is not null
+            || FindParent<TextBox>(source) is not null
+            || FindParent<Selector>(source) is not null
+            || FindParent<DataGrid>(source) is not null
+            || IsScrollBarInteractionSource(source))
+        {
+            return;
+        }
+
+        DragMove();
     }
 
     private void AddTaskAbove_Click(object sender, RoutedEventArgs e)
@@ -159,16 +188,53 @@ public partial class TaskCategoryEditorWindow : Window
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
+        Result = new TaskCategoryEditorResult((CategoriesGrid.SelectedItem as ProjectCategory)?.Name);
+
+        foreach (var taskCode in _viewModel.ProjectTaskCodes)
+        {
+            _viewModel.SetForecastGroupHeaderColor(taskCode.SystemCode, taskCode.HeaderColorHex);
+        }
+
         foreach (var category in _viewModel.ProjectCategories)
         {
             if (_categoryOriginalNames.TryGetValue(category, out var originalName))
             {
+                if (!string.Equals(originalName, category.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    _viewModel.SetForecastGroupHeaderColor(originalName, null);
+                }
+
+                _viewModel.SetForecastGroupHeaderColor(category.Name, category.ColorHex);
                 _viewModel.RenameProjectCategoryReferences(originalName, category.Name);
+            }
+            else
+            {
+                _viewModel.SetForecastGroupHeaderColor(category.Name, category.ColorHex);
             }
         }
 
         _viewModel.RefreshTaskCategoryMetadata();
         DialogResult = true;
+    }
+
+    private void SelectInitialCategory()
+    {
+        if (string.IsNullOrWhiteSpace(_initialCategorySelection))
+        {
+            CategoriesGrid.SelectedItem = null;
+            return;
+        }
+
+        var category = _viewModel.ProjectCategories.FirstOrDefault(candidate =>
+            string.Equals(candidate.Name, _initialCategorySelection, StringComparison.OrdinalIgnoreCase));
+        if (category is null)
+        {
+            return;
+        }
+
+        CategoriesGrid.SelectedItem = category;
+        CategoriesGrid.CurrentItem = category;
+        CategoriesGrid.ScrollIntoView(category);
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)
@@ -309,6 +375,40 @@ public partial class TaskCategoryEditorWindow : Window
         Dispatcher.BeginInvoke(() => _gridRightDragging = false);
     }
 
+    private void EditorColumnHeader_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not DataGridColumnHeader { Column: { } column } header
+            || FindParent<DataGrid>(header) is not { } grid)
+        {
+            return;
+        }
+
+        _gridRightDragStart = null;
+        _activeGridScrollViewer = null;
+        _gridRightDragging = false;
+
+        var menu = new ContextMenu();
+        var iconMenu = new MenuItem { Header = "Icon" };
+        foreach (var option in new[] { "T", "C", "$", "M", "I", "✓", "•" })
+        {
+            var item = new MenuItem
+            {
+                Header = option,
+                IsCheckable = true,
+                IsChecked = string.Equals(GridColumnPresentationState.GetIconGlyph(column), option, StringComparison.Ordinal)
+            };
+            item.Click += (_, _) => GridColumnPresentationState.SetIconGlyph(column, option);
+            iconMenu.Items.Add(item);
+        }
+
+        menu.Items.Add(iconMenu);
+        menu.Items.Add(BuildEditorHeaderColourMenu(grid, column));
+        menu.PlacementTarget = header;
+        menu.Placement = PlacementMode.Bottom;
+        menu.IsOpen = true;
+        e.Handled = true;
+    }
+
     private void TaskCodesGrid_Drop(object sender, DragEventArgs e)
     {
         if (e.Data.GetData(typeof(ProjectTaskCode)) is ProjectTaskCode source
@@ -362,6 +462,36 @@ public partial class TaskCategoryEditorWindow : Window
         SelectInlineTextBoxRow(textBox);
         textBox.Focus();
         e.Handled = true;
+    }
+
+    private void EditorInlineTextBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (_refreshingInlineEdit || sender is not TextBox textBox)
+        {
+            return;
+        }
+
+        var grid = FindParent<DataGrid>(textBox);
+        if (grid is not null && (ReferenceEquals(grid, TaskCodesGrid) || ReferenceEquals(grid, CategoriesGrid)))
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (_refreshingInlineEdit)
+                {
+                    return;
+                }
+
+                _refreshingInlineEdit = true;
+                try
+                {
+                    _viewModel.RefreshTaskCategoryMetadata();
+                }
+                finally
+                {
+                    _refreshingInlineEdit = false;
+                }
+            }, System.Windows.Threading.DispatcherPriority.Background);
+        }
     }
 
     private void EditorGrid_PreviewTextInput(object sender, TextCompositionEventArgs e)
@@ -455,7 +585,16 @@ public partial class TaskCategoryEditorWindow : Window
     {
         if (sender is Button button && button.Tag is ProjectTaskCode taskCode)
         {
-            OpenIconColourMenu(button, taskCode.IconColorHex, colorHex => taskCode.IconColorHex = colorHex ?? string.Empty);
+            OpenIconColourMenu(button, taskCode.HeaderColorHex, colorHex => ApplyTaskHeaderColor(taskCode, colorHex));
+        }
+    }
+
+    private void TaskColourButton_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Button button && button.Tag is ProjectTaskCode taskCode)
+        {
+            OpenCustomHeaderColourPicker(button, taskCode.HeaderColorHex, colorHex => ApplyTaskHeaderColor(taskCode, colorHex));
+            e.Handled = true;
         }
     }
 
@@ -466,14 +605,13 @@ public partial class TaskCategoryEditorWindow : Window
             OpenBuiltInIconPicker(
                 "Category Icon",
                 category.IconKey,
-                category.ColorHex,
+                null,
                 "ic_category_project_management_20.png",
                 null,
                 "Groups",
-                (iconKey, iconColorHex) =>
+                (iconKey, _) =>
                 {
                     category.IconKey = iconKey ?? string.Empty;
-                    category.ColorHex = iconColorHex ?? string.Empty;
                 });
         }
     }
@@ -482,8 +620,31 @@ public partial class TaskCategoryEditorWindow : Window
     {
         if (sender is Button button && button.Tag is ProjectCategory category)
         {
-            OpenIconColourMenu(button, category.ColorHex, colorHex => category.ColorHex = colorHex ?? string.Empty);
+            OpenIconColourMenu(button, category.ColorHex, colorHex => ApplyCategoryHeaderColor(category, colorHex));
         }
+    }
+
+    private void CategoryColourButton_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Button button && button.Tag is ProjectCategory category)
+        {
+            OpenCustomHeaderColourPicker(button, category.ColorHex, colorHex => ApplyCategoryHeaderColor(category, colorHex));
+            e.Handled = true;
+        }
+    }
+
+    private void ApplyTaskHeaderColor(ProjectTaskCode taskCode, string? colorHex)
+    {
+        taskCode.HeaderColorHex = colorHex ?? string.Empty;
+        _viewModel.SetForecastGroupHeaderColor(taskCode.SystemCode, colorHex);
+        _viewModel.RefreshTaskCategoryMetadata();
+    }
+
+    private void ApplyCategoryHeaderColor(ProjectCategory category, string? colorHex)
+    {
+        category.ColorHex = colorHex ?? string.Empty;
+        _viewModel.SetForecastGroupHeaderColor(category.Name, colorHex);
+        _viewModel.RefreshTaskCategoryMetadata();
     }
 
     private void OpenBuiltInIconPicker(
@@ -537,6 +698,143 @@ public partial class TaskCategoryEditorWindow : Window
         menu.PlacementTarget = placementTarget;
         menu.Placement = PlacementMode.Bottom;
         menu.IsOpen = true;
+    }
+
+    private void OpenCustomHeaderColourPicker(FrameworkElement placementTarget, string? selectedHex, Action<string?> apply)
+    {
+        var selectedSpec = string.IsNullOrWhiteSpace(selectedHex)
+            ? null
+            : BrushFactory.SerializeHeaderGradientSpec(selectedHex, "Balanced");
+        var picker = new HeaderColorPickerPopup("Header colour", selectedSpec, spec =>
+        {
+            var parsed = BrushFactory.ParseHeaderGradientSpec(spec);
+            apply(string.IsNullOrWhiteSpace(spec) ? null : parsed.BaseHex);
+        });
+
+        var popup = new Popup
+        {
+            AllowsTransparency = true,
+            Child = picker,
+            Placement = PlacementMode.Center,
+            PlacementTarget = this,
+            StaysOpen = false
+        };
+        picker.CloseRequested += (_, _) => popup.IsOpen = false;
+        popup.IsOpen = true;
+    }
+
+    private MenuItem BuildEditorHeaderColourMenu(DataGrid grid, DataGridColumn column)
+    {
+        var menu = new MenuItem { Header = "Header colour" };
+        var targetColumns = grid.Columns.ToList();
+        foreach (var (name, hex) in IconColourOptions)
+        {
+            var item = new MenuItem
+            {
+                Header = name,
+                Icon = new Border
+                {
+                    Width = 14,
+                    Height = 14,
+                    CornerRadius = new CornerRadius(4),
+                    Background = string.IsNullOrWhiteSpace(hex)
+                        ? CreateEditorHeaderGradient()
+                        : BrushFactory.FrozenHeaderGradient(hex),
+                    BorderBrush = BrushFactory.Frozen("#CBD5E1"),
+                    BorderThickness = new Thickness(1)
+                }
+            };
+            item.Click += (_, _) =>
+            {
+                foreach (var targetColumn in targetColumns)
+                {
+                    ApplyEditorHeaderColour(targetColumn, hex);
+                }
+            };
+            menu.Items.Add(item);
+        }
+
+        menu.Items.Add(new Separator());
+        var custom = new MenuItem { Header = "Custom..." };
+        custom.Click += (_, _) => OpenHeaderColourPickerForEditorColumn(column, targetColumns);
+        menu.Items.Add(custom);
+        return menu;
+    }
+
+    private void OpenHeaderColourPickerForEditorColumn(DataGridColumn column, IReadOnlyList<DataGridColumn> targetColumns)
+    {
+        var selectedSpec = GridColumnPresentationState.GetHeaderColorSpec(column);
+        var picker = new HeaderColorPickerPopup("Editor header colour", selectedSpec, spec =>
+        {
+            foreach (var targetColumn in targetColumns)
+            {
+                ApplyEditorHeaderColour(targetColumn, spec);
+            }
+        });
+
+        var popup = new Popup
+        {
+            AllowsTransparency = true,
+            Child = picker,
+            Placement = PlacementMode.Center,
+            PlacementTarget = this,
+            StaysOpen = false
+        };
+        picker.CloseRequested += (_, _) => popup.IsOpen = false;
+        popup.IsOpen = true;
+    }
+
+    private static void ApplyEditorHeaderColour(DataGridColumn column, string? colorSpec)
+    {
+        var brush = string.IsNullOrWhiteSpace(colorSpec)
+            ? CreateEditorHeaderGradient()
+            : BrushFactory.FrozenHeaderGradient(colorSpec);
+        GridColumnPresentationState.SetHeaderBackground(column, brush);
+        GridColumnPresentationState.SetBaseHeaderBackground(column, brush);
+        GridColumnPresentationState.SetHeaderColorSpec(column, colorSpec ?? string.Empty);
+        GridColumnPresentationState.SetHeaderBorderBrush(column, BrushFactory.Frozen("#DDE7F1"));
+    }
+
+    private void InitialiseEditorColumnPresentation()
+    {
+        foreach (var column in TaskCodesGrid.Columns.Concat(CategoriesGrid.Columns))
+        {
+            if (string.IsNullOrWhiteSpace(GridColumnPresentationState.GetIconGlyph(column)))
+            {
+                GridColumnPresentationState.SetIconGlyph(column, "T");
+            }
+
+            if (ReferenceEquals(GridColumnPresentationState.GetHeaderBorderBrush(column), Brushes.Transparent))
+            {
+                GridColumnPresentationState.SetHeaderBorderBrush(column, BrushFactory.Frozen("#DDE7F1"));
+            }
+        }
+    }
+
+    private static LinearGradientBrush CreateEditorHeaderGradient()
+    {
+        var gradient = new LinearGradientBrush
+        {
+            StartPoint = new Point(0.5, 0),
+            EndPoint = new Point(0.5, 1)
+        };
+        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xF8, 0xFA, 0xFC), 0));
+        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xEC, 0xF1, 0xF6), 0.5));
+        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xE1, 0xE8, 0xF0), 1));
+        gradient.Freeze();
+        return gradient;
+    }
+
+    private void RoundedGridHost_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (sender is Border border && e.NewSize.Width > 0 && e.NewSize.Height > 0)
+        {
+            border.Clip = null;
+            if (border.Child is UIElement child)
+            {
+                child.Clip = new RectangleGeometry(new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), 17, 17);
+            }
+        }
     }
 
     private static DataGridCell? GetCurrentEditableCell(DataGrid grid)
@@ -689,3 +987,5 @@ public enum TaskCategoryEditorTab
     TaskCodes,
     Categories
 }
+
+public sealed record TaskCategoryEditorResult(string? SelectedCategoryName);

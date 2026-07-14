@@ -649,6 +649,13 @@ public partial class MainWindow
             return;
         }
 
+        if (IsForecastRowSelectorCell(grid, cell))
+        {
+            SelectForecastRowsFromSelectorClick(grid, cell.DataContext);
+            e.Handled = true;
+            return;
+        }
+
         if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != ModifierKeys.None)
         {
             PreserveGridRowContextThroughCellSelection(grid);
@@ -1038,9 +1045,7 @@ public partial class MainWindow
                 else if (string.Equals(cell.Column.Header?.ToString(), "Category", StringComparison.OrdinalIgnoreCase))
                 {
                     menu.Items.Add(new Separator());
-                    var editCategories = new MenuItem { Header = "Edit categories" };
-                    editCategories.Click += (_, _) => OpenTaskCategoryEditor(TaskCategoryEditorTab.Categories);
-                    menu.Items.Add(editCategories);
+                    menu.Items.Add(BuildEditCategoriesMenu(grid, forecastLine, viewModel));
                 }
             }
 
@@ -1062,24 +1067,6 @@ public partial class MainWindow
         }
 
         return menu;
-    }
-
-    private void OpenTaskCategoryEditor(TaskCategoryEditorTab initialTab)
-    {
-        if (DataContext is not MainWindowViewModel viewModel)
-        {
-            return;
-        }
-
-        var window = new TaskCategoryEditorWindow(viewModel, initialTab)
-        {
-            Owner = this
-        };
-        if (window.ShowDialog() == true)
-        {
-            QueueRefreshForecastGroupHeaderPresenters();
-            QueueSpreadsheetSelectionUpdate(ForecastLinesGrid, refreshAllVisuals: true);
-        }
     }
 
     private void OpenManualForecastCommentEditor(ForecastLine line)

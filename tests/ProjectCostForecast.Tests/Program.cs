@@ -175,7 +175,7 @@ InvokeLoadDataset(metadataViewModel, metadataDataset);
 var migratedLine = metadataViewModel.ForecastLines.Single(line => line.TaskNumber == "RAW-001");
 var fallbackLine = metadataViewModel.ForecastLines.Single(line => line.TaskNumber == "MAN-001");
 AssertEqual("Legacy Category", migratedLine.ReportingCategoryOverride, "Legacy ProjectCode migrates into reporting category override");
-AssertEqual("Legacy Category", migratedLine.ReportingCategory, "Row override takes priority over task-name category");
+AssertEqual("Imported task", migratedLine.ReportingCategory, "Migrated legacy ProjectCode falls back to task-name category until manually changed");
 AssertEqual("Manual task", fallbackLine.ReportingCategory, "Task name is the default reporting category");
 metadataViewModel.SetForecastLineReportingCategory(fallbackLine, "Manual Override");
 AssertEqual("Manual Override", fallbackLine.ReportingCategory, "Typed row category override applies immediately");
@@ -271,7 +271,7 @@ var currentCommentMonthLabel = dataset.ForecastPeriods
     ?.ToString("MMM yy") ?? string.Empty;
 AssertTrue(commentLine.AllMonthComments.StartsWith($"{currentCommentMonthLabel} - FY {viewModel.Header.CurrentPeriod}: Stanley Drake:", StringComparison.Ordinal), "All-month comments show newest month first with fiscal period and resource");
 AssertTrue(commentLine.AllMonthComments.Contains("additional cost due to more effort required; month pressure", StringComparison.Ordinal), "All variance comment types are captured in monthly history");
-var commentReportRow = viewModel.MonthlyReportVarianceCommentRows.Single(row => string.Equals(row.ProjectCode, commentLine.ProjectCode, StringComparison.OrdinalIgnoreCase));
+var commentReportRow = viewModel.MonthlyReportVarianceCommentRows.Single(row => string.Equals(row.ProjectCode, commentLine.ReportingCategory, StringComparison.OrdinalIgnoreCase));
 AssertTrue(commentReportRow.TotalBudgetVarianceComment.Contains("Stanley Drake: additional cost due to more effort required", StringComparison.Ordinal), "Report total-budget comment identifies the resource");
 AssertTrue(commentReportRow.MonthVarianceComment.Contains("Stanley Drake: month pressure", StringComparison.Ordinal), "Report month comment identifies the resource");
 AssertTrue(commentReportRow.AllMonthComments.StartsWith($"{currentCommentMonthLabel} - FY {viewModel.Header.CurrentPeriod}: Stanley Drake:", StringComparison.Ordinal), "Report all-month comments show newest month first");

@@ -145,6 +145,7 @@ public sealed partial class MainWindowViewModel
                     PrimaryBackground = primaryBackground,
                     SecondaryBackground = secondaryBackground,
                     ValueBackground = isLocked ? BrushFactory.Frozen(0xF3, 0xF4, 0xF6) : Brushes.White,
+                    ValueBorderBrush = isLocked ? BrushFactory.Frozen("#D7DEE8") : BrushFactory.Frozen("#EEF3F8"),
                     ValueForeground = isLocked ? BrushFactory.Frozen(0x94, 0xA3, 0xB8) : BrushFactory.Frozen(0x0F, 0x17, 0x2A),
                     LeftDashedSeparatorVisibility = string.Equals(previousFiscalYear, fiscalYear, StringComparison.OrdinalIgnoreCase) || index == 0
                         ? Visibility.Collapsed

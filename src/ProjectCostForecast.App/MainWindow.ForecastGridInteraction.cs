@@ -233,6 +233,11 @@ public partial class MainWindow
 
     private static bool IsForecastIdentifierCell(DataGridCell cell)
     {
+        if (IsForecastRowSelectorColumn(cell.Column))
+        {
+            return true;
+        }
+
         return cell.Column?.Header?.ToString() is string header
             && (string.Equals(header, "Task", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(header, "Resource", StringComparison.OrdinalIgnoreCase)

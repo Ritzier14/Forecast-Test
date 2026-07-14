@@ -30,6 +30,8 @@ public partial class MainWindow : Window
     private static readonly SolidColorBrush HoveredHighlightedCellBrush = BrushFactory.Frozen("#FDE68A");
     private const double WorkspaceViewEditorMinimumWidth = 72;
     private const double WorkspaceViewEditorExtraWidth = 14;
+    private const double LeftNavigationExpandedWidth = 228;
+    private const double LeftNavigationCollapsedWidth = 72;
     private static readonly IReadOnlyList<ColumnIconOption> ColumnIconOptions =
     [
         new("Text", "T"),
@@ -100,6 +102,7 @@ public partial class MainWindow : Window
     private MainWindowViewModel? _subscribedViewModel;
     private Point? _forecastLeftDragStart;
     private ForecastLine? _forecastDragLine;
+    private object? _forecastRowSelectionAnchor;
     private Point? _workspaceTabDragStart;
     private TabItem? _workspaceDraggedTabItem;
     private Point? _workspaceViewDragStart;
@@ -108,6 +111,7 @@ public partial class MainWindow : Window
     private GridLength _detailWorkspaceExpandedWidth = new(1.25, GridUnitType.Star);
     private DispatcherTimer? _detailWorkspaceHoverTimer;
     private bool _detailWorkspaceOverlayOpen;
+    private DateTime _detailWorkspaceHoverSuppressedUntil = DateTime.MinValue;
     private bool _forecastYearBandRebuildQueued;
     private int _forecastYearBandDeferredRetryCount;
     private bool _forecastGroupHeaderRefreshQueued;
@@ -118,6 +122,7 @@ public partial class MainWindow : Window
     private bool _scheduleGridColumnsAutoSized;
     private bool _ledgerChartScrollQueued;
     private bool _workspaceViewColumnStateQueued;
+    private bool _leftNavigationCollapsed;
     private bool _detailWorkspaceViewColumnStateQueued;
     private bool _forecastGroupsExpanded = true;
     private bool _applyingWorkspaceColumnState;
@@ -292,6 +297,26 @@ public partial class MainWindow : Window
         _forecastGroupsExpanded = !_forecastGroupsExpanded;
         SetForecastGroupExpansion(ForecastLinesGrid, _forecastGroupsExpanded);
         UpdateForecastGroupToggleVisual();
+    }
+
+    private void LeftNavigationCollapseButton_Click(object sender, RoutedEventArgs e)
+    {
+        _leftNavigationCollapsed = !_leftNavigationCollapsed;
+        ApplyLeftNavigationCollapsedState();
+    }
+
+    private void ApplyLeftNavigationCollapsedState()
+    {
+        if (LeftNavigationColumn is null || LeftNavigationShell is null)
+        {
+            return;
+        }
+
+        LeftNavigationColumn.Width = new GridLength(_leftNavigationCollapsed
+            ? LeftNavigationCollapsedWidth
+            : LeftNavigationExpandedWidth);
+        LeftNavigationExpandedContent.Visibility = _leftNavigationCollapsed ? Visibility.Collapsed : Visibility.Visible;
+        LeftNavigationCollapsedContent.Visibility = _leftNavigationCollapsed ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void UpdateForecastGroupToggleVisual()

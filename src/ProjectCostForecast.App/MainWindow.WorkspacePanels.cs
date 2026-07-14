@@ -206,17 +206,11 @@ public partial class MainWindow
         CollapseDetailWorkspacePanel(clearPin: true);
     }
 
-    private void DetailWorkspaceCollapsedTab_Click(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is MainWindowViewModel { IsDetailPanelCollapsed: false })
-        {
-            CollapseDetailWorkspacePanel(clearPin: true);
-        }
-        else
-        {
-            ExpandDetailWorkspacePanel(pin: false);
-        }
-    }
+    private void DetailWorkspaceCollapseButton_Click(object sender, RoutedEventArgs e)
+        => CollapseDetailWorkspacePanel(clearPin: true);
+
+    private void DetailWorkspaceExpandButton_Click(object sender, RoutedEventArgs e)
+        => ExpandDetailWorkspacePanel(pin: false);
 
     private void DetailWorkspacePinButton_Click(object sender, RoutedEventArgs e)
     {
@@ -243,6 +237,13 @@ public partial class MainWindow
 
     private void CollapsedDetailWorkspaceHost_MouseEnter(object sender, MouseEventArgs e)
     {
+        if (CollapsedDetailWorkspaceButton.IsMouseOver
+            || DateTime.UtcNow < _detailWorkspaceHoverSuppressedUntil
+            || e.OriginalSource is DependencyObject source && FindParent<ButtonBase>(source) is not null)
+        {
+            return;
+        }
+
         if (DataContext is MainWindowViewModel { IsDetailPanelCollapsed: true }
             && !IsDetailWorkspaceSuppressed())
         {
@@ -279,7 +280,7 @@ public partial class MainWindow
             return;
         }
 
-        var nextWidth = Math.Clamp(CollapsedDetailWorkspaceHost.Width - e.HorizontalChange, 36, 92);
+        var nextWidth = Math.Clamp(CollapsedDetailWorkspaceHost.Width - e.HorizontalChange, 44, 72);
         viewModel.SetDetailPanelRailWidth(nextWidth);
         ApplyCollapsedRailWidth(viewModel);
     }
@@ -289,10 +290,8 @@ public partial class MainWindow
 
     private void CollapseDetailWorkspacePanel(bool clearPin)
     {
-        if (DetailWorkspaceColumn.Width.Value > 0)
-        {
-            _detailWorkspaceExpandedWidth = DetailWorkspaceColumn.Width;
-        }
+        _detailWorkspaceHoverSuppressedUntil = DateTime.UtcNow.AddMilliseconds(650);
+        RememberDetailWorkspaceExpandedWidth();
 
         _detailWorkspaceOverlayOpen = false;
         StopDetailWorkspaceHoverTimer();
@@ -310,7 +309,7 @@ public partial class MainWindow
         DetailWorkspaceRail.BorderThickness = new Thickness(0);
         DetailWorkspaceRail.CornerRadius = new CornerRadius(0);
         DetailWorkspaceRail.Padding = new Thickness(0);
-        DetailWorkspaceRail.Width = 32;
+        DetailWorkspaceRail.Width = 42;
         DetailWorkspaceCollapsedTab.Background = BrushFactory.Frozen("#F8FAFC");
         DetailWorkspaceCollapsedTab.BorderBrush = BrushFactory.Frozen("#D7E0EA");
         DetailWorkspaceCollapsedTab.BorderThickness = new Thickness(1);
@@ -341,6 +340,8 @@ public partial class MainWindow
         {
             StopDetailWorkspaceHoverTimer();
             if (CollapsedDetailWorkspaceHost.IsMouseOver
+                && !CollapsedDetailWorkspaceButton.IsMouseOver
+                && DateTime.UtcNow >= _detailWorkspaceHoverSuppressedUntil
                 && DataContext is MainWindowViewModel { IsDetailPanelCollapsed: true, IsDetailPanelPinned: false })
             {
                 ShowTransientDetailWorkspacePanel();
@@ -375,7 +376,7 @@ public partial class MainWindow
         DetailWorkspaceRail.BorderThickness = new Thickness(1);
         DetailWorkspaceRail.CornerRadius = new CornerRadius(12);
         DetailWorkspaceRail.Padding = new Thickness(5);
-        DetailWorkspaceRail.Width = 52;
+        DetailWorkspaceRail.Width = 42;
         DetailWorkspaceContentColumn.Width = new GridLength(1, GridUnitType.Star);
         if (DataContext is MainWindowViewModel viewModel)
         {
@@ -404,16 +405,14 @@ public partial class MainWindow
         DetailWorkspaceRail.BorderThickness = new Thickness(1);
         DetailWorkspaceRail.CornerRadius = new CornerRadius(12);
         DetailWorkspaceRail.Padding = new Thickness(5);
-        DetailWorkspaceRail.Width = 52;
+        DetailWorkspaceRail.Width = 42;
         DetailWorkspaceCollapsedTab.Background = BrushFactory.Frozen("#F8FAFC");
         DetailWorkspaceCollapsedTab.BorderBrush = BrushFactory.Frozen("#D7E0EA");
         DetailWorkspaceCollapsedTab.BorderThickness = new Thickness(1);
         WorkspaceGridSplitter.Visibility = Visibility.Visible;
         DetailWorkspaceContentColumn.Width = new GridLength(1, GridUnitType.Star);
         WorkspaceSplitterColumn.Width = new GridLength(12);
-        DetailWorkspaceColumn.Width = _detailWorkspaceExpandedWidth.Value > 0
-            ? _detailWorkspaceExpandedWidth
-            : new GridLength(1.25, GridUnitType.Star);
+        DetailWorkspaceColumn.Width = GetDetailWorkspaceExpandedWidth();
         if (DataContext is MainWindowViewModel viewModel)
         {
             viewModel.SetDetailPanelCollapsed(false);
@@ -423,6 +422,23 @@ public partial class MainWindow
             }
             ApplyPinButtonVisual(viewModel);
         }
+    }
+
+    private void RememberDetailWorkspaceExpandedWidth()
+    {
+        var width = DetailWorkspaceColumn.Width;
+        if (width.GridUnitType != GridUnitType.Pixel || width.Value >= 240)
+        {
+            _detailWorkspaceExpandedWidth = width;
+        }
+    }
+
+    private GridLength GetDetailWorkspaceExpandedWidth()
+    {
+        return _detailWorkspaceExpandedWidth.GridUnitType == GridUnitType.Pixel
+               && _detailWorkspaceExpandedWidth.Value < 240
+            ? new GridLength(1.25, GridUnitType.Star)
+            : _detailWorkspaceExpandedWidth;
     }
 
     private void SuppressDetailWorkspacePanel()
@@ -472,9 +488,13 @@ public partial class MainWindow
     private void ApplyCollapsedRailWidth(MainWindowViewModel viewModel)
     {
         var width = viewModel.DetailPanelRailWidth;
+        width = Math.Clamp(width, 44, 72);
         CollapsedDetailWorkspaceHost.Width = width;
         DetailWorkspaceColumn.Width = new GridLength(width);
-        CollapsedDetailWorkspaceButton.Width = Math.Max(28, width - 12);
+        CollapsedDetailWorkspaceButton.Width = Math.Min(32, Math.Max(28, width - 12));
+        CollapsedDetailWorkspaceButton.Height = 54;
+        DetailWorkspaceCollapsedTab.Width = 30;
+        DetailWorkspaceCollapsedTab.Height = 54;
     }
 
     private void ApplyPinButtonVisual(MainWindowViewModel viewModel)

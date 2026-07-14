@@ -106,6 +106,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private bool _showCtcMonthForecastColumns = true;
     private bool _showMonthNameAboveFiscalPeriod;
     private bool _showCtcMonthForecastYearTotals;
+    private bool _createInitialCostLoadSavedMonths;
     private bool _showCurrencySymbols;
     private int _forecastMonthMillionDecimals = 2;
     private bool _keepColumnHighlightsAcrossTabs;
@@ -242,6 +243,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
         RecalculateCommand = new RelayCommand(_ => RecalculateAndRefresh(markDirty: true, reason: "Manual recalculation"));
         AddWorkspaceViewCommand = new RelayCommand(_ => AddWorkspaceView());
         AddDetailWorkspaceViewCommand = new RelayCommand(_ => AddDetailWorkspaceView());
+        AddForecastRowCommand = new RelayCommand(_ => InsertForecastLine(null, below: true));
         NewMonthCommand = new RelayCommand(_ => SetupNewMonth());
         ViewSavedMonthCommand = new RelayCommand(_ => OpenSavedMonthViewer());
         ViewUnmatchedImportsCommand = new RelayCommand(_ => OpenUnmatchedImportViewer(), _ => UnmatchedImportCombinations.Count > 0);
@@ -344,6 +346,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public ICommand RecalculateCommand { get; }
     public ICommand AddWorkspaceViewCommand { get; }
     public ICommand AddDetailWorkspaceViewCommand { get; }
+    public ICommand AddForecastRowCommand { get; }
     public ICommand AddPivotRowFieldCommand { get; }
     public ICommand AddPivotColumnFieldCommand { get; }
     public ICommand AddPivotValueFieldCommand { get; }
@@ -396,6 +399,12 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public ICommand NewMonthCommand { get; }
     public ICommand ViewSavedMonthCommand { get; }
     public ICommand ViewUnmatchedImportsCommand { get; }
+
+    public bool CreateInitialCostLoadSavedMonths
+    {
+        get => _createInitialCostLoadSavedMonths;
+        set => SetProperty(ref _createInitialCostLoadSavedMonths, value);
+    }
 
     public ForecastLine? SelectedForecastLine
     {

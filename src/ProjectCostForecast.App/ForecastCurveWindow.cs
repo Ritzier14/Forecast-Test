@@ -1,7 +1,7 @@
+using System.Globalization;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -21,6 +21,7 @@ public sealed class ForecastCurveWindow : Window
     private readonly ObservableCollection<ForecastCurveSummaryRow> _summaryRows;
     private readonly MainWindowViewModel? _viewModel;
     private readonly string _resourceName;
+    private readonly Grid _valuesGrid;
     private readonly List<FrameworkElement> _points = [];
     private readonly List<Rectangle> _monthlyBars = [];
     private readonly List<Button> _lockButtons = [];
@@ -64,7 +65,7 @@ public sealed class ForecastCurveWindow : Window
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(190) });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(138) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
         var heading = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
@@ -83,11 +84,22 @@ public sealed class ForecastCurveWindow : Window
         });
         root.Children.Add(heading);
 
-        var presetPanel = new WrapPanel
+        var presetPanel = new StackPanel
         {
-            Margin = new Thickness(0, 0, 0, 10)
+            Margin = new Thickness(0, 0, 0, 12)
         };
-        presetPanel.Children.Add(new TextBlock
+        var presetRow = new WrapPanel
+        {
+            ItemHeight = 38,
+            Margin = new Thickness(0, 0, 0, 6)
+        };
+        var actionRow = new WrapPanel
+        {
+            ItemHeight = 38
+        };
+        presetPanel.Children.Add(presetRow);
+        presetPanel.Children.Add(actionRow);
+        presetRow.Children.Add(new TextBlock
         {
             Text = "Preset curve",
             VerticalAlignment = VerticalAlignment.Center,
@@ -129,23 +141,25 @@ public sealed class ForecastCurveWindow : Window
         }
 
         _presetBox.SelectedIndex = 0;
-        presetPanel.Children.Add(_presetBox);
-        presetPanel.Children.Add(new TextBlock
+        presetRow.Children.Add(_presetBox);
+        presetRow.Children.Add(new TextBlock
         {
             Text = "Select to apply; hover to preview.",
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(14, 0, 6, 0),
             Foreground = BrushFactory.Frozen("#64748B")
         });
-        presetPanel.Children.Add(CreateLegend("Existing", "#94A3B8", new Thickness(18, 0, 0, 0)));
-        presetPanel.Children.Add(CreateLegend("New cumulative", "#176B8C", new Thickness(12, 0, 0, 0)));
-        presetPanel.Children.Add(CreateLegend("Monthly forecast", "#93C5FD", new Thickness(12, 0, 0, 0)));
+        presetRow.Children.Add(CreateLegend("Existing", "#94A3B8", new Thickness(18, 0, 0, 0), isDashed: true));
+        presetRow.Children.Add(CreateLegend("New cumulative", "#176B8C", new Thickness(12, 0, 0, 0)));
+        presetRow.Children.Add(CreateLegend("Current monthly", "#94A3B8", new Thickness(12, 0, 0, 0)));
+        presetRow.Children.Add(CreateLegend("Monthly forecast", "#93C5FD", new Thickness(12, 0, 0, 0)));
         var toggleBars = new Button
         {
             Content = "Hide monthly bars",
-            MinWidth = 118,
+            MinWidth = 132,
+            Height = 32,
             Padding = new Thickness(8, 3, 8, 3),
-            Margin = new Thickness(12, 0, 0, 0)
+            Margin = new Thickness(0, 0, 10, 0)
         };
         toggleBars.Click += (_, _) =>
         {
@@ -153,13 +167,14 @@ public sealed class ForecastCurveWindow : Window
             toggleBars.Content = _showMonthlyBars ? "Hide monthly bars" : "Show monthly bars";
             DrawChart();
         };
-        presetPanel.Children.Add(toggleBars);
+        actionRow.Children.Add(toggleBars);
         var unlockAll = new Button
         {
             Content = "Unlock all",
             MinWidth = 88,
+            Height = 32,
             Padding = new Thickness(8, 3, 8, 3),
-            Margin = new Thickness(12, 0, 0, 0)
+            Margin = new Thickness(0, 0, 24, 0)
         };
         unlockAll.Click += (_, _) =>
         {
@@ -170,38 +185,40 @@ public sealed class ForecastCurveWindow : Window
 
             DrawChart();
         };
-        presetPanel.Children.Add(unlockAll);
-        presetPanel.Children.Add(new TextBlock
+        actionRow.Children.Add(unlockAll);
+        actionRow.Children.Add(new TextBlock
         {
             Text = "Adjustment range",
             VerticalAlignment = VerticalAlignment.Center,
             FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(20, 0, 6, 0)
+            Margin = new Thickness(0, 0, 8, 0)
         });
-        AddEffectRangeButton(presetPanel, "Tight", 1);
-        AddEffectRangeButton(presetPanel, "Nearby", 2, isSelected: true);
-        AddEffectRangeButton(presetPanel, "Wide", 4);
-        AddEffectRangeButton(presetPanel, "Full", int.MaxValue);
+        AddEffectRangeButton(actionRow, "Tight", 1);
+        AddEffectRangeButton(actionRow, "Nearby", 2, isSelected: true);
+        AddEffectRangeButton(actionRow, "Wide", 4);
+        AddEffectRangeButton(actionRow, "Full", int.MaxValue);
         if (_viewModel is not null)
         {
             var savePreset = new Button
             {
                 Content = "Save preset",
                 MinWidth = 92,
+                Height = 32,
                 Padding = new Thickness(8, 3, 8, 3),
-                Margin = new Thickness(12, 0, 0, 0)
+                Margin = new Thickness(18, 0, 6, 0)
             };
             savePreset.Click += (_, _) => SaveCurrentPreset();
-            presetPanel.Children.Add(savePreset);
+            actionRow.Children.Add(savePreset);
             var managePresets = new Button
             {
                 Content = "Manage",
                 MinWidth = 76,
+                Height = 32,
                 Padding = new Thickness(8, 3, 8, 3),
-                Margin = new Thickness(4, 0, 0, 0)
+                Margin = new Thickness(0)
             };
             managePresets.Click += (_, _) => ManagePresets();
-            presetPanel.Children.Add(managePresets);
+            actionRow.Children.Add(managePresets);
         }
         Grid.SetRow(presetPanel, 1);
         root.Children.Add(presetPanel);
@@ -220,54 +237,26 @@ public sealed class ForecastCurveWindow : Window
         Grid.SetRow(chartBorder, 2);
         root.Children.Add(chartBorder);
 
-        var table = new DataGrid
+        _valuesGrid = new Grid();
+        var valuesScroll = new ScrollViewer
         {
-            ItemsSource = _rows,
-            AutoGenerateColumns = false,
-            IsReadOnly = false,
-            Margin = new Thickness(0, 12, 0, 0),
-            HeadersVisibility = DataGridHeadersVisibility.Column,
-            CanUserAddRows = false,
-            CanUserDeleteRows = false
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Content = _valuesGrid
         };
-        table.CellEditEnding += CurveTable_CellEditEnding;
-        table.Columns.Add(new DataGridCheckBoxColumn
+        var valuesBorder = new Border
         {
-            Header = "Lock",
-            Binding = new Binding(nameof(ForecastCurveValueRow.IsLocked)) { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged },
-            Width = 58
-        });
-        table.Columns.Add(new DataGridTextColumn { Header = "Month", Binding = new Binding(nameof(ForecastCurveValueRow.Month)), Width = 90, IsReadOnly = true });
-        table.Columns.Add(new DataGridTextColumn { Header = "FY period", Binding = new Binding(nameof(ForecastCurveValueRow.FiscalPeriod)), Width = 95, IsReadOnly = true });
-        table.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Current value",
-            Binding = new Binding(nameof(ForecastCurveValueRow.ExistingValue)) { StringFormat = "{0:C0}" },
-            Width = 130,
-            IsReadOnly = true,
-            ElementStyle = new Style(typeof(TextBlock))
-            {
-                Setters =
-                {
-                    new Setter(TextBlock.ForegroundProperty, BrushFactory.Frozen("#64748B")),
-                    new Setter(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Right),
-                    new Setter(TextBlock.MarginProperty, new Thickness(0, 0, 8, 0))
-                }
-            }
-        });
-        table.Columns.Add(new DataGridTextColumn
-        {
-            Header = "New value",
-            Binding = new Binding(nameof(ForecastCurveValueRow.NewValue))
-            {
-                StringFormat = "{0:C0}",
-                UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
-            },
-            Width = 130,
-            SortMemberPath = nameof(ForecastCurveValueRow.NewValue)
-        });
-        Grid.SetRow(table, 3);
-        root.Children.Add(table);
+            BorderBrush = BrushFactory.Frozen("#CBD5E1"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(4),
+            Height = 125,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 12, 0, 0),
+            Child = valuesScroll
+        };
+        BuildValuesGrid();
+        Grid.SetRow(valuesBorder, 3);
+        root.Children.Add(valuesBorder);
 
         var footer = new Grid { Margin = new Thickness(0, 12, 0, 0) };
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -293,19 +282,164 @@ public sealed class ForecastCurveWindow : Window
         Content = root;
     }
 
-    private static FrameworkElement CreateLegend(string text, string colour, Thickness margin)
+    private static FrameworkElement CreateLegend(string text, string colour, Thickness margin, bool isDashed = false)
     {
         var panel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = margin };
-        panel.Children.Add(new Border
+        if (isDashed)
         {
-            Width = 18,
-            Height = 3,
-            Background = BrushFactory.Frozen(colour),
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 5, 0)
-        });
+            panel.Children.Add(new Canvas
+            {
+                Width = 22,
+                Height = 10,
+                Margin = new Thickness(0, 0, 5, 0),
+                Children =
+                {
+                    new Line
+                    {
+                        X1 = 0,
+                        X2 = 22,
+                        Y1 = 5,
+                        Y2 = 5,
+                        Stroke = BrushFactory.Frozen(colour),
+                        StrokeThickness = 2,
+                        StrokeDashArray = new DoubleCollection([3, 2])
+                    }
+                }
+            });
+        }
+        else
+        {
+            panel.Children.Add(new Border
+            {
+                Width = 18,
+                Height = 3,
+                Background = BrushFactory.Frozen(colour),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 5, 0)
+            });
+        }
+
         panel.Children.Add(new TextBlock { Text = text, Foreground = BrushFactory.Frozen("#475569"), VerticalAlignment = VerticalAlignment.Center });
         return panel;
+    }
+
+    private void BuildValuesGrid()
+    {
+        _valuesGrid.Children.Clear();
+        _valuesGrid.ColumnDefinitions.Clear();
+        _valuesGrid.RowDefinitions.Clear();
+
+        _valuesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(28) });
+        _valuesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(28) });
+        _valuesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(34) });
+        _valuesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(34) });
+        _valuesGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+        for (var index = 0; index < _rows.Count; index++)
+        {
+            _valuesGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(86) });
+        }
+
+        AddValueGridCell(0, 0, string.Empty, "#DCEBF8", fontWeight: FontWeights.SemiBold);
+        AddValueGridCell(1, 0, string.Empty, "#DCEBF8", fontWeight: FontWeights.SemiBold);
+        AddValueGridCell(2, 0, "Current", "#F8FAFC", foreground: "#64748B", fontWeight: FontWeights.SemiBold, horizontalAlignment: HorizontalAlignment.Left);
+        AddValueGridCell(3, 0, "New", "#FFFFFF", fontWeight: FontWeights.SemiBold, horizontalAlignment: HorizontalAlignment.Left);
+
+        for (var index = 0; index < _rows.Count; index++)
+        {
+            var column = index + 1;
+            AddValueGridCell(0, column, _rows[index].FiscalPeriod, "#D9EBC7", fontWeight: FontWeights.SemiBold);
+            AddValueGridCell(1, column, _rows[index].Month, "#CFE4F5", fontWeight: FontWeights.SemiBold, fontStyle: FontStyles.Italic);
+            AddValueGridCell(2, column, _rows[index].ExistingValue.ToString("C0", CultureInfo.CurrentCulture), "#F8FAFC", foreground: "#64748B", horizontalAlignment: HorizontalAlignment.Right);
+
+            var editor = new TextBox
+            {
+                Text = _rows[index].NewValue.ToString("C0", CultureInfo.CurrentCulture),
+                Tag = index,
+                BorderThickness = new Thickness(0),
+                Background = Brushes.White,
+                HorizontalContentAlignment = HorizontalAlignment.Right,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Padding = new Thickness(6, 0, 6, 0)
+            };
+            editor.LostFocus += NewValueEditor_Commit;
+            editor.KeyDown += (_, e) =>
+            {
+                if (e.Key == Key.Enter)
+                {
+                    NewValueEditor_Commit(editor, e);
+                    e.Handled = true;
+                    MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+                }
+            };
+            AddValueGridBorder(3, column, "#FFFFFF");
+            Grid.SetRow(editor, 3);
+            Grid.SetColumn(editor, column);
+            _valuesGrid.Children.Add(editor);
+        }
+    }
+
+    private void AddValueGridCell(
+        int row,
+        int column,
+        string text,
+        string background,
+        string foreground = "#0F172A",
+        FontWeight? fontWeight = null,
+        FontStyle? fontStyle = null,
+        HorizontalAlignment horizontalAlignment = HorizontalAlignment.Center)
+    {
+        AddValueGridBorder(row, column, background);
+        var block = new TextBlock
+        {
+            Text = text,
+            Foreground = BrushFactory.Frozen(foreground),
+            FontWeight = fontWeight ?? FontWeights.Normal,
+            FontStyle = fontStyle ?? FontStyles.Normal,
+            HorizontalAlignment = horizontalAlignment,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = horizontalAlignment == HorizontalAlignment.Right
+                ? new Thickness(6, 0, 8, 0)
+                : new Thickness(8, 0, 8, 0)
+        };
+        Grid.SetRow(block, row);
+        Grid.SetColumn(block, column);
+        _valuesGrid.Children.Add(block);
+    }
+
+    private void AddValueGridBorder(int row, int column, string background)
+    {
+        var border = new Border
+        {
+            Background = BrushFactory.Frozen(background),
+            BorderBrush = BrushFactory.Frozen("#D8E2EE"),
+            BorderThickness = new Thickness(0, 0, 1, 1)
+        };
+        Grid.SetRow(border, row);
+        Grid.SetColumn(border, column);
+        _valuesGrid.Children.Add(border);
+    }
+
+    private void NewValueEditor_Commit(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TextBox { Tag: int index } editor || index < 0 || index >= _rows.Count)
+        {
+            return;
+        }
+
+        var text = editor.Text.Trim();
+        if (!decimal.TryParse(text, NumberStyles.Currency, CultureInfo.CurrentCulture, out var value)
+            && !decimal.TryParse(text, NumberStyles.Currency, CultureInfo.InvariantCulture, out value))
+        {
+            editor.Text = _rows[index].NewValue.ToString("C0", CultureInfo.CurrentCulture);
+            return;
+        }
+
+        _rows[index].NewValue = Math.Round(value, 0);
+        _rows[index].IsLocked = true;
+        _newCumulative = ForecastCurveMath.BuildCumulative(_rows.Select(item => item.NewValue));
+        RefreshSummaryRows();
+        DrawChart();
+        BuildValuesGrid();
     }
 
     private void AddEffectRangeButton(Panel panel, string label, int radius, bool isSelected = false)
@@ -314,8 +448,9 @@ public sealed class ForecastCurveWindow : Window
         {
             Content = label,
             MinWidth = 58,
+            Height = 32,
             Padding = new Thickness(8, 3, 8, 3),
-            Margin = new Thickness(3, 0, 0, 0),
+            Margin = new Thickness(0, 0, 6, 0),
             Tag = radius,
             FontWeight = isSelected ? FontWeights.Bold : FontWeights.Normal
         };
@@ -358,6 +493,7 @@ public sealed class ForecastCurveWindow : Window
 
         _newCumulative = ForecastCurveMath.BuildCumulative(_rows.Select(row => row.NewValue));
         RefreshSummaryRows();
+        BuildValuesGrid();
         DrawChart();
     }
 
@@ -432,6 +568,7 @@ public sealed class ForecastCurveWindow : Window
 
         _newCumulative = ForecastCurveMath.BuildCumulative(_rows.Select(row => row.NewValue));
         RefreshSummaryRows();
+        BuildValuesGrid();
         DrawChart();
     }
 
@@ -546,6 +683,7 @@ public sealed class ForecastCurveWindow : Window
         _monthlyBars.Clear();
         _lockButtons.Clear();
         var existingCumulative = ForecastCurveMath.BuildCumulative(_rows.Select(row => row.ExistingValue));
+        var existingMonthlyValues = _rows.Select(row => row.ExistingValue).ToList();
         var displayedMonthlyValues = _presetPreviewValues ?? _rows.Select(row => row.NewValue).ToList();
         var displayedCumulative = ForecastCurveMath.BuildCumulative(displayedMonthlyValues);
         _newCumulative = ForecastCurveMath.BuildCumulative(_rows.Select(row => row.NewValue));
@@ -555,7 +693,7 @@ public sealed class ForecastCurveWindow : Window
         DrawGrid(plotBottom);
         if (_showMonthlyBars)
         {
-            DrawMonthlyBars(displayedMonthlyValues, plotBottom);
+            DrawMonthlyBars(displayedMonthlyValues, existingMonthlyValues, plotBottom);
         }
 
         var existingPath = new Path
@@ -630,7 +768,7 @@ public sealed class ForecastCurveWindow : Window
         _newPath.Data = CreateSmoothGeometry(newPoints);
     }
 
-    private void DrawMonthlyBars(IReadOnlyList<decimal> monthlyValues, double plotBottom)
+    private void DrawMonthlyBars(IReadOnlyList<decimal> monthlyValues, IReadOnlyList<decimal> existingMonthlyValues, double plotBottom)
     {
         var spacing = _rows.Count <= 1
             ? Math.Max(40, _canvas.ActualWidth - PlotLeft - PlotRight)
@@ -638,6 +776,25 @@ public sealed class ForecastCurveWindow : Window
         var barWidth = Math.Clamp(spacing * 0.48, 14, 52);
         for (var index = 0; index < monthlyValues.Count; index++)
         {
+            if (index < existingMonthlyValues.Count)
+            {
+                var existingValue = Math.Max(0, existingMonthlyValues[index]);
+                var existingTop = GetY(existingValue);
+                var previousBar = new Rectangle
+                {
+                    Width = Math.Max(8, barWidth * 0.32),
+                    Height = Math.Max(0, plotBottom - existingTop),
+                    Fill = BrushFactory.Frozen("#94A3B8"),
+                    Opacity = 0.45,
+                    RadiusX = 2,
+                    RadiusY = 2,
+                    ToolTip = $"{_rows[index].Month}: current monthly forecast {existingValue:C0}"
+                };
+                Canvas.SetLeft(previousBar, GetX(index) - (barWidth / 2) - 3);
+                Canvas.SetTop(previousBar, existingTop);
+                _canvas.Children.Add(previousBar);
+            }
+
             var value = Math.Max(0, monthlyValues[index]);
             var top = GetY(value);
             var bar = new Rectangle
@@ -802,6 +959,7 @@ public sealed class ForecastCurveWindow : Window
         }
         _newCumulative = ForecastCurveMath.BuildCumulative(_rows.Select(row => row.NewValue));
         RefreshSummaryRows();
+        BuildValuesGrid();
         UpdatePoints();
     }
 
@@ -857,24 +1015,6 @@ public sealed class ForecastCurveWindow : Window
 
         _rows[index].IsLocked = !_rows[index].IsLocked;
         DrawChart();
-    }
-
-    private void CurveTable_CellEditEnding(object? sender, DataGridCellEditEndingEventArgs e)
-    {
-        if (e.EditAction != DataGridEditAction.Commit
-            || e.Row.Item is not ForecastCurveValueRow row
-            || !string.Equals(e.Column.SortMemberPath, nameof(ForecastCurveValueRow.NewValue), StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        Dispatcher.BeginInvoke(() =>
-        {
-            row.IsLocked = true;
-            _newCumulative = ForecastCurveMath.BuildCumulative(_rows.Select(item => item.NewValue));
-            RefreshSummaryRows();
-            DrawChart();
-        });
     }
 
     private void RefreshSummaryRows()

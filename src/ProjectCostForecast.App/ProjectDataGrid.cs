@@ -55,6 +55,12 @@ public static class ProjectDataGridProfiles
         typeof(ProjectDataGridProfiles),
         new FrameworkPropertyMetadata(ProjectDataGridProfile.Default, OnAttachedProfileChanged));
 
+    public static readonly DependencyProperty ShowsFooterRowProperty = DependencyProperty.RegisterAttached(
+        "ShowsFooterRow",
+        typeof(bool),
+        typeof(ProjectDataGridProfiles),
+        new FrameworkPropertyMetadata(false));
+
     public static ProjectDataGridProfile GetProfile(DataGrid grid)
     {
         return (ProjectDataGridProfile)grid.GetValue(ProfileProperty);
@@ -63,6 +69,16 @@ public static class ProjectDataGridProfiles
     public static void SetProfile(DataGrid grid, ProjectDataGridProfile value)
     {
         grid.SetValue(ProfileProperty, value);
+    }
+
+    public static bool GetShowsFooterRow(DataGrid grid)
+    {
+        return (bool)grid.GetValue(ShowsFooterRowProperty);
+    }
+
+    public static void SetShowsFooterRow(DataGrid grid, bool value)
+    {
+        grid.SetValue(ShowsFooterRowProperty, value);
     }
 
     private static void OnAttachedProfileChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)

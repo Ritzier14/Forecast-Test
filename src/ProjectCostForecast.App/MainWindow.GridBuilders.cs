@@ -19,6 +19,8 @@ namespace ProjectCostForecast.App;
 
 public partial class MainWindow
 {
+    private const double ForecastGridFooterRowHeight = 34;
+
     private static readonly double ForecastMonthColumnDefaultWidth = 52;
     private static readonly double ForecastMonthColumnMinimumWidth = 52;
     private static readonly double ForecastMonthTotalColumnDefaultWidth = Math.Max(88, ForecastMonthColumnDefaultWidth + 14);
@@ -224,8 +226,9 @@ public partial class MainWindow
         ForecastYearBandCanvas.Visibility = Visibility.Visible;
         var overlayContentHeight = GetForecastOverlayBottomY();
         ForecastFreezeBoundaryCanvas.Width = ForecastGridHost.ActualWidth;
-        ForecastFreezeBoundaryCanvas.Height = overlayContentHeight;
-        ForecastFreezeBoundaryCanvas.Clip = new RectangleGeometry(new Rect(0, 0, ForecastGridHost.ActualWidth, overlayContentHeight));
+        var clippedOverlayHeight = Math.Max(0, overlayContentHeight - 1);
+        ForecastFreezeBoundaryCanvas.Height = clippedOverlayHeight;
+        ForecastFreezeBoundaryCanvas.Clip = new RectangleGeometry(new Rect(0, 0, ForecastGridHost.ActualWidth, clippedOverlayHeight));
         ForecastFreezeBoundaryCanvas.Visibility = Visibility.Visible;
 
         var groupedHeaders = yearBandColumns
@@ -279,7 +282,7 @@ public partial class MainWindow
 
         var rowGuideTop = ForecastYearBandHeight;
         var fiscalSeparatorTop = Math.Max(0, ForecastYearBandHeight - 1);
-        var gridGuideHeight = Math.Max(rowGuideTop, overlayContentHeight);
+        var gridGuideHeight = Math.Max(rowGuideTop, clippedOverlayHeight);
         foreach (var column in monthColumns)
         {
             if (column.Definition.RightDashedSeparatorVisibility != Visibility.Visible)
@@ -359,7 +362,7 @@ public partial class MainWindow
             };
 
             Canvas.SetLeft(freezeLine, freezeLineLeft);
-            Canvas.SetTop(freezeLine, 1);
+            Canvas.SetTop(freezeLine, -1);
             Panel.SetZIndex(freezeLine, 50);
             ForecastFreezeBoundaryCanvas.Children.Add(freezeLine);
 
@@ -379,7 +382,7 @@ public partial class MainWindow
             };
 
             Canvas.SetLeft(label, Math.Max(0, Math.Round(boundaryX, MidpointRounding.AwayFromZero) + 6));
-            Canvas.SetTop(label, -1);
+            Canvas.SetTop(label, -5);
             Panel.SetZIndex(label, 60);
             ForecastFreezeBoundaryCanvas.Children.Add(label);
         }
@@ -389,10 +392,26 @@ public partial class MainWindow
 
     private double GetForecastOverlayBottomY()
     {
-        var bottomElement = ForecastAddRowStrip as FrameworkElement
-            ?? FindChildren<ScrollBar>(ForecastLinesGrid)
-                .FirstOrDefault(scrollBar => scrollBar.Orientation == Orientation.Horizontal && scrollBar.IsVisible) as FrameworkElement
-            ?? FindChild<ScrollContentPresenter>(ForecastLinesGrid) as FrameworkElement;
+        var horizontalScrollBar = FindChildren<ScrollBar>(ForecastLinesGrid)
+            .FirstOrDefault(scrollBar => scrollBar.Orientation == Orientation.Horizontal && scrollBar.IsVisible) as FrameworkElement;
+
+        if (horizontalScrollBar is not null)
+        {
+            try
+            {
+                var top = horizontalScrollBar.TransformToAncestor(ForecastGridHost).Transform(new Point(0, 0)).Y - ForecastGridFooterRowHeight;
+                if (top > 0)
+                {
+                    return Math.Max(ForecastYearBandHeight, Math.Min(ForecastGridHost.ActualHeight, top));
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Fall through while layout settles.
+            }
+        }
+
+        var bottomElement = FindChild<ScrollContentPresenter>(ForecastLinesGrid) as FrameworkElement;
 
         if (bottomElement is not null)
         {
@@ -587,7 +606,7 @@ public partial class MainWindow
             Converter = new BooleanToVisibilityConverter()
         });
 
-        return new DataGridTemplateColumn
+        var column = new DataGridTemplateColumn
         {
             Header = "!",
             Width = 26,
@@ -595,6 +614,8 @@ public partial class MainWindow
             CanUserResize = false,
             CellTemplate = new DataTemplate { VisualTree = textFactory }
         };
+        GridColumnRoleState.SetRole(column, GridColumnRoleState.ForecastRowSelector);
+        return column;
     }
 
     private static DataGridTemplateColumn CreateForecastCommentsColumn()
@@ -669,6 +690,7 @@ public partial class MainWindow
                 IsReadOnly = columnDefinition.IsTotal || !columnDefinition.IsEditable,
                 CellStyle = CreateForecastMonthCellStyle(columnDefinition)
             };
+            GridColumnPresentationState.SetColumnBorderBrush(column, columnDefinition.ValueBorderBrush);
             column.CellTemplate = CreateForecastMonthDisplayTemplate(
                 columnDefinition,
                 viewModel.ShowForecastZeroAsBlank,
@@ -1420,7 +1442,7 @@ public partial class MainWindow
             : new Style(typeof(DataGridCell), baseStyle);
         style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
         style.Setters.Add(new Setter(Control.BackgroundProperty, columnDefinition.ValueBackground));
-        style.Setters.Add(new Setter(Control.BorderBrushProperty, BrushFactory.Frozen("#CCD6E2")));
+        style.Setters.Add(new Setter(Control.BorderBrushProperty, columnDefinition.ValueBorderBrush));
         style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0, 0, 1, 1)));
         style.Setters.Add(new Setter(Control.ForegroundProperty, columnDefinition.ValueForeground));
 
