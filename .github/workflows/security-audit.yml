@@ -1,0 +1,101 @@
+name: Security Audit
+
+on:
+  push:
+    branches:
+      - security-audit-2026-07-18
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
+jobs:
+  build-test-and-dependency-audit:
+    name: Build, acceptance tests, and dependency audit
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out full repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Show SDK and repository state
+        shell: pwsh
+        run: |
+          dotnet --info
+          git status --short
+          git rev-parse HEAD
+
+      - name: Restore
+        run: dotnet restore ProjectCostForecast.sln
+
+      - name: Build Release
+        run: dotnet build ProjectCostForecast.sln --configuration Release --no-restore
+
+      - name: Run project acceptance-test harness
+        run: dotnet run --project tests/ProjectCostForecast.Tests/ProjectCostForecast.Tests.csproj --configuration Release --no-build
+
+      - name: Audit direct and transitive NuGet packages for known vulnerabilities
+        run: dotnet list src/ProjectCostForecast.App/ProjectCostForecast.App.csproj package --vulnerable --include-transitive
+
+      - name: Audit direct and transitive NuGet packages for deprecations
+        run: dotnet list src/ProjectCostForecast.App/ProjectCostForecast.App.csproj package --deprecated --include-transitive
+
+      - name: Publish a clean Windows release candidate
+        run: dotnet publish src/ProjectCostForecast.App/ProjectCostForecast.App.csproj --configuration Release --no-restore --runtime win-x64 --self-contained false --output audit-publish
+
+      - name: Check executable signature and package contents
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem audit-publish -Filter *.exe | Select-Object -First 1
+          if (-not $exe) { throw 'No executable was produced.' }
+          Get-AuthenticodeSignature $exe.FullName | Format-List *
+          Get-ChildItem audit-publish -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
+
+  codeql:
+    name: CodeQL C# security analysis
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: csharp
+          queries: security-extended
+
+      - name: Build for CodeQL
+        uses: github/codeql-action/autobuild@v4
+
+      - name: Analyse with CodeQL
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:csharp
+
+  secret-scan:
+    name: Gitleaks secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out full repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan repository and history for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
