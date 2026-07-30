@@ -201,6 +201,7 @@ public partial class BuiltInIconPickerWindow : UserControl
             Width = 42,
             Height = 42,
             Margin = new Thickness(0, 0, 4, 4),
+            Padding = new Thickness(0),
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
             Cursor = Cursors.Hand,
@@ -232,31 +233,8 @@ public partial class BuiltInIconPickerWindow : UserControl
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
         };
+        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
         grid.Children.Add(image);
-
-        if (isSelected)
-        {
-            var checkBadge = new Border
-            {
-                Width = 12,
-                Height = 12,
-                CornerRadius = new CornerRadius(3),
-                Background = BrushFactory.Frozen("#3B82F6"),
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top
-            };
-            checkBadge.Child = new TextBlock
-            {
-                Text = "OK",
-                Foreground = Brushes.White,
-                FontSize = 5,
-                FontWeight = FontWeights.Bold,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                TextAlignment = TextAlignment.Center
-            };
-            grid.Children.Add(checkBadge);
-        }
 
         if (isSelected && !string.IsNullOrWhiteSpace(SelectedIconColorHex))
         {

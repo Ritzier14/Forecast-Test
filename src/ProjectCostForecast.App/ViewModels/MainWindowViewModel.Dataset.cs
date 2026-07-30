@@ -17,6 +17,7 @@ public sealed partial class MainWindowViewModel
 {
     private void LoadDataset(ProjectDataset dataset, bool markDirty)
     {
+        ResetSavedMonthViewStateForDatasetLoad();
         UnsubscribeMonthlyForecastEvents();
         _dataset = dataset;
         _dataset.CostCenterNameMappings ??= [];
@@ -30,6 +31,7 @@ public sealed partial class MainWindowViewModel
         _dataset.ForecastGroupHeaderColorHexes ??= new(StringComparer.OrdinalIgnoreCase);
         _dataset.ProjectTaskCodes ??= [];
         _dataset.ProjectCategories ??= [];
+        _dataset.BudgetLines ??= [];
         InitializeWorkspaceViews(_dataset.WorkspaceViews);
         RefreshCurrentWorkspaceViews();
         foreach (var line in _dataset.ForecastLines)
@@ -43,7 +45,8 @@ public sealed partial class MainWindowViewModel
         ReplaceCollection(ForecastLines, _dataset.ForecastLines);
         LoadManagementResources(_dataset.ManagementResources);
         ReplaceCollection(Transactions, _dataset.Transactions);
-        ReplaceCollection(ContingencyEntries, _dataset.ContingencyEntries);
+        LoadBudgetLinesFromDataset();
+        ReplaceContingencyEntries(_dataset.ContingencyEntries);
         ReplaceCollection(Phases, _dataset.Phases);
         ReplaceCollection(SavedMonthSnapshots, _dataset.SavedMonthSnapshots.OrderByDescending(snapshot => snapshot.SavedAt));
         ReplaceCollection(UnmatchedImportCombinations, _dataset.UnmatchedImportCombinations.OrderByDescending(item => item.RecordedAt));

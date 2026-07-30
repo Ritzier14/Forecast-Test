@@ -4,7 +4,7 @@ using ProjectCostForecast.App.Models;
 
 namespace ProjectCostForecast.App.Services;
 
-public sealed class UserPreferencesService
+public sealed class UserPreferencesService : IUserPreferencesService
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -12,10 +12,17 @@ public sealed class UserPreferencesService
         WriteIndented = true
     };
 
-    private readonly string _preferencesPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "ProjectCostForecast",
-        "user-preferences.json");
+    private readonly string _preferencesPath;
+
+    public UserPreferencesService(string? preferencesPath = null)
+    {
+        _preferencesPath = string.IsNullOrWhiteSpace(preferencesPath)
+            ? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "ProjectCostForecast",
+                "user-preferences.json")
+            : Path.GetFullPath(preferencesPath);
+    }
 
     public AppUserPreferences Load()
     {
@@ -39,13 +46,6 @@ public sealed class UserPreferencesService
     {
         ArgumentNullException.ThrowIfNull(preferences);
 
-        var directory = Path.GetDirectoryName(_preferencesPath);
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        using var stream = File.Create(_preferencesPath);
-        JsonSerializer.Serialize(stream, preferences, JsonOptions);
+        AtomicJsonFile.Write(_preferencesPath, preferences, JsonOptions);
     }
 }

@@ -328,6 +328,15 @@ public partial class MainWindow
             })
             .ToList();
 
+        if (ReferenceEquals(tabControl, WorkspaceTabControl)
+            && !orderedKeys.Contains("Budget", StringComparer.OrdinalIgnoreCase)
+            && orderedItems.FirstOrDefault(tab => string.Equals(GetWorkspaceTabPersistenceKey(tabControl, tab), "Budget", StringComparison.OrdinalIgnoreCase)) is { } budgetTab)
+        {
+            orderedItems.Remove(budgetTab);
+            var auditIndex = orderedItems.FindIndex(tab => string.Equals(GetWorkspaceTabPersistenceKey(tabControl, tab), "Audit", StringComparison.OrdinalIgnoreCase));
+            orderedItems.Insert(auditIndex >= 0 ? auditIndex + 1 : orderedItems.Count, budgetTab);
+        }
+
         if (orderedItems.Count == 0 || orderedItems.SequenceEqual(tabControl.Items.OfType<TabItem>()))
         {
             return;

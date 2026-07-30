@@ -100,15 +100,12 @@ public sealed class SchedulingService
             .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
         ForwardPass(schedule, ordered, byId, projectStart, incomingLinks);
 
-        var projectFinish = ordered
+        var calculatedProjectFinish = ordered
             .Where(a => a.EarlyFinish.HasValue)
             .Select(a => a.EarlyFinish!.Value)
             .DefaultIfEmpty(projectStart)
             .Max();
-        if (schedule.MustFinishBy.HasValue && schedule.MustFinishBy.Value > projectFinish)
-        {
-            projectFinish = schedule.MustFinishBy.Value;
-        }
+        var projectFinish = schedule.MustFinishBy ?? calculatedProjectFinish;
 
         BackwardPass(schedule, ordered, byId, projectFinish, outgoingLinks);
 
@@ -572,4 +569,10 @@ public sealed class SchedulingService
 
         return count;
     }
+
+    public static int CalculateFinishToStartLagFromDrop(
+        ScheduleCalendar successorCalendar,
+        DateOnly successorStart,
+        DateOnly droppedDate)
+        => CountWorkingDaysSigned(successorCalendar, successorStart, droppedDate);
 }

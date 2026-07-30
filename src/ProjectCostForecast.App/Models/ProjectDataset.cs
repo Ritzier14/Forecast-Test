@@ -9,6 +9,8 @@ public sealed class ProjectDataset
     public List<PhaseItem> Phases { get; set; } = [];
     public List<ForecastPeriod> ForecastPeriods { get; set; } = [];
     public List<FiscalYearBudget> FiscalYearBudgets { get; set; } = [];
+    public List<FiscalYearBudgetLine> BudgetLines { get; set; } = [];
+    public string ActiveBudgetLineKey { get; set; } = "LTP_AP";
     public List<ForecastLine> ForecastLines { get; set; } = [];
     public List<ProjectTaskCode> ProjectTaskCodes { get; set; } = [];
     public List<ProjectCategory> ProjectCategories { get; set; } = [];
@@ -263,6 +265,35 @@ public sealed class FiscalYearBudget
     public decimal Budget { get; set; }
 }
 
+public sealed class FiscalYearBudgetLine : ObservableModel
+{
+    private bool _isActive;
+
+    public string Key { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public List<FiscalYearBudgetAmount> Amounts { get; set; } = [];
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsActive
+    {
+        get => _isActive;
+        set => SetProperty(ref _isActive, value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public decimal Total => Amounts.Sum(amount => amount.Amount);
+
+    public void NotifyTotalChanged() => OnPropertyChanged(nameof(Total));
+}
+
+public sealed class FiscalYearBudgetAmount : ObservableModel
+{
+    private decimal _amount;
+
+    public string FiscalYear { get; set; } = string.Empty;
+    public decimal Amount { get => _amount; set => SetProperty(ref _amount, value); }
+}
+
 public sealed class CostCenterNameMapping
 {
     public string Key { get; set; } = string.Empty;
@@ -384,6 +415,26 @@ public sealed class WorkspaceViewLayout
     public bool ShowZeroAsBlank { get; set; } = true;
     public bool GroupForecastLinesByTask { get; set; }
     public string ForecastGroupByKey { get; set; } = string.Empty;
+    public bool ReportCanvasInitialized { get; set; }
+    public string ReportCanvasPageSize { get; set; } = "A4";
+    public string ReportCanvasOrientation { get; set; } = "Portrait";
+    public List<ReportCanvasObjectLayout> ReportCanvasObjects { get; set; } = [];
+}
+
+public sealed class ReportCanvasObjectLayout
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string ObjectType { get; set; } = string.Empty;
+    public double X { get; set; }
+    public double Y { get; set; }
+    public double Width { get; set; }
+    public double Height { get; set; }
+    public string Text { get; set; } = string.Empty;
+    public string StyleKey { get; set; } = "Default";
+    public string ChartKind { get; set; } = string.Empty;
+    public string Grouping { get; set; } = string.Empty;
+    public DateOnly? FromDate { get; set; }
+    public DateOnly? ToDate { get; set; }
 }
 
 public sealed class WorkspaceColumnLayout

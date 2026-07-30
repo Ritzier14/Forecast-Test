@@ -27,5 +27,12 @@ public sealed class CostTransaction
     public string EcmNumber { get; set; } = string.Empty;
     public string ManualName { get; set; } = string.Empty;
 
-    public string LedgerResourceName => string.IsNullOrWhiteSpace(ManualName) ? ResourceDescription : ManualName;
+    // Some accounting exports do not include a Manual Name column.  In those
+    // files Who is the assigned person or supplier and is the best available
+    // resource key (especially for AP contractor-payment rows).
+    public string LedgerResourceName => !string.IsNullOrWhiteSpace(ManualName)
+        ? ManualName
+        : !string.IsNullOrWhiteSpace(Who)
+            ? Who
+            : ResourceDescription;
 }

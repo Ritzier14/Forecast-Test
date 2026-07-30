@@ -398,32 +398,110 @@ public partial class MainWindow
 
     private void CopyForecastColumnWidthsToClipboard()
     {
+        var columns = ForecastLinesGrid.Columns
+            .Where(column => column.Header is not ForecastMonthColumnDefinition)
+            .OrderBy(column => column.DisplayIndex)
+            .ToList();
+        var widestLabel = columns
+            .Select(GetForecastColumnMenuLabel)
+            .DefaultIfEmpty(string.Empty)
+            .Max(label => label.Length);
         var lines = new List<string>
         {
-            "ForecastLinesGrid column width report",
-            $"Grid ActualWidth={ForecastLinesGrid.ActualWidth.ToString("0.##", CultureInfo.InvariantCulture)}",
-            $"Grid ActualHeight={ForecastLinesGrid.ActualHeight.ToString("0.##", CultureInfo.InvariantCulture)}",
-            $"Columns={ForecastLinesGrid.Columns.Count}",
-            "DisplayIndex\tHeader\tKey\tWidth\tActualWidth\tVisibility"
+            "Non-month forecast column widths (pixels)",
+            ""
         };
 
-        foreach (var column in ForecastLinesGrid.Columns.OrderBy(column => column.DisplayIndex))
+        foreach (var column in columns)
         {
-            var width = column.Width.DisplayValue;
-            var actualWidth = column.ActualWidth > 0 ? column.ActualWidth : width;
-            lines.Add(string.Join(
-                "\t",
-                column.DisplayIndex.ToString(CultureInfo.InvariantCulture),
-                GetForecastColumnMenuLabel(column),
-                GetColumnPersistenceKey(column),
-                width.ToString("0.##", CultureInfo.InvariantCulture),
-                actualWidth.ToString("0.##", CultureInfo.InvariantCulture),
-                column.Visibility));
+            var width = column.ActualWidth > 0 ? column.ActualWidth : column.Width.DisplayValue;
+            lines.Add($"{GetForecastColumnMenuLabel(column).PadRight(widestLabel)} = {width.ToString("0.##", CultureInfo.InvariantCulture)}");
         }
 
         var report = string.Join(Environment.NewLine, lines);
-        Clipboard.SetText(report);
-        MessageBox.Show(this, report, "Forecast column widths copied", MessageBoxButton.OK, MessageBoxImage.Information);
+        System.Diagnostics.Debug.WriteLine(report);
+        Console.WriteLine(report);
+        ShowForecastColumnWidthsReport(report);
+    }
+
+    private void ShowForecastColumnWidthsReport(string report)
+    {
+        var textBox = new TextBox
+        {
+            Text = report,
+            IsReadOnly = true,
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.NoWrap,
+            FontFamily = new FontFamily("Cascadia Mono"),
+            FontSize = 13,
+            Padding = new Thickness(12),
+            Background = Brushes.White,
+            BorderBrush = BrushFactory.Frozen("#CBD5E1"),
+            BorderThickness = new Thickness(1),
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
+
+        var copyButton = new Button
+        {
+            Content = "Copy to clipboard",
+            MinWidth = 140,
+            Background = BrushFactory.Frozen("#2563EB"),
+            Foreground = Brushes.White,
+            BorderBrush = BrushFactory.Frozen("#1D4ED8")
+        };
+        copyButton.Click += (_, _) =>
+        {
+            Clipboard.SetText(report);
+            copyButton.Content = "Copied";
+        };
+
+        var closeButton = new Button { Content = "Close", MinWidth = 90 };
+        var window = new Window
+        {
+            Owner = this,
+            Title = "Non-month column widths",
+            Width = 540,
+            Height = 500,
+            MinWidth = 420,
+            MinHeight = 300,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = BrushFactory.Frozen("#F8FAFC")
+        };
+        closeButton.Click += (_, _) => window.Close();
+
+        var root = new Grid { Margin = new Thickness(18) };
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
+        root.RowDefinitions.Add(new RowDefinition());
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(14) });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.Children.Add(new TextBlock
+        {
+            Text = "Current non-month forecast column widths. Forecast-month columns are excluded.",
+            Foreground = BrushFactory.Frozen("#475569"),
+            TextWrapping = TextWrapping.Wrap
+        });
+        Grid.SetRow(textBox, 2);
+        root.Children.Add(textBox);
+
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        actions.Children.Add(copyButton);
+        actions.Children.Add(closeButton);
+        Grid.SetRow(actions, 4);
+        root.Children.Add(actions);
+        window.Content = root;
+        window.ShowDialog();
+    }
+
+    private void CopyForecastColumnWidths_Click(object sender, RoutedEventArgs e)
+    {
+        CopyForecastColumnWidthsToClipboard();
+        e.Handled = true;
     }
 
     private void AddColumnOptionsMenuItems(ContextMenu menu, DataGrid grid, DataGridColumnHeader header)
@@ -447,6 +525,26 @@ public partial class MainWindow
             Dispatcher.BeginInvoke(() => OpenColumnFilterMenu(header, grid), DispatcherPriority.Input);
         };
         menu.Items.Add(filterItem);
+
+        var resetDefaultWidth = new MenuItem
+        {
+            Header = "Reset to default width",
+            IsEnabled = header.Column.CanUserResize
+                && DefaultColumnWidths.TryGetValue(header.Column, out _)
+        };
+        resetDefaultWidth.Click += (_, _) =>
+        {
+            if (ResetColumnWidthToDefault(header.Column))
+            {
+                QueueCaptureGridColumnState(grid);
+                if (ReferenceEquals(grid, ForecastLinesGrid))
+                {
+                    QueueRebuildForecastYearBands();
+                    QueueRefreshForecastGroupHeaderPresenters();
+                }
+            }
+        };
+        menu.Items.Add(resetDefaultWidth);
 
         menu.Items.Add(BuildGroupMenu(grid));
 

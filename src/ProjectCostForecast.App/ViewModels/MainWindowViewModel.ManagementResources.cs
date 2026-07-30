@@ -116,14 +116,19 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
+        // Reverse synchronization updates several allocations at once. The caller refreshes
+        // each table row once after the batch, so forwarding every intermediate notification
+        // here only causes the same indexer bindings to be reevaluated repeatedly.
+        if (_syncingManagementResources)
+        {
+            return;
+        }
+
         NotifyManagementResourceRows(ManagementResourceAllocationRows, resource, e.PropertyName);
         NotifyManagementResourceRows(ManagementResourceHoursRows, resource, e.PropertyName);
         NotifyManagementResourceRows(ManagementResourceCostRows, resource, e.PropertyName);
-        if (!_syncingManagementResources
-            && resource.SourceLine is not null
-            && (string.Equals(e.PropertyName, "Item[]", StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(ManagementResource.HourlyRate), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(ManagementResource.MonthlyHours), StringComparison.Ordinal)))
+        if (resource.SourceLine is not null
+            && string.Equals(e.PropertyName, "Item[]", StringComparison.Ordinal))
         {
             SyncForecastLineFromManagementResource(resource);
         }
@@ -236,10 +241,12 @@ public sealed partial class MainWindowViewModel
             _syncingManagementResources = true;
             foreach (var resource in ManagementResources.Where(resource => resource.SourceLine is not null && changedLines.Contains(resource.SourceLine)))
             {
-                PopulateManagementAllocationFromForecastLine(resource, resource.SourceLine!);
-                NotifyManagementResourceRows(ManagementResourceAllocationRows, resource, "Item[]");
-                NotifyManagementResourceRows(ManagementResourceHoursRows, resource, "Item[]");
-                NotifyManagementResourceRows(ManagementResourceCostRows, resource, "Item[]");
+                if (PopulateManagementAllocationFromForecastLine(resource, resource.SourceLine!))
+                {
+                    NotifyManagementResourceRows(ManagementResourceAllocationRows, resource, "Item[]");
+                    NotifyManagementResourceRows(ManagementResourceHoursRows, resource, "Item[]");
+                    NotifyManagementResourceRows(ManagementResourceCostRows, resource, "Item[]");
+                }
             }
         }
         finally
@@ -248,13 +255,13 @@ public sealed partial class MainWindowViewModel
         }
     }
 
-    private void PopulateManagementAllocationFromForecastLine(ManagementResource resource, ForecastLine line)
+    private bool PopulateManagementAllocationFromForecastLine(ManagementResource resource, ForecastLine line)
     {
-        foreach (var period in _dataset.ForecastPeriods.Where(period => !string.IsNullOrWhiteSpace(period.Label)))
-        {
-            var percentage = resource.CalculatePercentageFromCost(line[period.Label]);
-            resource.SetAllocation(period.Label, percentage);
-        }
+        return resource.SetAllocations(_dataset.ForecastPeriods
+            .Where(period => !string.IsNullOrWhiteSpace(period.Label))
+            .Select(period => new KeyValuePair<string, decimal>(
+                period.Label,
+                resource.CalculatePercentageFromCost(line[period.Label]))));
     }
 
     private void SyncForecastLineFromManagementResource(ManagementResource resource)
@@ -264,20 +271,45 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
+        var sourceLine = resource.SourceLine;
+        var changed = false;
+        var canQueueUiRefresh = System.Windows.Application.Current?.Dispatcher is { HasShutdownStarted: false };
+        if (canQueueUiRefresh)
+        {
+            BeginSpreadsheetEditBatch();
+        }
+
         try
         {
             _syncingManagementResources = true;
             foreach (var period in _dataset.ForecastPeriods.Where(period => !string.IsNullOrWhiteSpace(period.Label)))
             {
-                resource.SourceLine[period.Label] = Math.Round(resource.CalculateForecastCost(period.Label), 0);
+                var amount = Math.Round(resource.CalculateForecastCost(period.Label), 0);
+                if (sourceLine[period.Label] == amount)
+                {
+                    continue;
+                }
+
+                sourceLine[period.Label] = amount;
+                changed = true;
             }
 
-            resource.SourceLine.NotifyMonthForecastValuesChanged();
-            RecalculateForecastLinesForSpreadsheetEdit([resource.SourceLine]);
+            if (changed)
+            {
+                sourceLine.NotifyMonthForecastValuesChanged();
+                RecalculateForecastLinesForSpreadsheetEdit([sourceLine]);
+            }
         }
         finally
         {
             _syncingManagementResources = false;
+            if (canQueueUiRefresh)
+            {
+                EndSpreadsheetEditBatch(
+                    $"Updated management forecast for {resource.ResourceName}",
+                    changed,
+                    rebuildFilterLists: false);
+            }
         }
     }
 }

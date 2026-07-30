@@ -5,7 +5,7 @@ namespace ProjectCostForecast.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
-    private readonly ForecastCurveService _forecastCurveService = new();
+    private readonly ForecastCurveService _forecastCurveService;
 
     public IReadOnlyList<MonthlyForecast> GetAdjustableForecastMonths(ForecastLine line)
     {

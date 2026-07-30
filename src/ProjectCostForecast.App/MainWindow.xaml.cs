@@ -32,6 +32,9 @@ public partial class MainWindow : Window
     private const double WorkspaceViewEditorExtraWidth = 14;
     private const double LeftNavigationExpandedWidth = 228;
     private const double LeftNavigationCollapsedWidth = 72;
+    private const string ForecastingWorkspaceCategory = "Forecasting";
+    private const string ReportingWorkspaceCategory = "Reporting";
+    private const string ScheduleWorkspaceCategory = "Schedule 1";
     private static readonly IReadOnlyList<ColumnIconOption> ColumnIconOptions =
     [
         new("Text", "T"),
@@ -146,6 +149,7 @@ public partial class MainWindow : Window
     private readonly HashSet<DataGridColumn> _trackedManagementResourceColumns = [];
     private readonly Dictionary<string, string?> _workspaceHighlightedColumnKeys = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string?> _detailWorkspaceHighlightedColumnKeys = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, TabItem> _lastWorkspaceTabByCategory = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<DataGridColumn> _trackedForecastColumns = [];
     private static readonly HashSet<DataGridColumn> AutoSizedColumns = [];
     private WorkspaceViewTab? _pendingWorkspaceEditorFocusView;
@@ -153,16 +157,24 @@ public partial class MainWindow : Window
         DependencyPropertyDescriptor.FromProperty(DataGridColumn.ActualWidthProperty, typeof(DataGridColumn));
 
     public MainWindow()
+        : this(new MainWindowViewModel(new MainWindowViewModelDependencies()))
     {
+    }
+
+    internal MainWindow(MainWindowViewModel viewModel)
+    {
+        ArgumentNullException.ThrowIfNull(viewModel);
         InitializeComponent();
+        ApplyWorkspaceCategorySelection();
         InitializeGanttChart();
-        DataContext = new MainWindowViewModel();
+        DataContext = viewModel;
         Loaded += (_, _) =>
         {
             ApplyWindowPreferences();
             WireViewModelSubscriptions();
             ApplySavedWorkspaceTabOrders();
             RebuildMonthlyPivotColumns();
+            RebuildBudgetGridColumns();
             ConfigureSelectedMonthlyForecastGrid();
             StartForecastGridFirstDrawMeasure();
             RebuildForecastGridColumns();
@@ -179,6 +191,7 @@ public partial class MainWindow : Window
             UpdateForecastGroupToggleVisual();
             ForecastGridHost.SizeChanged += ForecastGridHost_SizeChanged;
             QueueReportForecastGridFirstDraw();
+            InitializeMonthlyReportCanvas();
         };
         DataContextChanged += (_, _) =>
         {
@@ -186,6 +199,7 @@ public partial class MainWindow : Window
             WireViewModelSubscriptions();
             ApplySavedWorkspaceTabOrders();
             RebuildMonthlyPivotColumns();
+            RebuildBudgetGridColumns();
             ConfigureSelectedMonthlyForecastGrid();
             RebuildForecastGridColumns();
             ApplyDefaultColumnPresentation(this);
@@ -253,6 +267,7 @@ public partial class MainWindow : Window
         if (DataContext is MainWindowViewModel closingViewModel)
         {
             closingViewModel.SetStartInFullScreen(WindowState == WindowState.Maximized);
+            closingViewModel.FlushUserPreferences();
         }
 
         base.OnClosing(e);
@@ -265,6 +280,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        SynchronizeWorkspaceCategory(tabItem);
         var previousWorkspaceKey = viewModel.ActiveWorkspaceKey;
         CaptureCurrentWorkspaceViewColumnState();
         viewModel.ActiveWorkspaceKey = tabItem.Tag?.ToString() ?? tabItem.Header?.ToString() ?? "CTC Forecast";
@@ -276,6 +292,73 @@ public partial class MainWindow : Window
         {
             QueueSynchronizeManagementResourceGrids();
         }
+    }
+
+    private void WorkspaceCategoryTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.Source == sender)
+        {
+            ApplyWorkspaceCategorySelection();
+        }
+    }
+
+    private void ApplyWorkspaceCategorySelection()
+    {
+        if (WorkspaceCategoryTabControl?.SelectedItem is not TabItem categoryTab
+            || WorkspaceTabControl is null)
+        {
+            return;
+        }
+
+        var category = categoryTab.Tag?.ToString() ?? ForecastingWorkspaceCategory;
+        if (WorkspaceTabControl.SelectedItem is TabItem selectedTab)
+        {
+            _lastWorkspaceTabByCategory[GetWorkspaceCategory(selectedTab)] = selectedTab;
+        }
+
+        var visibleTabs = WorkspaceTabControl.Items
+            .OfType<TabItem>()
+            .Where(tab => string.Equals(GetWorkspaceCategory(tab), category, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        foreach (var tab in WorkspaceTabControl.Items.OfType<TabItem>())
+        {
+            tab.Visibility = visibleTabs.Contains(tab) ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (WorkspaceTabControl.SelectedItem is not TabItem currentTab || currentTab.Visibility != Visibility.Visible)
+        {
+            WorkspaceTabControl.SelectedItem = _lastWorkspaceTabByCategory.TryGetValue(category, out var previousTab)
+                                               && previousTab.Visibility == Visibility.Visible
+                ? previousTab
+                : visibleTabs.FirstOrDefault();
+        }
+    }
+
+    private void SynchronizeWorkspaceCategory(TabItem tabItem)
+    {
+        var category = GetWorkspaceCategory(tabItem);
+        _lastWorkspaceTabByCategory[category] = tabItem;
+
+        if (WorkspaceCategoryTabControl.SelectedItem is TabItem selectedCategory
+            && string.Equals(selectedCategory.Tag?.ToString(), category, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        WorkspaceCategoryTabControl.SelectedItem = WorkspaceCategoryTabControl.Items
+            .OfType<TabItem>()
+            .FirstOrDefault(item => string.Equals(item.Tag?.ToString(), category, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string GetWorkspaceCategory(TabItem tabItem)
+    {
+        return tabItem.Tag?.ToString() switch
+        {
+            "Monthly Report" => ReportingWorkspaceCategory,
+            "Schedule" => ScheduleWorkspaceCategory,
+            _ => ForecastingWorkspaceCategory
+        };
     }
 
     private void ExpandForecastGroups_Click(object sender, RoutedEventArgs e)
@@ -434,6 +517,19 @@ public partial class MainWindow : Window
         }
 
         menu.PlacementTarget = (Button)sender;
+        menu.Placement = PlacementMode.Bottom;
+        menu.IsOpen = true;
+        e.Handled = true;
+    }
+
+    private void AdminControlsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { ContextMenu: { } menu } button)
+        {
+            return;
+        }
+
+        menu.PlacementTarget = button;
         menu.Placement = PlacementMode.Bottom;
         menu.IsOpen = true;
         e.Handled = true;

@@ -29,9 +29,9 @@ public partial class MainWindow
                 TrackWorkspaceColumnStateWidth(column);
             }
 
-            grid.AddHandler(DataGridColumnHeader.PreviewMouseRightButtonDownEvent, new MouseButtonEventHandler(ShowColumnMenu), true);
             if (_workspaceColumnStateTrackedGrids.Add(grid))
             {
+                grid.AddHandler(DataGridColumnHeader.PreviewMouseRightButtonDownEvent, new MouseButtonEventHandler(ShowColumnMenu), true);
                 grid.ColumnReordered += Grid_ColumnLayoutChanged;
                 grid.PreviewMouseLeftButtonUp += Grid_ColumnLayoutMouseLeftButtonUp;
             }

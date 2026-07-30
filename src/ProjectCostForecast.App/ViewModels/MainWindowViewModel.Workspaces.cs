@@ -31,7 +31,11 @@ public sealed partial class MainWindowViewModel
                 ColumnLayouts = view.ColumnLayouts ?? [],
                 ShowZeroAsBlank = view.ShowZeroAsBlank,
                 GroupForecastLinesByTask = view.GroupForecastLinesByTask,
-                ForecastGroupByKey = NormalizeForecastGroupByKey(view.ForecastGroupByKey)
+                ForecastGroupByKey = NormalizeForecastGroupByKey(view.ForecastGroupByKey),
+                ReportCanvasInitialized = view.ReportCanvasInitialized,
+                ReportCanvasPageSize = view.ReportCanvasPageSize,
+                ReportCanvasOrientation = view.ReportCanvasOrientation,
+                ReportCanvasObjects = view.ReportCanvasObjects?.Select(CloneReportCanvasObjectLayout).ToList() ?? []
             })
             .Where(view => !string.IsNullOrWhiteSpace(view.WorkspaceKey))
             .GroupBy(view => view.WorkspaceKey, StringComparer.OrdinalIgnoreCase)
@@ -150,6 +154,7 @@ public sealed partial class MainWindowViewModel
         EndAllWorkspaceViewRenames();
         var sourceView = SelectedWorkspaceView ?? views.FirstOrDefault();
         var defaultName = GetNextWorkspaceViewDefaultName(views);
+        var isMonthlyReport = string.Equals(ActiveWorkspaceKey, "Monthly Report", StringComparison.OrdinalIgnoreCase);
         var newView = new WorkspaceViewTab
         {
             WorkspaceKey = ActiveWorkspaceKey,
@@ -163,6 +168,14 @@ public sealed partial class MainWindowViewModel
             ShowZeroAsBlank = sourceView?.ShowZeroAsBlank ?? true,
             GroupForecastLinesByTask = sourceView?.GroupForecastLinesByTask ?? false,
             ForecastGroupByKey = NormalizeForecastGroupByKey(sourceView?.ForecastGroupByKey),
+            ReportCanvasInitialized = isMonthlyReport || sourceView?.ReportCanvasInitialized == true,
+            ReportCanvasPageSize = sourceView?.ReportCanvasPageSize ?? "A4",
+            ReportCanvasOrientation = sourceView?.ReportCanvasOrientation ?? "Portrait",
+            // Report views are alternative page designs. Start a new report view with
+            // a blank page instead of duplicating the complete report from the source view.
+            ReportCanvasObjects = isMonthlyReport
+                ? []
+                : sourceView?.ReportCanvasObjects?.Select(CloneReportCanvasObjectLayout).ToList() ?? [],
             IsEditing = true,
             IsNewlyCreated = true
         };
@@ -320,6 +333,25 @@ public sealed partial class MainWindowViewModel
         view.RenameRestoreName = view.Name;
         view.EditName = view.Name;
         view.IsEditing = true;
+    }
+
+    private static ReportCanvasObjectLayout CloneReportCanvasObjectLayout(ReportCanvasObjectLayout layout)
+    {
+        return new ReportCanvasObjectLayout
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            ObjectType = layout.ObjectType,
+            X = layout.X,
+            Y = layout.Y,
+            Width = layout.Width,
+            Height = layout.Height,
+            Text = layout.Text,
+            StyleKey = layout.StyleKey,
+            ChartKind = layout.ChartKind,
+            Grouping = layout.Grouping,
+            FromDate = layout.FromDate,
+            ToDate = layout.ToDate
+        };
     }
 
     public void EndAllWorkspaceViewRenames()

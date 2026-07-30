@@ -27,6 +27,11 @@ public partial class MainWindow
             return;
         }
 
+        if (viewModel.IsViewingSavedMonth)
+        {
+            return;
+        }
+
         BeginEditingForecastResourceCell(viewModel.InsertForecastLine(null, below: true));
     }
 

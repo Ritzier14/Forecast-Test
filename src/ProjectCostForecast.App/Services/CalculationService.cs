@@ -8,9 +8,13 @@ public sealed class CalculationService
     public void Recalculate(ProjectDataset dataset)
     {
         var transactionTotals = BuildForecastTransactionTotals(dataset.Transactions);
+        var ledgerResourceTransactionTotals = BuildForecastTransactionTotals(dataset.Transactions, ledgerResourceOnly: true);
         foreach (var line in dataset.ForecastLines)
         {
-            RecalculateForecastLine(line, transactionTotals, dataset.Header.CurrentPeriod);
+            RecalculateForecastLine(
+                line,
+                line.UseLedgerResourceMatchOnly ? ledgerResourceTransactionTotals : transactionTotals,
+                dataset.Header.CurrentPeriod);
         }
 
         dataset.CategorySummaries = RecalculateCategorySummaries(dataset.ForecastLines);
@@ -18,13 +22,37 @@ public sealed class CalculationService
 
     public void RecalculateForecastLine(ForecastLine line, IEnumerable<CostTransaction> transactions, string currentPeriod)
     {
-        var transactionTotals = BuildForecastTransactionTotals(transactions);
+        var transactionTotals = BuildForecastTransactionTotals(transactions, line.UseLedgerResourceMatchOnly);
         RecalculateForecastLine(line, transactionTotals, currentPeriod);
+    }
+
+    public void RecalculateForecastLines(
+        IEnumerable<ForecastLine> lines,
+        IEnumerable<CostTransaction> transactions,
+        string currentPeriod)
+    {
+        var transactionTotals = BuildForecastTransactionTotals(transactions);
+        var ledgerResourceTransactionTotals = BuildForecastTransactionTotals(transactions, ledgerResourceOnly: true);
+        var uniqueLines = new HashSet<ForecastLine>(ReferenceEqualityComparer.Instance);
+        foreach (var line in lines)
+        {
+            if (uniqueLines.Add(line))
+            {
+                RecalculateForecastLine(
+                    line,
+                    line.UseLedgerResourceMatchOnly ? ledgerResourceTransactionTotals : transactionTotals,
+                    currentPeriod);
+            }
+        }
     }
 
     private static void RecalculateForecastLine(ForecastLine line, IReadOnlyDictionary<ForecastMatchKey, ForecastTransactionTotals> transactionTotals, string currentPeriod)
     {
-        var key = CreateForecastMatchKey(line.TaskNumber, line.ResourceName);
+        var key = CreateForecastMatchKey(
+            line.TaskNumber,
+            line.ResourceName,
+            line.TransactionProjectCode,
+            line.TransactionProjectCode is not null);
         transactionTotals.TryGetValue(key, out var matchingTransactions);
 
         line.CostToDate = matchingTransactions?.Amount ?? 0m;
@@ -41,7 +69,9 @@ public sealed class CalculationService
         line.NotifyMonthForecastValuesChanged();
     }
 
-    private static Dictionary<ForecastMatchKey, ForecastTransactionTotals> BuildForecastTransactionTotals(IEnumerable<CostTransaction> transactions)
+    private static Dictionary<ForecastMatchKey, ForecastTransactionTotals> BuildForecastTransactionTotals(
+        IEnumerable<CostTransaction> transactions,
+        bool ledgerResourceOnly = false)
     {
         var totalsByKey = new Dictionary<ForecastMatchKey, ForecastTransactionTotals>();
 
@@ -52,25 +82,54 @@ public sealed class CalculationService
                 continue;
             }
 
-            foreach (var name in GetDistinctForecastMatchNames(transaction))
+            var matchNames = ledgerResourceOnly
+                ? [Normalise(transaction.LedgerResourceName)]
+                : GetDistinctForecastMatchNames(transaction);
+            foreach (var name in matchNames)
             {
-                var key = CreateForecastMatchKey(transaction.TaskNumber, name);
-                if (!totalsByKey.TryGetValue(key, out var totals))
-                {
-                    totals = new ForecastTransactionTotals();
-                    totalsByKey[key] = totals;
-                }
+                AddTransactionTotal(
+                    totalsByKey,
+                    CreateForecastMatchKey(
+                        transaction.TaskNumber,
+                        name,
+                        transaction.ProjectCode,
+                        isProjectScoped: true),
+                    transaction);
 
-                totals.Amount += transaction.Amount;
-                var period = Normalise(transaction.FyPeriod);
-                if (!string.IsNullOrWhiteSpace(period))
-                {
-                    totals.AmountByPeriod[period] = totals.AmountByPeriod.GetValueOrDefault(period) + transaction.Amount;
-                }
+                // Forecast lines saved before transaction-project attribution was introduced
+                // intentionally retain their legacy task/resource-wide actuals total. The scope
+                // flag keeps that key distinct from a project-scoped blank/unassigned value.
+                AddTransactionTotal(
+                    totalsByKey,
+                    CreateForecastMatchKey(
+                        transaction.TaskNumber,
+                        name,
+                        transactionProjectCode: null,
+                        isProjectScoped: false),
+                    transaction);
             }
         }
 
         return totalsByKey;
+    }
+
+    private static void AddTransactionTotal(
+        IDictionary<ForecastMatchKey, ForecastTransactionTotals> totalsByKey,
+        ForecastMatchKey key,
+        CostTransaction transaction)
+    {
+        if (!totalsByKey.TryGetValue(key, out var totals))
+        {
+            totals = new ForecastTransactionTotals();
+            totalsByKey[key] = totals;
+        }
+
+        totals.Amount += transaction.Amount;
+        var period = Normalise(transaction.FyPeriod);
+        if (!string.IsNullOrWhiteSpace(period))
+        {
+            totals.AmountByPeriod[period] = totals.AmountByPeriod.GetValueOrDefault(period) + transaction.Amount;
+        }
     }
 
     private static IEnumerable<string> GetDistinctForecastMatchNames(CostTransaction transaction)
@@ -92,11 +151,17 @@ public sealed class CalculationService
         }
     }
 
-    private static ForecastMatchKey CreateForecastMatchKey(string? taskNumber, string? resourceName)
+    private static ForecastMatchKey CreateForecastMatchKey(
+        string? taskNumber,
+        string? resourceName,
+        string? transactionProjectCode,
+        bool isProjectScoped)
     {
         return new ForecastMatchKey(
             Normalise(taskNumber).ToUpperInvariant(),
-            Normalise(resourceName).ToUpperInvariant());
+            Normalise(resourceName).ToUpperInvariant(),
+            Normalise(transactionProjectCode).ToUpperInvariant(),
+            isProjectScoped);
     }
 
     public List<CategorySummary> RecalculateCategorySummaries(IEnumerable<ForecastLine> forecastLines)
@@ -217,11 +282,28 @@ public sealed class CalculationService
             return false;
         }
 
+        if (line.TransactionProjectCode is not null
+            && !string.Equals(
+                Normalise(transaction.ProjectCode),
+                Normalise(line.TransactionProjectCode),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
         return MatchesForecastResource(transaction, line);
     }
 
     public static bool MatchesForecastResource(CostTransaction transaction, ForecastLine line)
     {
+        if (line.UseLedgerResourceMatchOnly)
+        {
+            return string.Equals(
+                Normalise(transaction.LedgerResourceName),
+                Normalise(line.ResourceName),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
         var transactionNames = new[]
         {
             transaction.ManualName,
@@ -276,7 +358,11 @@ public sealed class CalculationService
 
     private static decimal RoundCurrency(decimal value) => decimal.Round(value, 2, MidpointRounding.AwayFromZero);
 
-    private readonly record struct ForecastMatchKey(string TaskNumber, string ResourceName);
+    private readonly record struct ForecastMatchKey(
+        string TaskNumber,
+        string ResourceName,
+        string TransactionProjectCode,
+        bool IsProjectScoped);
 
     private sealed class ForecastTransactionTotals
     {

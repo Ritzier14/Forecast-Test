@@ -5,7 +5,7 @@
              Height="680"
              MinWidth="840"
              MinHeight="560"
-             Background="#F6F8FC"
+             Background="Transparent"
              SnapsToDevicePixels="True"
              UseLayoutRounding="True">
     <UserControl.Resources>
@@ -43,10 +43,10 @@
             </Setter>
         </Style>
     </UserControl.Resources>
-    <Border Margin="18"
+    <Border Margin="0"
             Background="White"
-            BorderBrush="#E5EAF3"
-            BorderThickness="1"
+            BorderBrush="Transparent"
+            BorderThickness="0"
             CornerRadius="22"
             Padding="28">
         <Grid>

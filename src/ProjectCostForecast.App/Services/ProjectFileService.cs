@@ -5,7 +5,7 @@ using ProjectCostForecast.App.Models;
 
 namespace ProjectCostForecast.App.Services;
 
-public sealed class ProjectFileService
+public sealed class ProjectFileService : IProjectFileService
 {
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -23,8 +23,8 @@ public sealed class ProjectFileService
 
     public void Save(string path, ProjectDataset dataset)
     {
-        using var stream = File.Create(path);
-        JsonSerializer.Serialize(stream, dataset, _jsonOptions);
+        ArgumentNullException.ThrowIfNull(dataset);
+        AtomicJsonFile.Write(path, dataset, _jsonOptions);
     }
 
     public string CreateBackup(string path)
@@ -36,10 +36,25 @@ public sealed class ProjectFileService
 
         var backupDirectory = Path.Combine(Path.GetDirectoryName(path) ?? string.Empty, "backups");
         Directory.CreateDirectory(backupDirectory);
-        var backupPath = Path.Combine(
-            backupDirectory,
-            $"{Path.GetFileNameWithoutExtension(path)}.{DateTime.Now:yyyyMMdd-HHmmss}.bak.json");
-        File.Copy(path, backupPath, overwrite: false);
-        return backupPath;
+        var fileName = Path.GetFileNameWithoutExtension(path);
+        var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss-fff");
+
+        for (var suffix = 0; ; suffix++)
+        {
+            var suffixText = suffix == 0 ? string.Empty : $"-{suffix}";
+            var backupPath = Path.Combine(
+                backupDirectory,
+                $"{fileName}.{timestamp}{suffixText}.bak.json");
+
+            try
+            {
+                File.Copy(path, backupPath, overwrite: false);
+                return backupPath;
+            }
+            catch (IOException) when (File.Exists(backupPath))
+            {
+                // Another save claimed this name. Retry with a deterministic suffix.
+            }
+        }
     }
 }

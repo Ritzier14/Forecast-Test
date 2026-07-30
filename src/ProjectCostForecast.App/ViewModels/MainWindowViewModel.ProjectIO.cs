@@ -53,11 +53,20 @@ public sealed partial class MainWindowViewModel
             return SaveProjectAs();
         }
 
+        AuditEvent? saveAuditEvent = null;
         try
         {
             var backupPath = _projectFileService.CreateBackup(ProjectFilePath);
             SyncDatasetFromCollections();
-            AddAuditEvent("Project", Header.ProjectTitle, "Saved", string.Empty, ProjectFilePath, "Project saved");
+            saveAuditEvent = new AuditEvent
+            {
+                EntityType = "Project",
+                EntityId = Header.ProjectTitle,
+                FieldName = "Saved",
+                NewValue = ProjectFilePath,
+                Reason = "Project saved"
+            };
+            AddAuditEvent(saveAuditEvent);
             _projectFileService.Save(ProjectFilePath, _dataset);
             IsDirty = false;
             StatusText = string.IsNullOrWhiteSpace(backupPath)
@@ -67,6 +76,13 @@ public sealed partial class MainWindowViewModel
         }
         catch (Exception ex)
         {
+            if (saveAuditEvent is not null)
+            {
+                AuditEvents.Remove(saveAuditEvent);
+                _dataset.AuditEvents.Remove(saveAuditEvent);
+                OnPropertyChanged(nameof(AuditEvents));
+            }
+
             MessageBox.Show(ex.Message, "Save failed", MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
         }
@@ -86,8 +102,15 @@ public sealed partial class MainWindowViewModel
             return false;
         }
 
+        var previousPath = ProjectFilePath;
         ProjectFilePath = dialog.FileName;
-        return SaveProject();
+        if (SaveProject())
+        {
+            return true;
+        }
+
+        ProjectFilePath = previousPath;
+        return false;
     }
 
     private string BuildDefaultProjectFileName()
@@ -291,7 +314,12 @@ public sealed partial class MainWindowViewModel
     private void EnsureForecastLinesForImportedTransactions(IEnumerable<CostTransaction> transactions)
     {
         var existingLineKeys = ForecastLines
-            .Select(line => BuildForecastLineMatchKey(line.TaskNumber, line.ResourceName, line.ProjectCode))
+            .Where(line => line.TransactionProjectCode is not null)
+            .Select(line => BuildForecastLineMatchKey(line.TaskNumber, line.ResourceName, line.TransactionProjectCode))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var legacyLineKeys = ForecastLines
+            .Where(line => line.TransactionProjectCode is null)
+            .Select(line => BuildLegacyForecastLineMatchKey(line.TaskNumber, line.ResourceName))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var nextRow = ForecastLines.Any() ? ForecastLines.Max(item => item.RowNumber) + 1 : 1;
         var newLines = new List<ForecastLine>();
@@ -307,7 +335,8 @@ public sealed partial class MainWindowViewModel
                      }))
         {
             var sample = group.First();
-            if (!existingLineKeys.Add(BuildForecastLineMatchKey(group.Key.Task, group.Key.Resource, group.Key.Project)))
+            if (legacyLineKeys.Contains(BuildLegacyForecastLineMatchKey(group.Key.Task, group.Key.Resource))
+                || !existingLineKeys.Add(BuildForecastLineMatchKey(group.Key.Task, group.Key.Resource, group.Key.Project)))
             {
                 continue;
             }
@@ -318,6 +347,7 @@ public sealed partial class MainWindowViewModel
                 TaskNumber = sample.TaskNumber,
                 ResourceName = sample.LedgerResourceName,
                 ProjectCode = string.IsNullOrWhiteSpace(sample.ProjectCode) ? "Unassigned" : sample.ProjectCode,
+                TransactionProjectCode = sample.ProjectCode,
                 Budget = 0
             };
 
@@ -345,7 +375,12 @@ public sealed partial class MainWindowViewModel
     public IReadOnlyList<ImportAutoCreatePreviewItem> BuildForecastLineAutoCreatePreviewItems(IEnumerable<CostTransaction> transactions)
     {
         var existingLineKeys = ForecastLines
-            .Select(line => BuildForecastLineMatchKey(line.TaskNumber, line.ResourceName, line.ProjectCode))
+            .Where(line => line.TransactionProjectCode is not null)
+            .Select(line => BuildForecastLineMatchKey(line.TaskNumber, line.ResourceName, line.TransactionProjectCode))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var legacyLineKeys = ForecastLines
+            .Where(line => line.TransactionProjectCode is null)
+            .Select(line => BuildLegacyForecastLineMatchKey(line.TaskNumber, line.ResourceName))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return transactions
@@ -357,7 +392,8 @@ public sealed partial class MainWindowViewModel
                 Resource = CalculationService.Normalise(transaction.LedgerResourceName),
                 Project = CalculationService.Normalise(transaction.ProjectCode)
             })
-            .Where(group => !existingLineKeys.Contains(BuildForecastLineMatchKey(group.Key.Task, group.Key.Resource, group.Key.Project)))
+            .Where(group => !legacyLineKeys.Contains(BuildLegacyForecastLineMatchKey(group.Key.Task, group.Key.Resource))
+                && !existingLineKeys.Contains(BuildForecastLineMatchKey(group.Key.Task, group.Key.Resource, group.Key.Project)))
             .Select(group =>
             {
                 var sample = group.First();
@@ -501,6 +537,7 @@ public sealed partial class MainWindowViewModel
             TaskNumber = anchor?.TaskNumber ?? string.Empty,
             ResourceName = anchor is null ? string.Empty : "New line",
             ProjectCode = anchor?.ProjectCode ?? string.Empty,
+            TransactionProjectCode = anchor?.TransactionProjectCode,
             ReportingCategoryOverride = anchor?.ReportingCategoryOverride ?? anchor?.ReportingCategory ?? string.Empty,
             Budget = 0,
             IsManuallyAdded = true
@@ -557,6 +594,13 @@ public sealed partial class MainWindowViewModel
             CalculationService.Normalise(projectCode));
     }
 
+    private static string BuildLegacyForecastLineMatchKey(string? taskNumber, string? resourceName)
+    {
+        return string.Join('\u001f',
+            CalculationService.Normalise(taskNumber),
+            CalculationService.Normalise(resourceName));
+    }
+
     private bool ApplyCostCenterNameMappings(IReadOnlyCollection<CostTransaction> transactions)
     {
         _dataset.CostCenterNameMappings ??= [];
@@ -567,6 +611,7 @@ public sealed partial class MainWindowViewModel
         var newMappings = new List<CostCenterNameMapping>();
         var resolvedGroups = new List<(IReadOnlyCollection<CostTransaction> Rows, CostCenterNameMapping Mapping)>();
         var unresolvedGroups = new List<UnresolvedCostCenterGroup>();
+        var forceIndividualGroupKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var group in transactions.GroupBy(CsvTransactionService.BuildNameMappingKey, StringComparer.OrdinalIgnoreCase))
         {
@@ -610,10 +655,11 @@ public sealed partial class MainWindowViewModel
                 .ToList();
 
             var seed = unresolvedDetails[0];
-            var groupedDetails = seed.SuggestedOption is null
+            var groupedDetails = seed.SuggestedOption is null || forceIndividualGroupKeys.Contains(seed.Group.Key)
                 ? [seed]
                 : unresolvedDetails
                     .Where(detail => detail.SuggestedOption is not null
+                        && !forceIndividualGroupKeys.Contains(detail.Group.Key)
                         && string.Equals(detail.SuggestedOption.RawName, seed.SuggestedOption.RawName, StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
@@ -644,16 +690,33 @@ public sealed partial class MainWindowViewModel
                 return false;
             }
 
+            var completedGroupKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var detail in groupedDetails)
             {
-                var mapping = CreateCostCenterNameMapping(detail.Group.Sample, mappingWindow.SelectedManualName);
+                if (mappingWindow.ExcludedMappingKeys.Contains(detail.Group.Key, StringComparer.OrdinalIgnoreCase))
+                {
+                    forceIndividualGroupKeys.Add(detail.Group.Key);
+                    continue;
+                }
+
+                var assignedName = mappingWindow.TryGetAssignedName(detail.Group.Key, out var overrideName)
+                    ? overrideName
+                    : mappingWindow.SelectedManualName;
+                if (string.IsNullOrWhiteSpace(assignedName))
+                {
+                    forceIndividualGroupKeys.Add(detail.Group.Key);
+                    continue;
+                }
+
+                var mapping = CreateCostCenterNameMapping(detail.Group.Sample, assignedName);
                 newMappings.Add(mapping);
                 mappingsByKey[detail.Group.Key] = mapping;
                 resolvedGroups.Add((detail.Group.Rows, mapping));
+                completedGroupKeys.Add(detail.Group.Key);
             }
 
             unresolvedGroups.RemoveAll(group =>
-                groupedDetails.Any(detail => string.Equals(detail.Group.Key, group.Key, StringComparison.OrdinalIgnoreCase)));
+                completedGroupKeys.Contains(group.Key));
         }
 
         foreach (var mapping in newMappings)
@@ -1197,6 +1260,9 @@ public sealed partial class MainWindowViewModel
         {
             Owner = Application.Current.MainWindow
         };
-        viewer.ShowDialog();
+        if (viewer.ShowDialog() == true && viewer.SelectedSnapshotToOpen is { } snapshot)
+        {
+            ViewSavedMonthSnapshot(snapshot);
+        }
     }
 }

@@ -10,9 +10,27 @@ using System.Windows.Controls;
 
 var root = FindRepositoryRoot();
 var dataPath = Path.Combine(root, "src", "ProjectCostForecast.App", "Data", "SampleData.json");
+var initialCostLoadPath = Path.Combine(root, "src", "ProjectCostForecast.App", "Data", "InitialCostLoad.xlsx");
 var dataset = new ProjectFileService().Load(dataPath);
 var calculationService = new CalculationService();
 calculationService.Recalculate(dataset);
+
+var initialCostLoadDataset = new InitialCostLoadService(new DateOnly(2026, 7, 18)).Load(initialCostLoadPath);
+AssertTrue(initialCostLoadDataset.Transactions.Count > 1000, "Initial cost-load workbook imports its transaction rows");
+AssertTrue(initialCostLoadDataset.Transactions.All(transaction => !string.IsNullOrWhiteSpace(transaction.ManualName)), "Initial cost-load resolves a resource name for every transaction");
+AssertTrue(initialCostLoadDataset.ForecastLines.Count > 0, "Initial cost-load creates CTC lines for imported resources");
+var initialCostLoadPeriods = initialCostLoadDataset.Transactions
+    .Select(transaction => transaction.FyPeriod)
+    .Where(period => FiscalPeriod.SortKey(period) != int.MaxValue)
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToList();
+AssertEqual(initialCostLoadPeriods.Count, initialCostLoadDataset.SavedMonthSnapshots.Count, "Initial cost-load creates one saved month per source period");
+AssertTrue(initialCostLoadDataset.SavedMonthSnapshots.All(snapshot => FiscalPeriod.TryParseLabel(snapshot.Period, out _, out _)), "Initial saved months use valid FY-period labels");
+AssertEqual(initialCostLoadDataset.Transactions.Sum(transaction => transaction.Amount), initialCostLoadDataset.SavedMonthSnapshots.First().CostToDate, "Latest initial saved month includes all imported actuals");
+AssertEqual("26-12", initialCostLoadDataset.Header.CurrentPeriod, "Fresh startup defaults to the previous calendar month working period");
+AssertTrue(initialCostLoadDataset.ForecastPeriods.Any(period => period.Label == "26-12"), "Fresh startup includes the default working month");
+AssertTrue(initialCostLoadDataset.ForecastPeriods.Any(period => period.Label == "27-01"), "Fresh startup includes the next month for roll-forward");
+AssertTrue(initialCostLoadDataset.SavedMonthSnapshots.All(snapshot => snapshot.Period != initialCostLoadDataset.Header.CurrentPeriod), "Fresh startup does not treat the unsaved working month as already rolled forward");
 
 var clipboardRows = SpreadsheetClipboardService.Parse("A\tB\r\nC\tD");
 AssertEqual(2, clipboardRows.Count, "Clipboard parser row count");
@@ -28,6 +46,19 @@ var appliedCount = SpreadsheetClipboardService.Apply(
 AssertEqual(3, appliedCount, "Clipboard apply skips read-only destinations");
 AssertTrue(!appliedCells.ContainsKey((2, 4)), "Clipboard apply leaves read-only destination unchanged");
 AssertEqual("D", appliedCells[(3, 4)], "Clipboard apply offsets the pasted matrix");
+var originalCulture = CultureInfo.CurrentCulture;
+try
+{
+    CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
+    AssertTrue(
+        SpreadsheetClipboardService.TryConvert("1,5", typeof(decimal), out var commaDecimalValue)
+        && commaDecimalValue is 1.5m,
+        "Clipboard conversion respects comma decimal cultures");
+}
+finally
+{
+    CultureInfo.CurrentCulture = originalCulture;
+}
 AssertEqual("1,260,000", AccountingNoDecimalsConverter.FormatAccounting(1260000m, CultureInfo.CurrentCulture), "Accounting formatter omits dollar symbols by default");
 AssertEqual("(1,260,000)", AccountingNoDecimalsConverter.FormatAccounting(-1260000m, CultureInfo.CurrentCulture), "Accounting formatter uses brackets for negatives");
 AssertEqual("1.26m", AccountingNoDecimalsConverter.FormatAccounting(1260000m, CultureInfo.CurrentCulture, compactMillions: true, compactMillionDecimals: 2), "Accounting formatter compacts millions for forecast cells");
@@ -81,6 +112,93 @@ AssertEqual(280m, actualsPivot.Single(row => row.TaskNumber == "WA57102001" && r
 AssertEqual(27695m, actualsPivot.Sum(row => row.Amount), "Pivot total amount matches raw data");
 AssertTrue(SpreadsheetClipboardService.TryConvert(string.Empty, typeof(decimal), out var blankForecastValue) && blankForecastValue is 0m, "Blank forecast cells convert to zero");
 
+var projectScopedActuals = new ProjectDataset
+{
+    Header = new ProjectHeader { CurrentPeriod = "26-09" },
+    Transactions =
+    [
+        new CostTransaction { TaskNumber = "TASK-1", ManualName = "Shared Resource", ProjectCode = "PROJECT-A", FyPeriod = "26-09", Amount = 100m },
+        new CostTransaction { TaskNumber = "TASK-1", ManualName = "Shared Resource", ProjectCode = "PROJECT-B", FyPeriod = "26-09", Amount = 200m }
+    ],
+    ForecastLines =
+    [
+        new ForecastLine { TaskNumber = "TASK-1", ResourceName = "Shared Resource", ProjectCode = "Reporting A", TransactionProjectCode = "PROJECT-A" },
+        new ForecastLine { TaskNumber = "TASK-1", ResourceName = "Shared Resource", ProjectCode = "Reporting B", TransactionProjectCode = "PROJECT-B" }
+    ]
+};
+calculationService.Recalculate(projectScopedActuals);
+var projectALine = projectScopedActuals.ForecastLines[0];
+var projectBLine = projectScopedActuals.ForecastLines[1];
+AssertEqual(100m, projectALine.CostToDate, "Project-scoped forecast line receives only its own actuals");
+AssertEqual(200m, projectBLine.CostToDate, "Second project-scoped forecast line receives only its own actuals");
+AssertEqual(300m, projectScopedActuals.CategorySummaries.Sum(summary => summary.CostToDate), "Cross-project actuals are not double counted");
+AssertTrue(CalculationService.MatchesForecastLine(projectScopedActuals.Transactions[0], projectALine), "Project-scoped matcher accepts the matching project");
+AssertTrue(!CalculationService.MatchesForecastLine(projectScopedActuals.Transactions[1], projectALine), "Project-scoped matcher rejects a different project");
+
+var legacyAggregateLine = new ForecastLine
+{
+    TaskNumber = "TASK-1",
+    ResourceName = "Shared Resource",
+    ProjectCode = "Legacy reporting category"
+};
+calculationService.RecalculateForecastLines(
+    [legacyAggregateLine, legacyAggregateLine],
+    projectScopedActuals.Transactions,
+    "26-09");
+AssertEqual(300m, legacyAggregateLine.CostToDate, "Legacy forecast line without transaction project keeps aggregate actuals");
+AssertTrue(projectScopedActuals.Transactions.All(transaction => CalculationService.MatchesForecastLine(transaction, legacyAggregateLine)), "Legacy matcher keeps task-resource fallback across projects");
+
+var unassignedProjectActuals = new ProjectDataset
+{
+    Header = new ProjectHeader { CurrentPeriod = "26-09" },
+    Transactions =
+    [
+        new CostTransaction { TaskNumber = "UNASSIGNED-1", ManualName = "Shared Unassigned", ProjectCode = string.Empty, Amount = 75m },
+        new CostTransaction { TaskNumber = "UNASSIGNED-1", ManualName = "Shared Unassigned", ProjectCode = "PROJECT-X", Amount = 125m }
+    ],
+    ForecastLines =
+    [
+        new ForecastLine { TaskNumber = "UNASSIGNED-1", ResourceName = "Shared Unassigned", TransactionProjectCode = string.Empty },
+        new ForecastLine { TaskNumber = "UNASSIGNED-1", ResourceName = "Shared Unassigned" }
+    ]
+};
+calculationService.Recalculate(unassignedProjectActuals);
+AssertEqual(75m, unassignedProjectActuals.ForecastLines[0].CostToDate, "Project-scoped unassigned line receives only unassigned actuals");
+AssertEqual(200m, unassignedProjectActuals.ForecastLines[1].CostToDate, "Null legacy attribution retains the aggregate fallback");
+
+const int calculationPerformanceLineCount = 500;
+const int calculationPerformanceTransactionCount = 20000;
+var calculationPerformanceLines = Enumerable.Range(0, calculationPerformanceLineCount)
+    .Select(index => new ForecastLine
+    {
+        TaskNumber = $"PERF-{index}",
+        ResourceName = $"Resource-{index}",
+        TransactionProjectCode = $"Project-{index % 5}"
+    })
+    .ToList();
+var calculationPerformanceTransactions = Enumerable.Range(0, calculationPerformanceTransactionCount)
+    .Select(index => new CostTransaction
+    {
+        TaskNumber = $"PERF-{index % calculationPerformanceLineCount}",
+        ManualName = $"Resource-{index % calculationPerformanceLineCount}",
+        ProjectCode = $"Project-{index % 5}",
+        FyPeriod = "26-09",
+        Amount = 1m
+    })
+    .ToList();
+var calculationStopwatch = Stopwatch.StartNew();
+calculationService.RecalculateForecastLines(
+    calculationPerformanceLines,
+    calculationPerformanceTransactions,
+    "26-09");
+calculationStopwatch.Stop();
+AssertTrue(
+    calculationPerformanceLines.All(line => line.CostToDate == 40m),
+    "Batch forecast recalculation attributes the large transaction set correctly");
+AssertTrue(
+    calculationStopwatch.Elapsed < TimeSpan.FromSeconds(5),
+    $"Batch forecast recalculation completes within 5 seconds ({calculationStopwatch.ElapsedMilliseconds} ms)");
+
 var deletePersistenceDataset = new ProjectFileService().Load(dataPath);
 var deletePersistenceLine = FindForecastLine(deletePersistenceDataset, "WA57102001", "Flex Projects L");
 var deletedForecast = deletePersistenceLine.MonthlyForecasts.Single(forecast => forecast.PeriodLabel == "26-10");
@@ -106,6 +224,45 @@ finally
     File.Delete(deletePersistencePath);
 }
 
+var projectFileService = new ProjectFileService();
+var projectFileTestDirectory = Path.Combine(Path.GetTempPath(), $"project-cost-file-service-{Guid.NewGuid():N}");
+var projectFileTestPath = Path.Combine(projectFileTestDirectory, "atomic-project.json");
+try
+{
+    var atomicDataset = new ProjectDataset
+    {
+        Header = new ProjectHeader { ProjectTitle = "Atomic version 1" },
+        ForecastLines =
+        [
+            new ForecastLine { TaskNumber = "SCOPED", TransactionProjectCode = "PROJECT-PERSISTED" },
+            new ForecastLine { TaskNumber = "UNASSIGNED", TransactionProjectCode = string.Empty },
+            new ForecastLine { TaskNumber = "LEGACY", TransactionProjectCode = null }
+        ]
+    };
+    projectFileService.Save(projectFileTestPath, atomicDataset);
+    AssertEqual("Atomic version 1", projectFileService.Load(projectFileTestPath).Header.ProjectTitle, "Atomic project save round-trips a new file");
+
+    atomicDataset.Header.ProjectTitle = "Atomic version 2";
+    projectFileService.Save(projectFileTestPath, atomicDataset);
+    var overwrittenAtomicDataset = projectFileService.Load(projectFileTestPath);
+    AssertEqual("Atomic version 2", overwrittenAtomicDataset.Header.ProjectTitle, "Atomic project save replaces an existing file");
+    AssertEqual("PROJECT-PERSISTED", overwrittenAtomicDataset.ForecastLines.Single(line => line.TaskNumber == "SCOPED").TransactionProjectCode, "Transaction project attribution persists in project files");
+    AssertEqual(string.Empty, overwrittenAtomicDataset.ForecastLines.Single(line => line.TaskNumber == "UNASSIGNED").TransactionProjectCode, "Explicit unassigned project scope persists distinctly");
+    AssertTrue(overwrittenAtomicDataset.ForecastLines.Single(line => line.TaskNumber == "LEGACY").TransactionProjectCode is null, "Legacy aggregate attribution remains null after persistence");
+
+    var firstBackup = projectFileService.CreateBackup(projectFileTestPath);
+    var secondBackup = projectFileService.CreateBackup(projectFileTestPath);
+    AssertTrue(!string.Equals(firstBackup, secondBackup, StringComparison.OrdinalIgnoreCase), "Rapid project backups use distinct paths");
+    AssertTrue(File.Exists(firstBackup) && File.Exists(secondBackup), "Rapid project backups both exist");
+}
+finally
+{
+    if (Directory.Exists(projectFileTestDirectory))
+    {
+        Directory.Delete(projectFileTestDirectory, recursive: true);
+    }
+}
+
 var closedPeriod = MainWindowViewModel.DetermineClosedForecastPeriod(dataset.ForecastPeriods, new DateOnly(2026, 5, 17));
 AssertEqual("26-10", closedPeriod?.Label, "Current closed forecast period is previous calendar month");
 var expectedWorkingPeriod = MainWindowViewModel.DetermineExpectedWorkingPeriod(dataset.ForecastPeriods, new DateOnly(2026, 6, 17));
@@ -115,7 +272,7 @@ AssertEqual(1, MainWindowViewModel.BuildActivePeriodWarnings(dataset.ForecastPer
 AssertEqual(1, MainWindowViewModel.BuildActivePeriodWarnings(dataset.ForecastPeriods, "26-12", new DateOnly(2026, 6, 17)).Count, "Current-month saved period has an active warning");
 AssertEqual(1, MainWindowViewModel.BuildActivePeriodWarnings(dataset.ForecastPeriods, "99-99", new DateOnly(2026, 6, 17)).Count, "Unknown saved period has an active warning");
 
-var viewModel = new MainWindowViewModel();
+var viewModel = CreateViewModel();
 AssertEqual("26-09", viewModel.Header.CurrentPeriod, "View model uses saved current period without calendar overwrite");
 AssertEqual(2026, viewModel.SelectedCtcMonthForecastYear, "Forecast grid defaults to the saved current forecast year");
 var currentPeriodForecast = viewModel.ForecastLines
@@ -128,6 +285,75 @@ var previousPeriodForecast = viewModel.ForecastLines
     .Single(forecast => forecast.PeriodLabel == "26-08");
 AssertTrue(!currentPeriodForecast.IsLocked, "Saved current period remains editable");
 AssertTrue(previousPeriodForecast.IsLocked, "Periods before the saved current period are locked");
+var workingForecastLine = viewModel.ForecastLines.First();
+var workingForecastAmount = workingForecastLine.MonthlyForecasts.First().Amount;
+var historicalSnapshot = new SavedMonthSnapshot
+{
+    Period = "26-08",
+    SavedAt = new DateTime(2026, 4, 1, 8, 0, 0),
+    ForecastLines =
+    [
+        new SavedMonthForecastLine
+        {
+            RowNumber = 9001,
+            TaskNumber = "HIST-1",
+            ResourceName = "Historical resource",
+            ProjectCode = "Historical category",
+            CostToDate = 100m,
+            CurrentPeriodForecast = 10m,
+            CostToComplete = 30m,
+            FinalForecast = 130m,
+            Budget = 200m,
+            TotalBudgetVariance = 70m,
+            VarianceFromPreviousMonth = 5m,
+            MonthlyForecasts =
+            [
+                new SavedMonthPeriodAmount { PeriodLabel = "26-08", PeriodStartDate = new DateOnly(2026, 3, 1), Amount = 10m },
+                new SavedMonthPeriodAmount { PeriodLabel = "26-09", PeriodStartDate = new DateOnly(2026, 4, 1), Amount = 20m }
+            ]
+        }
+    ]
+};
+viewModel.SearchText = "filter that matches nothing";
+viewModel.ShowOnlyLinesWithRemainingForecast = true;
+viewModel.ForecastLinesView.Refresh();
+AssertEqual(0, viewModel.ForecastLinesView.Cast<object>().Count(), "Active CTC filters can hide all current rows");
+viewModel.ViewSavedMonthSnapshot(historicalSnapshot);
+AssertTrue(viewModel.IsViewingSavedMonth, "Opening a saved month enters historical viewing mode");
+AssertTrue(viewModel.IsSavedMonthViewLocked, "Opened saved month is locked by default");
+AssertEqual(1, viewModel.ForecastLinesView.Cast<object>().Count(), "Opening a saved month clears filters that would leave the CTC grid blank");
+AssertTrue(!viewModel.ShowOnlyLinesWithRemainingForecast && string.IsNullOrEmpty(viewModel.SearchText), "Saved-month CTC view starts with neutral filters");
+AssertTrue(viewModel.ForecastLines.SelectMany(line => line.MonthlyForecasts).All(month => month.IsLocked), "Every historical forecast month is locked by default");
+AssertEqual("26-09", viewModel.Header.CurrentPeriod, "Viewing history does not change the saved working period");
+AssertTrue(viewModel.SetSavedMonthViewLocked(false, confirmUnlock: false), "Historical month can be explicitly unlocked");
+AssertTrue(viewModel.ForecastLines.SelectMany(line => line.MonthlyForecasts).All(month => !month.IsLocked), "Explicit unlock makes historical forecast cells editable");
+viewModel.ForecastLines.Single().MonthlyForecasts.First().Amount = 15m;
+AssertEqual(15m, historicalSnapshot.ForecastLines.Single().MonthlyForecasts.First().Amount, "Editing an unlocked historical month updates its snapshot");
+AssertEqual(35m, historicalSnapshot.CostToComplete, "Historical snapshot totals recalculate after editing");
+AssertEqual(135m, historicalSnapshot.FinalForecast, "Historical final forecast recalculates after editing");
+viewModel.CloseSavedMonthView();
+AssertTrue(!viewModel.IsViewingSavedMonth, "Returning closes historical viewing mode");
+AssertTrue(viewModel.ShowOnlyLinesWithRemainingForecast && viewModel.SearchText == "filter that matches nothing", "Returning to the current month restores the previous CTC filters");
+AssertTrue(ReferenceEquals(workingForecastLine, viewModel.ForecastLines.First()), "Returning restores the original working forecast objects");
+AssertEqual(workingForecastAmount, viewModel.ForecastLines.First().MonthlyForecasts.First().Amount, "Historical edits do not alter the current working forecast");
+viewModel.SearchText = string.Empty;
+viewModel.ShowOnlyLinesWithRemainingForecast = false;
+
+AssertEqual(2, viewModel.BudgetLines.Count, "Budget workspace provides P3M and LTP/AP lines");
+AssertTrue(viewModel.BudgetFiscalYears.Count > 0, "Budget workspace derives fiscal years from current project data");
+var p3mBudgetLine = viewModel.BudgetLines.Single(line => line.Key == MainWindowViewModel.P3mBudgetLineKey);
+var ltpApBudgetLine = viewModel.BudgetLines.Single(line => line.Key == MainWindowViewModel.LtpApBudgetLineKey);
+AssertTrue(ltpApBudgetLine.IsActive, "Legacy AP/LTP budget is active by default");
+AssertEqual(dataset.FiscalYearBudgets.Sum(budget => budget.Budget), ltpApBudgetLine.Total, "Legacy fiscal budgets migrate into the LTP/AP line");
+var firstBudgetYear = p3mBudgetLine.Amounts.First();
+firstBudgetYear.Amount = 123456m;
+AssertEqual(123456m, p3mBudgetLine.Total, "Budget line total updates after an FY entry");
+viewModel.SetActiveBudgetLine(p3mBudgetLine);
+AssertTrue(p3mBudgetLine.IsActive && !ltpApBudgetLine.IsActive, "Right-click budget action can switch the active line");
+AssertEqual(123456m, viewModel.FiscalYearReportLines.Single(line => line.FiscalYear == firstBudgetYear.FiscalYear).Budget, "Fiscal reporting uses the selected active budget line");
+AssertTrue(viewModel.BudgetActualChartGeometry != System.Windows.Media.Geometry.Empty, "Budget chart plots current spend to date");
+AssertTrue(viewModel.BudgetForecastChartGeometry != System.Windows.Media.Geometry.Empty, "Budget chart plots spend plus forecast");
+AssertTrue(viewModel.BudgetPlanChartGeometry != System.Windows.Media.Geometry.Empty, "Budget chart plots the active budget");
 AssertTrue(!string.IsNullOrWhiteSpace(viewModel.ForecastFreezeColumnKey), "Forecast grid freeze key is initialized");
 viewModel.ResetForecastFreezeColumn();
 AssertEqual(MainWindowViewModel.DefaultForecastFreezeColumnKey, viewModel.ForecastFreezeColumnKey, "Forecast grid freeze reset returns to the forecast start boundary");
@@ -145,6 +371,28 @@ viewModel.SetDetailPanelPinned(true);
 AssertTrue(viewModel.IsDetailPanelPinned, "Detail panel pin state can be enabled globally");
 viewModel.SetDetailPanelPinned(false);
 AssertTrue(!viewModel.IsDetailPanelPinned, "Detail panel pin state can be disabled globally");
+
+var contingencyViewModel = CreateViewModel();
+contingencyViewModel.ContingencyEntries.Clear();
+contingencyViewModel.IsDirty = false;
+var trackedContingency = new ContingencyEntry
+{
+    RemainingContingency = 500m,
+    ContingencyExpended = 100m,
+    ProposedExpenditure = 50m
+};
+contingencyViewModel.ContingencyEntries.Add(trackedContingency);
+AssertTrue(contingencyViewModel.IsDirty, "Adding a contingency row marks the project dirty");
+AssertEqual(500m, contingencyViewModel.TotalContingencyRemaining, "Adding a contingency row refreshes remaining contingency");
+AssertEqual(100m, contingencyViewModel.ContingencyExpendedTotal, "Adding a contingency row refreshes expended contingency");
+contingencyViewModel.IsDirty = false;
+trackedContingency.RemainingContingency = 425m;
+AssertTrue(contingencyViewModel.IsDirty, "Editing a contingency row marks the project dirty");
+AssertEqual(425m, contingencyViewModel.TotalContingencyRemaining, "Editing a contingency row refreshes totals");
+contingencyViewModel.IsDirty = false;
+contingencyViewModel.ContingencyEntries.Remove(trackedContingency);
+AssertTrue(contingencyViewModel.IsDirty, "Removing a contingency row marks the project dirty");
+AssertEqual(0m, contingencyViewModel.TotalContingencyRemaining, "Removing a contingency row refreshes totals");
 
 var metadataDataset = new ProjectDataset
 {
@@ -170,7 +418,7 @@ var metadataDataset = new ProjectDataset
         new ProjectCategory { Name = "Manual Override" }
     ]
 };
-var metadataViewModel = new MainWindowViewModel();
+var metadataViewModel = CreateViewModel();
 InvokeLoadDataset(metadataViewModel, metadataDataset);
 var migratedLine = metadataViewModel.ForecastLines.Single(line => line.TaskNumber == "RAW-001");
 var fallbackLine = metadataViewModel.ForecastLines.Single(line => line.TaskNumber == "MAN-001");
@@ -218,7 +466,7 @@ finally
 {
     File.Delete(managementProjectPath);
 }
-var rateViewModel = new MainWindowViewModel();
+var rateViewModel = CreateViewModel();
 var ratePeriods = rateViewModel.CtcMonthForecastColumns.Where(column => !column.IsTotal).Select(column => column.Key).TakeLast(2).ToArray();
 var ratePreviousPeriod = ratePeriods[0];
 var rateLatestPeriod = ratePeriods[1];
@@ -243,6 +491,28 @@ rateViewModel.Transactions.Add(new CostTransaction { FyPeriod = ratePreviousPeri
 rateViewModel.Transactions.Add(new CostTransaction { FyPeriod = rateLatestPeriod, ManualName = "Tie Person", UnitRate = 250m });
 rateViewModel.Transactions.Add(new CostTransaction { FyPeriod = rateLatestPeriod, ManualName = "Tie Person", UnitRate = 250m });
 AssertEqual(250m, rateViewModel.CalculateManagementResourceDefaultRate(tieLine), "Management default rate tie resolves to the rate most frequent in the latest period");
+var batchedAllocationResource = new ManagementResource();
+var batchedAllocationNotifications = 0;
+batchedAllocationResource.PropertyChanged += (_, eventArgs) =>
+{
+    if (string.Equals(eventArgs.PropertyName, "Item[]", StringComparison.Ordinal))
+    {
+        batchedAllocationNotifications++;
+    }
+};
+AssertTrue(
+    batchedAllocationResource.SetAllocations(Enumerable.Range(1, 36)
+        .Select(month => new KeyValuePair<string, decimal>($"PERIOD-{month}", month))),
+    "Management allocation batch reports changed values");
+AssertEqual(1, batchedAllocationNotifications, "Management allocation batch raises one indexer notification");
+
+var noOpBatchCollection = new BatchObservableCollection<string>(["One", "Two"]);
+var noOpBatchCollectionResets = 0;
+noOpBatchCollection.CollectionChanged += (_, _) => noOpBatchCollectionResets++;
+noOpBatchCollection.ReplaceWith(["One", "Two"]);
+AssertEqual(0, noOpBatchCollectionResets, "Identical batch replacement skips the collection reset");
+noOpBatchCollection.ReplaceWith(["One", "Changed"]);
+AssertEqual(1, noOpBatchCollectionResets, "Changed batch replacement raises one collection reset");
 var hoveredLine = viewModel.ForecastLines.Single(line =>
     string.Equals(line.TaskNumber, "WA57102001", StringComparison.OrdinalIgnoreCase)
     && string.Equals(line.ResourceName, "Flex Projects L", StringComparison.OrdinalIgnoreCase));
@@ -344,6 +614,20 @@ var autoImportedTransaction = viewModel.Transactions.Single(t => string.Equals(t
 AssertEqual(transactionCountBeforeAutoImport + 1, viewModel.Transactions.Count, "Auto import adds the matching Who/resource transaction");
 AssertEqual("Auto Match Person", autoImportedTransaction.ManualName, "Who/resource match auto-populates manual name during import");
 AssertEqual("Auto Match Person", autoImportedTransaction.LedgerResourceName, "Auto import uses the Who/resource match as the ledger resource name");
+var autoCreatedForecastLine = viewModel.ForecastLines.Single(line =>
+    string.Equals(line.TaskNumber, autoImportedTransaction.TaskNumber, StringComparison.OrdinalIgnoreCase)
+    && string.Equals(line.ResourceName, autoImportedTransaction.LedgerResourceName, StringComparison.OrdinalIgnoreCase));
+AssertEqual("WA571", autoCreatedForecastLine.TransactionProjectCode, "Import-created forecast line records its transaction project");
+var anchoredManualLine = viewModel.InsertForecastLine(autoCreatedForecastLine, below: true);
+AssertEqual(autoCreatedForecastLine.TransactionProjectCode, anchoredManualLine.TransactionProjectCode, "Manual line anchored to a forecast line copies transaction project attribution");
+viewModel.DeleteForecastLine(anchoredManualLine);
+var legacyAnchor = viewModel.ForecastLines.First(line => line.TransactionProjectCode is null);
+var legacyAnchoredManualLine = viewModel.InsertForecastLine(legacyAnchor, below: true);
+AssertTrue(legacyAnchoredManualLine.TransactionProjectCode is null, "Manual line anchored to a legacy line preserves aggregate attribution");
+viewModel.DeleteForecastLine(legacyAnchoredManualLine);
+var unanchoredManualLine = viewModel.InsertForecastLine(null, below: true);
+AssertTrue(unanchoredManualLine.TransactionProjectCode is null, "Unanchored manual line starts with legacy aggregate attribution");
+viewModel.DeleteForecastLine(unanchoredManualLine);
 var autoCreatePreviewRows = viewModel.BuildForecastLineAutoCreatePreviewItems(
 [
     new CostTransaction
@@ -448,6 +732,11 @@ var migratedTotalMonthWidth = InvokeForecastWidthMigration(savedWidth: 120d, cur
 AssertNearlyEqual(96d, migratedTotalMonthWidth, 0.01, "Legacy saved forecast total width migrates to the new default width");
 var preservedCustomMonthWidth = InvokeForecastWidthMigration(savedWidth: 143d, currentWidth: 78d, minWidth: 70d, isTotal: false);
 AssertNearlyEqual(143d, preservedCustomMonthWidth, 0.01, "User-resized forecast month widths are preserved during migration");
+var resetWidthColumn = new DataGridTextColumn { Header = "Reset width test", Width = 137d };
+InvokeEnsureColumnPresentation(resetWidthColumn);
+resetWidthColumn.Width = 243d;
+AssertTrue(InvokeResetColumnWidthToDefault(resetWidthColumn), "Resizable column can reset to its configured default width");
+AssertNearlyEqual(137d, resetWidthColumn.Width.DisplayValue, 0.01, "Column width reset restores the configured default width");
 
 viewModel.ActiveWorkspaceKey = "CTC Forecast";
 var defaultForecastView = viewModel.SelectedWorkspaceView!;
@@ -501,7 +790,7 @@ AssertEqual(viewModel.Header.CurrentPeriod, viewModel.RawTransactionsMonthlyPivo
 viewModel.SetSelectedWorkspaceContentKey("GroupByMonth");
 AssertTrue(viewModel.ShowRawTransactionsGroupedByMonth, "Raw transactions workspace can switch to group-by-month mode");
 AssertTrue(!viewModel.ShowRawTransactionsPivotByMonth, "Raw transactions group-by-month mode exits pivot mode");
-var pivotBuilderViewModel = new MainWindowViewModel();
+var pivotBuilderViewModel = CreateViewModel();
 var projectCodePivotField = pivotBuilderViewModel.PivotFields.Single(field => field.Key == "ProjectCode");
 AssertTrue(!pivotBuilderViewModel.TryAddPivotFieldToArea("Filters", projectCodePivotField), "Pivot builder rejects duplicate fields across areas");
 var projectCodeRowField = pivotBuilderViewModel.PivotRowFields.Single(field => field.Key == "ProjectCode");
@@ -527,6 +816,24 @@ AssertEqual("Stanley Drake", imported.ResourceDescription, "Raw import resource 
 AssertEqual("Supplier A", imported.SupplierName, "Raw import supplier header");
 AssertEqual("DETAILED COST POSTING", imported.Narrative2, "Raw import narrative 2 header");
 AssertEqual("7597308", imported.EcmNumber, "Raw import ECM number header");
+
+var multilineCsvPath = Path.Combine(Path.GetTempPath(), $"project-cost-forecast-multiline-{Guid.NewGuid():N}.csv");
+var multilineComment = "First line, with comma" + Environment.NewLine + "Second line with \"quoted text\"";
+try
+{
+    var csvService = new CsvTransactionService();
+    csvService.ExportTransactions(
+        multilineCsvPath,
+        [new CostTransaction { TaskNumber = "CSV-1", ProjectCode = "CSV-PROJECT", ManualName = "CSV Resource", PoComments = multilineComment, Amount = 42m }]);
+    var multilineRoundTrip = csvService.Import(multilineCsvPath, 1).Single();
+    AssertEqual(multilineComment, multilineRoundTrip.PoComments, "CSV import preserves quoted multiline fields");
+    AssertEqual("CSV Resource", multilineRoundTrip.ManualName, "CSV multiline record keeps following columns aligned");
+    AssertEqual(42m, multilineRoundTrip.Amount, "CSV multiline record keeps numeric columns aligned");
+}
+finally
+{
+    File.Delete(multilineCsvPath);
+}
 
 var excelImportPath = Path.Combine(Path.GetTempPath(), $"project-cost-forecast-import-{Guid.NewGuid():N}.xlsx");
 using (var workbook = new XLWorkbook())
@@ -716,10 +1023,10 @@ var accrualSuggestionRow = new CostTransaction
     Narrative2 = "HM Based on Actual Claim",
     Narrative3 = "FY19 - November 2018 Accrual"
 };
-var accrualCandidates = (candidateMethod.Invoke(new MainWindowViewModel(), [accrualSuggestionRow, null]) as IEnumerable<CostCenterNameOption>)?.ToList()
+var accrualCandidates = (candidateMethod.Invoke(CreateViewModel(), [accrualSuggestionRow, null]) as IEnumerable<CostCenterNameOption>)?.ToList()
     ?? throw new InvalidOperationException("Expected accrual candidates.");
 AssertEqual("Accrual", accrualCandidates[0].RawName, "Rows mentioning accrual suggest Accrual first");
-var opusSuggestionViewModel = new MainWindowViewModel();
+var opusSuggestionViewModel = CreateViewModel();
 var opusForecastLine = new ForecastLine
 {
     TaskNumber = "WW32203002",
@@ -750,6 +1057,18 @@ AssertEqual(ActivityLinkType.FinishToStart, parsedPredecessors[2].Type, "Predece
 
 var fiveDayCalendar = new ScheduleCalendar { Id = "CAL5", Name = "Standard 5 day" };
 fiveDayCalendar.Holidays.Add(new DateOnly(2026, 7, 8));
+AssertEqual(
+    0,
+    SchedulingService.CalculateFinishToStartLagFromDrop(fiveDayCalendar, new DateOnly(2026, 7, 6), new DateOnly(2026, 7, 6)),
+    "Dropping a Gantt link on the target start creates FS without lag");
+AssertEqual(
+    2,
+    SchedulingService.CalculateFinishToStartLagFromDrop(fiveDayCalendar, new DateOnly(2026, 7, 6), new DateOnly(2026, 7, 9)),
+    "Dropping inside a target bar calculates working-day lag");
+AssertEqual(
+    -1,
+    SchedulingService.CalculateFinishToStartLagFromDrop(fiveDayCalendar, new DateOnly(2026, 7, 6), new DateOnly(2026, 7, 3)),
+    "Dropping before a target bar calculates working-day lead");
 var sevenDayCalendar = new ScheduleCalendar
 {
     Id = "CAL7",
@@ -815,7 +1134,23 @@ AssertEqual((DateOnly?)new DateOnly(2026, 7, 18), hammock.EarlyFinish, "Hammock 
 AssertEqual((DateOnly?)new DateOnly(2026, 7, 13), pour.BaselineFinish, "Active baseline supplies baseline dates");
 AssertEqual(1, pour.SlipDays ?? -1, "Slip is measured in working days against the baseline");
 
-var scheduleEditor = new MainWindowViewModel();
+var deadlineCalendar = new ScheduleCalendar { Id = "DEADLINE-CAL", Name = "Deadline calendar" };
+var deadlineSchedule = new ScheduleData
+{
+    ProjectStart = new DateOnly(2026, 7, 6),
+    MustFinishBy = new DateOnly(2026, 7, 8),
+    DefaultCalendarId = deadlineCalendar.Id,
+    Calendars = [deadlineCalendar],
+    Activities = [new ScheduleActivity { Id = "D1", Name = "Deadline task", DurationDays = 5, CalendarId = deadlineCalendar.Id }]
+};
+new SchedulingService().Recalculate(deadlineSchedule);
+var deadlineActivity = deadlineSchedule.Activities.Single();
+AssertEqual((DateOnly?)new DateOnly(2026, 7, 10), deadlineActivity.EarlyFinish, "Deadline does not rewrite the calculated early finish");
+AssertEqual((DateOnly?)new DateOnly(2026, 7, 8), deadlineActivity.LateFinish, "Earlier must-finish deadline drives the backward pass");
+AssertEqual(-2, deadlineActivity.TotalFloatDays ?? 0, "Missed must-finish deadline produces negative float");
+AssertTrue(deadlineActivity.IsCritical, "Negative-float deadline activity is critical");
+
+var scheduleEditor = CreateViewModel();
 var originalScheduleCount = scheduleEditor.ScheduleActivities.Count;
 scheduleEditor.SelectedScheduleActivity = scheduleEditor.ScheduleActivities[1];
 var insertedAbove = scheduleEditor.AddScheduleActivityRelative(ScheduleActivityKind.Task, above: true);
@@ -1009,9 +1344,48 @@ static double InvokeForecastWidthMigration(double savedWidth, double currentWidt
         ?? throw new InvalidOperationException("Forecast width migration returned null."));
 }
 
+static void InvokeEnsureColumnPresentation(DataGridColumn column)
+{
+    var method = typeof(MainWindow).GetMethod("EnsureColumnPresentation", BindingFlags.NonPublic | BindingFlags.Static)
+        ?? throw new MissingMethodException(typeof(MainWindow).FullName, "EnsureColumnPresentation");
+    method.Invoke(null, [column]);
+}
+
+static bool InvokeResetColumnWidthToDefault(DataGridColumn column)
+{
+    var method = typeof(MainWindow).GetMethod("ResetColumnWidthToDefault", BindingFlags.NonPublic | BindingFlags.Static)
+        ?? throw new MissingMethodException(typeof(MainWindow).FullName, "ResetColumnWidthToDefault");
+    return (bool)(method.Invoke(null, [column])
+        ?? throw new InvalidOperationException("Column width reset returned null."));
+}
+
 static void InvokeLoadDataset(MainWindowViewModel viewModel, ProjectDataset dataset)
 {
     var method = typeof(MainWindowViewModel).GetMethod("LoadDataset", BindingFlags.NonPublic | BindingFlags.Instance)
         ?? throw new MissingMethodException(typeof(MainWindowViewModel).FullName, "LoadDataset");
     method.Invoke(viewModel, [dataset, false]);
+}
+
+static MainWindowViewModel CreateViewModel()
+{
+    return new MainWindowViewModel(new MainWindowViewModelDependencies
+    {
+        UserPreferencesService = new InMemoryUserPreferencesService(),
+        // The UI-behaviour fixtures below target the legacy workbook scenario.
+        // Startup loading of the packaged accounting export is covered above.
+        InitialDatasetFactory = () => new ProjectFileService().Load(Path.Combine(
+            FindRepositoryRoot(), "src", "ProjectCostForecast.App", "Data", "SampleData.json"))
+    });
+}
+
+sealed class InMemoryUserPreferencesService : IUserPreferencesService
+{
+    private AppUserPreferences _preferences = new();
+
+    public AppUserPreferences Load() => _preferences;
+
+    public void Save(AppUserPreferences preferences)
+    {
+        _preferences = preferences;
+    }
 }

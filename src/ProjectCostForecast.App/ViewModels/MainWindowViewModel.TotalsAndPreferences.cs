@@ -22,6 +22,12 @@ public sealed partial class MainWindowViewModel
 
     private void MonthlyForecastAmountChanged(object? sender, ValueChangedEventArgs<decimal> e)
     {
+        if (IsViewingSavedMonth)
+        {
+            SavedMonthForecastAmountChanged(sender, e);
+            return;
+        }
+
         if (sender is not MonthlyForecast forecast)
         {
             return;
@@ -35,10 +41,6 @@ public sealed partial class MainWindowViewModel
         }
 
         _forecastLineByMonthlyForecast.TryGetValue(forecast, out var line);
-        if (line is not null)
-        {
-            RecalculateForecastLinesForSpreadsheetEdit([line]);
-        }
 
         AddAuditEvent(new AuditEvent
         {
@@ -104,10 +106,10 @@ public sealed partial class MainWindowViewModel
 
     public void RecalculateForecastLinesForSpreadsheetEdit(IEnumerable<ForecastLine> lines)
     {
-        var changedLines = new List<ForecastLine>();
+        var changedLines = new HashSet<ForecastLine>(ReferenceEqualityComparer.Instance);
         foreach (var line in lines)
         {
-            if (line is not null && !changedLines.Any(existing => ReferenceEquals(existing, line)))
+            if (line is not null)
             {
                 changedLines.Add(line);
             }
@@ -118,10 +120,24 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        foreach (var line in changedLines)
+        if (IsViewingSavedMonth && _viewedSavedMonthSnapshot is { } snapshot)
         {
-            _calculationService.RecalculateForecastLine(line, _dataset.Transactions, _dataset.Header.CurrentPeriod);
+            foreach (var displayLine in changedLines)
+            {
+                var savedLine = snapshot.ForecastLines.FirstOrDefault(line => line.RowNumber == displayLine.RowNumber);
+                if (savedLine is not null)
+                {
+                    RecalculateSavedMonthDisplayLine(savedLine, displayLine, snapshot.Period);
+                }
+            }
+
+            RecalculateSavedMonthSnapshotTotals(snapshot);
+            NotifyTotalsChanged();
+            IsDirty = true;
+            return;
         }
+
+        _calculationService.RecalculateForecastLines(changedLines, _dataset.Transactions, _dataset.Header.CurrentPeriod);
 
         _dataset.CategorySummaries = _calculationService.RecalculateCategorySummaries(_dataset.ForecastLines);
         ReplaceCollection(CategorySummaries, _dataset.CategorySummaries);
@@ -150,6 +166,7 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(ContingencyExpendedTotal));
         OnPropertyChanged(nameof(ContingencyProposedTotal));
         OnPropertyChanged(nameof(ContingencyRemainingTotal));
+        RebuildBudgetChart();
     }
 
     public void BeginSpreadsheetEditBatch()
@@ -159,6 +176,24 @@ public sealed partial class MainWindowViewModel
 
     public void EndSpreadsheetEditBatch(string status, bool changed, bool rebuildFilterLists = true)
     {
+        if (IsViewingSavedMonth)
+        {
+            if (_spreadsheetEditBatchDepth > 0)
+            {
+                _spreadsheetEditBatchDepth--;
+            }
+
+            if (changed)
+            {
+                IsDirty = true;
+                StatusText = status;
+            }
+
+            _spreadsheetEditBatchChanged = false;
+            _pendingSpreadsheetAuditChangeCount = 0;
+            return;
+        }
+
         _spreadsheetEditBatchChanged |= changed;
         if (_spreadsheetEditBatchDepth > 0)
         {
@@ -342,7 +377,9 @@ public sealed partial class MainWindowViewModel
 
     private void SyncDatasetFromCollections()
     {
-        _dataset.ForecastLines = ForecastLines.ToList();
+        _dataset.ForecastLines = IsViewingSavedMonth
+            ? (_workingForecastLinesBeforeSavedMonthView ?? _dataset.ForecastLines).ToList()
+            : ForecastLines.ToList();
         _dataset.ProjectTaskCodes = ProjectTaskCodes
             .OrderBy(task => task.DisplayOrder)
             .ToList();
@@ -362,6 +399,7 @@ public sealed partial class MainWindowViewModel
             .OrderBy(year => year)
             .ToList();
         _dataset.ShowCtcMonthForecastYearTotals = ShowCtcMonthForecastYearTotals;
+        SyncBudgetLinesToDataset();
         SyncScheduleToDataset();
     }
 
@@ -477,7 +515,31 @@ public sealed partial class MainWindowViewModel
         _userPreferences.ForecastCurvePresets = UserForecastCurvePresets
             .Select(CloneForecastCurvePreset)
             .ToList();
-        _userPreferencesService.Save(_userPreferences);
+        _preferenceSaveTimer.Stop();
+        _preferenceSaveTimer.Start();
+    }
+
+    public void FlushUserPreferences()
+    {
+        _preferenceSaveTimer.Stop();
+        PersistUserPreferences();
+    }
+
+    private void PersistUserPreferences()
+    {
+        if (_suppressPreferenceSave)
+        {
+            return;
+        }
+
+        try
+        {
+            _userPreferencesService.Save(_userPreferences);
+        }
+        catch (Exception exception)
+        {
+            StatusText = $"Could not save user preferences: {exception.Message}";
+        }
     }
 
     private List<WorkspaceViewLayout> BuildWorkspaceViewLayouts()
@@ -493,6 +555,24 @@ public sealed partial class MainWindowViewModel
                 GroupForecastLinesByTask = view.GroupForecastLinesByTask,
                 ForecastGroupByKey = NormalizeForecastGroupByKey(view.ForecastGroupByKey),
                 ShowZeroAsBlank = view.ShowZeroAsBlank,
+                ReportCanvasInitialized = view.ReportCanvasInitialized,
+                ReportCanvasPageSize = view.ReportCanvasPageSize,
+                ReportCanvasOrientation = view.ReportCanvasOrientation,
+                ReportCanvasObjects = view.ReportCanvasObjects.Select(item => new ReportCanvasObjectLayout
+                {
+                    Id = item.Id,
+                    ObjectType = item.ObjectType,
+                    X = item.X,
+                    Y = item.Y,
+                    Width = item.Width,
+                    Height = item.Height,
+                    Text = item.Text,
+                    StyleKey = item.StyleKey,
+                    ChartKind = item.ChartKind,
+                    Grouping = item.Grouping,
+                    FromDate = item.FromDate,
+                    ToDate = item.ToDate
+                }).ToList(),
                 HiddenColumnKeys = view.HiddenColumnKeys
                     .Where(key => !string.IsNullOrWhiteSpace(key))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -549,7 +629,25 @@ public sealed partial class MainWindowViewModel
                     DisplayIndex = item.DisplayIndex
                 })
                 .ToList() ?? [],
-            ShowZeroAsBlank = layout.ShowZeroAsBlank
+            ShowZeroAsBlank = layout.ShowZeroAsBlank,
+            ReportCanvasInitialized = layout.ReportCanvasInitialized,
+            ReportCanvasPageSize = layout.ReportCanvasPageSize,
+            ReportCanvasOrientation = layout.ReportCanvasOrientation,
+            ReportCanvasObjects = layout.ReportCanvasObjects?.Select(item => new ReportCanvasObjectLayout
+            {
+                Id = item.Id,
+                ObjectType = item.ObjectType,
+                X = item.X,
+                Y = item.Y,
+                Width = item.Width,
+                Height = item.Height,
+                Text = item.Text,
+                StyleKey = item.StyleKey,
+                ChartKind = item.ChartKind,
+                Grouping = item.Grouping,
+                FromDate = item.FromDate,
+                ToDate = item.ToDate
+            }).ToList() ?? []
         };
     }
 
@@ -565,6 +663,7 @@ public sealed partial class MainWindowViewModel
             new WorkspaceViewLayout { WorkspaceKey = "Pivot Builder", ContentKey = "Default", Name = "Default" },
             new WorkspaceViewLayout { WorkspaceKey = "Contingency", ContentKey = "Default", Name = "Default" },
             new WorkspaceViewLayout { WorkspaceKey = "Audit", ContentKey = "Default", Name = "Default" },
+            new WorkspaceViewLayout { WorkspaceKey = "Budget", ContentKey = "Default", Name = "Default" },
             new WorkspaceViewLayout { WorkspaceKey = "Ledger Costs", ContentKey = "Default", Name = "Default" },
             new WorkspaceViewLayout { WorkspaceKey = "Ledger Monthly Forecast", ContentKey = "Default", Name = "Default" },
             new WorkspaceViewLayout { WorkspaceKey = "Ledger Spend Curve", ContentKey = "Default", Name = "Default" }

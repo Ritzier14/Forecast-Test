@@ -6,7 +6,9 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Globalization;
 using ProjectCostForecast.App.Models;
+using ProjectCostForecast.App.Services;
 
 namespace ProjectCostForecast.App;
 
@@ -15,6 +17,7 @@ public sealed class SavedMonthSnapshotWindow : Window
     private readonly DataGrid _snapshotGrid;
     private readonly DataGrid _lineGrid;
     private readonly ObservableCollection<SavedMonthGridView> _lineViews = [];
+    private readonly List<DataGridColumn> _periodColumns = [];
     private readonly TabControl _lineViewTabs;
     private SavedMonthGridView? _selectedLineView;
 
@@ -27,7 +30,14 @@ public sealed class SavedMonthSnapshotWindow : Window
         MinHeight = 520;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
-        var snapshotList = new ObservableCollection<SavedMonthSnapshot>(snapshots.OrderByDescending(snapshot => snapshot.SavedAt));
+        var orderedSnapshots = snapshots
+            .OrderBy(snapshot => FiscalPeriod.SortKey(snapshot.Period))
+            .ThenBy(snapshot => snapshot.SavedAt)
+            .ToList();
+        var snapshotList = new ObservableCollection<SavedMonthSnapshotRow>(orderedSnapshots
+            .Select((snapshot, index) => new SavedMonthSnapshotRow(index + 1, snapshot))
+            .OrderByDescending(row => FiscalPeriod.SortKey(row.Period))
+            .ThenByDescending(row => row.SavedAt));
         var root = new DockPanel
         {
             Margin = new Thickness(12)
@@ -48,6 +58,16 @@ public sealed class SavedMonthSnapshotWindow : Window
         buttonPanel.Children.Add(closeButton);
         DockPanel.SetDock(buttonPanel, Dock.Bottom);
         root.Children.Add(buttonPanel);
+
+        var instructions = new TextBlock
+        {
+            Text = "Select a month to preview its information below. Double-click a month to open it in the forecast workspace.",
+            Foreground = BrushFactory.Frozen("#64748B"),
+            Margin = new Thickness(0, 0, 0, 8),
+            TextWrapping = TextWrapping.Wrap
+        };
+        DockPanel.SetDock(instructions, Dock.Top);
+        root.Children.Add(instructions);
 
         _snapshotGrid = BuildSnapshotGrid(snapshotList);
         DockPanel.SetDock(_snapshotGrid, Dock.Top);
@@ -128,8 +148,10 @@ public sealed class SavedMonthSnapshotWindow : Window
 
         _snapshotGrid.SelectionChanged += (_, _) =>
         {
-            _lineGrid.ItemsSource = (_snapshotGrid.SelectedItem as SavedMonthSnapshot)?.ForecastLines;
+            ShowSnapshot((_snapshotGrid.SelectedItem as SavedMonthSnapshotRow)?.Snapshot);
         };
+        _snapshotGrid.PreviewMouseLeftButtonDown += SnapshotGrid_PreviewMouseLeftButtonDown;
+        _snapshotGrid.MouseDoubleClick += SnapshotGrid_MouseDoubleClick;
 
         AttachColumnMenu(_snapshotGrid, null);
         AttachColumnMenu(_lineGrid, OnLineGridLayoutChanged);
@@ -147,7 +169,33 @@ public sealed class SavedMonthSnapshotWindow : Window
         };
     }
 
-    private DataGrid BuildSnapshotGrid(ObservableCollection<SavedMonthSnapshot> snapshots)
+    public SavedMonthSnapshot? SelectedSnapshotToOpen { get; private set; }
+
+    private void SnapshotGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject source
+            && FindParent<DataGridRow>(source)?.Item is SavedMonthSnapshotRow row)
+        {
+            _snapshotGrid.SelectedItem = row;
+            ShowSnapshot(row.Snapshot);
+        }
+    }
+
+    private void SnapshotGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source
+            || FindParent<DataGridRow>(source)?.Item is not SavedMonthSnapshotRow row)
+        {
+            return;
+        }
+
+        SelectedSnapshotToOpen = row.Snapshot;
+        DialogResult = true;
+        Close();
+        e.Handled = true;
+    }
+
+    private DataGrid BuildSnapshotGrid(ObservableCollection<SavedMonthSnapshotRow> snapshots)
     {
         var grid = new DataGrid
         {
@@ -158,14 +206,73 @@ public sealed class SavedMonthSnapshotWindow : Window
             Margin = new Thickness(0, 0, 0, 12)
         };
 
-        grid.Columns.Add(new DataGridTextColumn { Header = "Period", Binding = new Binding(nameof(SavedMonthSnapshot.Period)), Width = 100 });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Month #", Binding = new Binding(nameof(SavedMonthSnapshotRow.MonthNumber)), Width = 80 });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Period", Binding = new Binding(nameof(SavedMonthSnapshotRow.Period)), Width = 100 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Cost to Date", Binding = new Binding(nameof(SavedMonthSnapshot.CostToDate)) { StringFormat = "{0:C0}" }, Width = 130 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Cost to Complete", Binding = new Binding(nameof(SavedMonthSnapshot.CostToComplete)) { StringFormat = "{0:C0}" }, Width = 145 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Final Forecast", Binding = new Binding(nameof(SavedMonthSnapshot.FinalForecast)) { StringFormat = "{0:C0}" }, Width = 130 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Total Budget Variance", Binding = new Binding(nameof(SavedMonthSnapshot.TotalBudgetVariance)) { StringFormat = "{0:C0}" }, Width = 165 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Date Saved", Binding = new Binding(nameof(SavedMonthSnapshot.SavedAt)) { StringFormat = "{0:g}" }, Width = 155 });
         AutoSizeColumns(grid);
-        return SpreadsheetReadOnlyGridBehavior.Attach(grid);
+        SpreadsheetReadOnlyGridBehavior.Attach(grid);
+        grid.SelectionMode = DataGridSelectionMode.Single;
+        grid.SelectionUnit = DataGridSelectionUnit.FullRow;
+        grid.CellStyle = BuildSnapshotSelectionCellStyle();
+        return grid;
+    }
+
+    private static Style BuildSnapshotSelectionCellStyle()
+    {
+        var baseStyle = Application.Current?.TryFindResource(typeof(DataGridCell)) as Style;
+        var style = new Style(typeof(DataGridCell), baseStyle);
+        var selectedTrigger = new Trigger
+        {
+            Property = DataGridCell.IsSelectedProperty,
+            Value = true
+        };
+        selectedTrigger.Setters.Add(new Setter(Control.BackgroundProperty, BrushFactory.Frozen("#DBEAFE")));
+        selectedTrigger.Setters.Add(new Setter(Control.ForegroundProperty, BrushFactory.Frozen("#1E3A8A")));
+        style.Triggers.Add(selectedTrigger);
+        return style;
+    }
+
+    private void ShowSnapshot(SavedMonthSnapshot? snapshot)
+    {
+        _lineGrid.ItemsSource = snapshot?.ForecastLines;
+
+        foreach (var column in _periodColumns)
+        {
+            _lineGrid.Columns.Remove(column);
+        }
+        _periodColumns.Clear();
+
+        if (snapshot is null)
+        {
+            return;
+        }
+
+        var periods = snapshot.ForecastLines
+            .SelectMany(line => line.MonthlyForecasts)
+            .GroupBy(amount => amount.PeriodLabel, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .OrderBy(amount => amount.PeriodStartDate ?? DateOnly.MaxValue)
+            .ThenBy(amount => FiscalPeriod.SortKey(amount.PeriodLabel))
+            .ThenBy(amount => amount.PeriodLabel, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var period in periods)
+        {
+            var column = new DataGridTextColumn
+            {
+                Header = period.PeriodLabel,
+                Binding = new Binding(".")
+                {
+                    Converter = new SavedMonthPeriodAmountConverter(period.PeriodLabel),
+                    StringFormat = "{0:C0}"
+                }
+            };
+            _periodColumns.Add(column);
+            _lineGrid.Columns.Add(column);
+        }
     }
 
     private DataGrid BuildLineGrid()
@@ -387,6 +494,40 @@ public sealed class SavedMonthSnapshotWindow : Window
         }
 
         return null;
+    }
+}
+
+public sealed class SavedMonthSnapshotRow
+{
+    public SavedMonthSnapshotRow(int monthNumber, SavedMonthSnapshot snapshot)
+    {
+        MonthNumber = monthNumber;
+        Snapshot = snapshot;
+    }
+
+    public int MonthNumber { get; }
+    public SavedMonthSnapshot Snapshot { get; }
+    public string Period => Snapshot.Period;
+    public DateTime SavedAt => Snapshot.SavedAt;
+    public decimal CostToDate => Snapshot.CostToDate;
+    public decimal CostToComplete => Snapshot.CostToComplete;
+    public decimal FinalForecast => Snapshot.FinalForecast;
+    public decimal TotalBudgetVariance => Snapshot.TotalBudgetVariance;
+}
+
+public sealed class SavedMonthPeriodAmountConverter(string periodLabel) : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return value is SavedMonthForecastLine line
+            ? line.MonthlyForecasts.FirstOrDefault(amount =>
+                string.Equals(amount.PeriodLabel, periodLabel, StringComparison.OrdinalIgnoreCase))?.Amount ?? 0m
+            : 0m;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotSupportedException();
     }
 }
 

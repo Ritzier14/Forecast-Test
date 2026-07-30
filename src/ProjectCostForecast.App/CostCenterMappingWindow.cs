@@ -13,26 +13,33 @@ public sealed class CostCenterMappingWindow : Window
     private const double CandidateRowHeight = 34;
     private const int InitialVisibleCandidateRows = 6;
     private const int ExpandedVisibleCandidateRows = 16;
+    private const int ExistingNamesMenuStaticItemCount = 3;
 
     private static Point? _rememberedLocation;
 
     private readonly IReadOnlyList<CostTransaction> _matchingTransactions;
     private readonly HashSet<string> _existingNames;
+    private readonly ObservableCollection<MatchingTransactionRow> _matchingTransactionRows = [];
+    private readonly HashSet<string> _excludedMappingKeys = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _mappingNameOverrides = new(StringComparer.OrdinalIgnoreCase);
     private readonly ObservableCollection<CandidateRow> _visibleCandidateRows = [];
     private readonly List<CandidateRow> _allCandidateRows = [];
     private readonly TextBox _nameTextBox;
     private readonly DataGrid _candidateGrid;
     private readonly ContextMenu _existingNamesMenu;
+    private readonly TextBox _existingNamesSearchBox;
     private readonly TextBlock _selectionInfoTextBlock;
     private readonly TextBlock _candidateCountTextBlock;
 
     private bool _suppressNameTextChanged;
+    private bool _suppressExistingNamesSearchChanged;
     private CandidateRow? _selectedCandidateRow;
     private ScrollViewer? _activeScrollViewer;
     private Point? _rightDragStart;
     private double _dragHorizontalStartOffset;
     private double _dragVerticalStartOffset;
     private bool _rightDragging;
+    private string? _existingNameTargetMappingKey;
 
     public CostCenterMappingWindow(
         CostTransaction transaction,
@@ -64,6 +71,7 @@ public sealed class CostCenterMappingWindow : Window
         _nameTextBox = new TextBox
         {
             MinHeight = 32,
+            Width = 420,
             MinWidth = 320
         };
         _nameTextBox.TextChanged += NameTextBox_TextChanged;
@@ -83,6 +91,7 @@ public sealed class CostCenterMappingWindow : Window
         };
 
         _candidateGrid = BuildCandidateGrid();
+        _existingNamesSearchBox = BuildExistingNamesSearchBox();
         _existingNamesMenu = BuildExistingNamesMenu();
 
         var root = new DockPanel
@@ -144,6 +153,13 @@ public sealed class CostCenterMappingWindow : Window
     }
 
     public string SelectedManualName { get; private set; } = string.Empty;
+
+    public IReadOnlyCollection<string> ExcludedMappingKeys => _excludedMappingKeys;
+
+    public bool TryGetAssignedName(string mappingKey, out string assignedName)
+    {
+        return _mappingNameOverrides.TryGetValue(mappingKey, out assignedName!);
+    }
 
     private UIElement BuildContent(CostTransaction transaction, CostCenterNameOption? suggestedOption, int remainingGroupCount)
     {
@@ -227,6 +243,7 @@ public sealed class CostCenterMappingWindow : Window
                 return;
             }
 
+            _existingNameTargetMappingKey = null;
             var searchBox = RefreshExistingNamesMenu(string.Empty);
             _existingNamesMenu.PlacementTarget = selectExistingButton;
             _existingNamesMenu.IsOpen = true;
@@ -271,7 +288,7 @@ public sealed class CostCenterMappingWindow : Window
             selectedName = NormaliseName(_nameTextBox.Text);
         }
 
-        if (string.IsNullOrWhiteSpace(selectedName))
+        if (string.IsNullOrWhiteSpace(selectedName) && _matchingTransactionRows.Count > 0)
         {
             MessageBox.Show(this, "Choose or type a CTC name before importing this cost.", "Cost centre name", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
@@ -331,6 +348,19 @@ public sealed class CostCenterMappingWindow : Window
         return grid;
     }
 
+    private TextBox BuildExistingNamesSearchBox()
+    {
+        var searchBox = new TextBox
+        {
+            MinHeight = 32,
+            MinWidth = 320,
+            Margin = new Thickness(10, 0, 10, 8)
+        };
+        searchBox.TextChanged += ExistingNamesSearchBox_TextChanged;
+        searchBox.PreviewKeyDown += ExistingNamesSearchBox_PreviewKeyDown;
+        return searchBox;
+    }
+
     private ContextMenu BuildExistingNamesMenu()
     {
         var menu = new ContextMenu
@@ -339,51 +369,74 @@ public sealed class CostCenterMappingWindow : Window
             MinWidth = 380,
             MaxHeight = Math.Max(360, SystemParameters.WorkArea.Height * 0.55)
         };
-        return menu;
-    }
-
-    private TextBox RefreshExistingNamesMenu(string filter)
-    {
-        var normalisedFilter = NormaliseName(filter);
-        var existingNames = _existingNames
-            .Where(name => string.IsNullOrWhiteSpace(normalisedFilter)
-                || name.Contains(normalisedFilter, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        _existingNamesMenu.Items.Clear();
-        _existingNamesMenu.Items.Add(new TextBlock
+        menu.Items.Add(new TextBlock
         {
             Text = "SELECT FROM EXISTING",
             Foreground = BrushFrom("#94A3B8"),
             FontWeight = FontWeights.SemiBold,
             Margin = new Thickness(12, 8, 12, 6)
         });
+        menu.Items.Add(_existingNamesSearchBox);
+        menu.Items.Add(new Separator());
+        return menu;
+    }
 
-        var searchBox = new TextBox
+    private TextBox RefreshExistingNamesMenu(string filter)
+    {
+        _suppressExistingNamesSearchChanged = true;
+        try
         {
-            MinHeight = 32,
-            MinWidth = 320,
-            Margin = new Thickness(10, 0, 10, 8),
-            Text = filter
-        };
-        searchBox.TextChanged += (_, _) =>
+            if (!string.Equals(_existingNamesSearchBox.Text, filter, StringComparison.Ordinal))
+            {
+                _existingNamesSearchBox.Text = filter;
+            }
+        }
+        finally
         {
-            var nextSearchBox = RefreshExistingNamesMenu(searchBox.Text);
-            FocusExistingNamesSearchBox(nextSearchBox);
-        };
+            _suppressExistingNamesSearchChanged = false;
+        }
 
-        _existingNamesMenu.Items.Add(searchBox);
-        _existingNamesMenu.Items.Add(new Separator());
+        RefreshExistingNamesMenuItems();
+        return _existingNamesSearchBox;
+    }
+
+    private void ExistingNamesSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_suppressExistingNamesSearchChanged)
+        {
+            return;
+        }
+
+        RefreshExistingNamesMenuItems();
+    }
+
+    private void RefreshExistingNamesMenuItems()
+    {
+        var normalisedFilter = NormaliseName(_existingNamesSearchBox.Text);
+        var existingNames = _existingNames
+            .Where(name => string.IsNullOrWhiteSpace(normalisedFilter)
+                || name.Contains(normalisedFilter, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        for (var index = _existingNamesMenu.Items.Count - 1; index >= ExistingNamesMenuStaticItemCount; index--)
+        {
+            _existingNamesMenu.Items.RemoveAt(index);
+        }
 
         if (existingNames.Count == 0)
         {
-            _existingNamesMenu.Items.Add(new MenuItem
+            var createName = NormaliseName(_existingNamesSearchBox.Text);
+            var emptyItem = new MenuItem
             {
-                Header = "No existing names found",
-                IsEnabled = false
-            });
-            return searchBox;
+                Header = string.IsNullOrWhiteSpace(createName)
+                    ? "No existing names found"
+                    : $"Press Enter to create \"{createName}\"",
+                IsEnabled = !string.IsNullOrWhiteSpace(createName)
+            };
+            emptyItem.Click += (_, _) => CreateNameFromExistingSearch();
+            _existingNamesMenu.Items.Add(emptyItem);
+            return;
         }
 
         foreach (var existingName in existingNames)
@@ -409,8 +462,64 @@ public sealed class CostCenterMappingWindow : Window
             };
             _existingNamesMenu.Items.Add(item);
         }
+    }
 
-        return searchBox;
+    private void ExistingNamesSearchBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+        {
+            return;
+        }
+
+        var typedName = NormaliseName(_existingNamesSearchBox.Text);
+        if (string.IsNullOrWhiteSpace(typedName))
+        {
+            return;
+        }
+
+        var existingName = _existingNames.FirstOrDefault(name =>
+            string.Equals(name, typedName, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(existingName))
+        {
+            SelectExistingName(CreateExistingCandidateRow(existingName));
+        }
+        else
+        {
+            CreateNameFromExistingSearch();
+        }
+
+        e.Handled = true;
+    }
+
+    private void CreateNameFromExistingSearch()
+    {
+        var newName = NormaliseName(_existingNamesSearchBox.Text);
+        if (string.IsNullOrWhiteSpace(newName))
+        {
+            return;
+        }
+
+        _existingNames.Add(newName);
+        SelectExistingName(new CandidateRow
+        {
+            RawName = newName,
+            StatusLabel = "New",
+            SourceLabel = "Created from search",
+            IsFromImport = false,
+            SortRank = 1
+        });
+    }
+
+    private static CandidateRow CreateExistingCandidateRow(string existingName)
+    {
+        return new CandidateRow
+        {
+            RawName = existingName,
+            StatusLabel = "Existing",
+            SourceLabel = "Existing resource name",
+            IsFromImport = false,
+            SortRank = 1
+        };
     }
 
     private void FocusExistingNamesSearchBox(TextBox searchBox)
@@ -432,19 +541,20 @@ public sealed class CostCenterMappingWindow : Window
 
     private DataGrid BuildMatchingTransactionsGrid(IEnumerable<CostTransaction> transactions)
     {
-        var rows = transactions
+        ReplaceCollection(_matchingTransactionRows, transactions
             .Select(transaction => new MatchingTransactionRow
             {
+                MappingKey = Services.CsvTransactionService.BuildNameMappingKey(transaction),
                 FyPeriod = transaction.FyPeriod,
                 TaskNumber = transaction.TaskNumber,
                 ResourceDescription = transaction.ResourceDescription,
                 SupplierName = transaction.SupplierName,
+                Narrative1 = transaction.Narrative1,
                 Narrative2 = transaction.Narrative2,
                 Narrative3 = transaction.Narrative3,
                 Who = transaction.Who,
                 Amount = transaction.Amount.ToString("C0")
-            })
-            .ToList();
+            }));
 
         var grid = new DataGrid
         {
@@ -463,18 +573,96 @@ public sealed class CostCenterMappingWindow : Window
             MinHeight = 280,
             Height = 420,
             MaxHeight = 560,
-            ItemsSource = rows
+            ItemsSource = _matchingTransactionRows,
+            SelectionMode = DataGridSelectionMode.Single,
+            SelectionUnit = DataGridSelectionUnit.FullRow
         };
         grid.Columns.Add(new DataGridTextColumn { Header = "FY", Binding = new System.Windows.Data.Binding(nameof(MatchingTransactionRow.FyPeriod)), Width = 70 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Task", Binding = new System.Windows.Data.Binding(nameof(MatchingTransactionRow.TaskNumber)), Width = 110 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Resource", Binding = new System.Windows.Data.Binding(nameof(MatchingTransactionRow.ResourceDescription)), Width = 220 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Supplier", Binding = new System.Windows.Data.Binding(nameof(MatchingTransactionRow.SupplierName)), Width = 170 });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Narrative 1", Binding = new System.Windows.Data.Binding(nameof(MatchingTransactionRow.Narrative1)), Width = 220 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Narrative 2", Binding = new System.Windows.Data.Binding(nameof(MatchingTransactionRow.Narrative2)), Width = 220 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Narrative 3", Binding = new System.Windows.Data.Binding(nameof(MatchingTransactionRow.Narrative3)), Width = 200 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Who", Binding = new System.Windows.Data.Binding(nameof(MatchingTransactionRow.Who)), Width = 160 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Amount", Binding = new System.Windows.Data.Binding(nameof(MatchingTransactionRow.Amount)), Width = 90 });
+        grid.PreviewMouseRightButtonDown += MatchingTransactionsGrid_PreviewMouseRightButtonDown;
+        grid.ContextMenu = BuildMatchingTransactionsContextMenu(grid);
         AttachRightClickPan(grid);
         return grid;
+    }
+
+    private ContextMenu BuildMatchingTransactionsContextMenu(DataGrid grid)
+    {
+        var menu = new ContextMenu();
+        var exclude = new MenuItem { Header = "Exclude from current group" };
+        exclude.Click += (_, _) => ExcludeSelectedMappingGroup(grid);
+        menu.Items.Add(exclude);
+
+        var applyExisting = new MenuItem { Header = "Apply from existing" };
+        applyExisting.Click += (_, _) => OpenExistingNamesForSelectedMappingGroup(grid);
+        menu.Items.Add(applyExisting);
+
+        menu.Opened += (_, _) =>
+        {
+            var selected = grid.SelectedItem as MatchingTransactionRow;
+            var distinctGroupCount = _matchingTransactionRows
+                .Select(row => row.MappingKey)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
+            exclude.IsEnabled = selected is not null && distinctGroupCount > 1;
+            applyExisting.IsEnabled = selected is not null;
+        };
+        return menu;
+    }
+
+    private static void MatchingTransactionsGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not DataGrid grid || e.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        var row = FindParent<DataGridRow>(source);
+        if (row?.Item is MatchingTransactionRow matchingRow)
+        {
+            grid.SelectedItem = matchingRow;
+            row.IsSelected = true;
+        }
+    }
+
+    private void ExcludeSelectedMappingGroup(DataGrid grid)
+    {
+        if (grid.SelectedItem is not MatchingTransactionRow selected)
+        {
+            return;
+        }
+
+        _excludedMappingKeys.Add(selected.MappingKey);
+        _mappingNameOverrides.Remove(selected.MappingKey);
+        foreach (var row in _matchingTransactionRows
+                     .Where(row => string.Equals(row.MappingKey, selected.MappingKey, StringComparison.OrdinalIgnoreCase))
+                     .ToList())
+        {
+            _matchingTransactionRows.Remove(row);
+        }
+    }
+
+    private void OpenExistingNamesForSelectedMappingGroup(DataGrid grid)
+    {
+        if (grid.SelectedItem is not MatchingTransactionRow selected)
+        {
+            return;
+        }
+
+        _existingNameTargetMappingKey = selected.MappingKey;
+        var searchBox = RefreshExistingNamesMenu(string.Empty);
+        _existingNamesMenu.PlacementTarget = grid;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            _existingNamesMenu.IsOpen = true;
+            FocusExistingNamesSearchBox(searchBox);
+        }), System.Windows.Threading.DispatcherPriority.Input);
     }
 
     private void BuildCandidateRows(IEnumerable<CostCenterNameOption> candidates, CostCenterNameOption? suggestedOption)
@@ -576,6 +764,8 @@ public sealed class CostCenterMappingWindow : Window
         var style = new Style(typeof(DataGridRow));
         style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.White));
         style.Setters.Add(new Setter(Control.ForegroundProperty, BrushFrom("#111827")));
+        style.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+        style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(1)));
         style.Triggers.Add(new Trigger
         {
             Property = DataGridRow.IsSelectedProperty,
@@ -640,6 +830,23 @@ public sealed class CostCenterMappingWindow : Window
 
     private void SelectExistingName(CandidateRow row)
     {
+        if (!string.IsNullOrWhiteSpace(_existingNameTargetMappingKey))
+        {
+            var mappingKey = _existingNameTargetMappingKey;
+            _mappingNameOverrides[mappingKey] = row.RawName;
+            _excludedMappingKeys.Remove(mappingKey);
+            foreach (var matchingRow in _matchingTransactionRows
+                         .Where(item => string.Equals(item.MappingKey, mappingKey, StringComparison.OrdinalIgnoreCase))
+                         .ToList())
+            {
+                _matchingTransactionRows.Remove(matchingRow);
+            }
+
+            _existingNameTargetMappingKey = null;
+            _existingNamesMenu.IsOpen = false;
+            return;
+        }
+
         _selectedCandidateRow = row;
         SetNameText(row.RawName);
         UpdateSelectionInfo(row.SourceLabel);
@@ -978,10 +1185,12 @@ public sealed class CostCenterMappingWindow : Window
 
     private sealed class MatchingTransactionRow
     {
+        public string MappingKey { get; init; } = string.Empty;
         public string FyPeriod { get; init; } = string.Empty;
         public string TaskNumber { get; init; } = string.Empty;
         public string ResourceDescription { get; init; } = string.Empty;
         public string SupplierName { get; init; } = string.Empty;
+        public string Narrative1 { get; init; } = string.Empty;
         public string Narrative2 { get; init; } = string.Empty;
         public string Narrative3 { get; init; } = string.Empty;
         public string Who { get; init; } = string.Empty;

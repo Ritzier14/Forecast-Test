@@ -29,6 +29,10 @@ The current build focuses on the highest-value spreadsheet workflow and the rele
 3. Set `ProjectCostForecast.App` as startup project.
 4. Run with `F5`.
 
+## Architecture
+
+The codebase is being migrated toward a modular WPF architecture with explicit application, domain, and storage seams. The current boundaries, rules for new code, and phased assembly split are documented in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 ## How to verify
 
 Run:

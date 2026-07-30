@@ -145,9 +145,35 @@ public sealed class ManagementResource : ObservableModel
 
     public void SetAllocation(string periodKey, decimal percentage)
     {
+        if (TrySetAllocation(periodKey, percentage))
+        {
+            OnPropertyChanged("Item[]");
+        }
+    }
+
+    public bool SetAllocations(IEnumerable<KeyValuePair<string, decimal>> allocations)
+    {
+        ArgumentNullException.ThrowIfNull(allocations);
+
+        var changed = false;
+        foreach (var allocation in allocations)
+        {
+            changed |= TrySetAllocation(allocation.Key, allocation.Value);
+        }
+
+        if (changed)
+        {
+            OnPropertyChanged("Item[]");
+        }
+
+        return changed;
+    }
+
+    private bool TrySetAllocation(string periodKey, decimal percentage)
+    {
         if (string.IsNullOrWhiteSpace(periodKey) || periodKey.StartsWith("TOTAL:", StringComparison.OrdinalIgnoreCase))
         {
-            return;
+            return false;
         }
 
         var allocation = MonthlyAllocations.FirstOrDefault(item =>
@@ -161,11 +187,11 @@ public sealed class ManagementResource : ObservableModel
         var normalized = Math.Clamp(percentage, 0, 100);
         if (allocation.Percentage == normalized)
         {
-            return;
+            return false;
         }
 
         allocation.Percentage = normalized;
-        OnPropertyChanged("Item[]");
+        return true;
     }
 
     private IEnumerable<ManagementResourceAllocation> GetAllocations(string periodKey)
@@ -258,6 +284,9 @@ public sealed class ManagementResourceTableRow : ObservableModel
             OnPropertyChanged(nameof(RateStatus));
         }
 
-        OnPropertyChanged("Item[]");
+        if (string.Equals(propertyName, "Item[]", StringComparison.Ordinal))
+        {
+            OnPropertyChanged("Item[]");
+        }
     }
 }

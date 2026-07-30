@@ -45,11 +45,11 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private const double LedgerChartBottomPadding = 34;
     private const double DefaultLedgerChartMonthSpacing = 36;
 
-    private readonly CalculationService _calculationService = new();
-    private readonly ProjectFileService _projectFileService = new();
-    private readonly CsvTransactionService _csvTransactionService = new();
-    private readonly ValidationService _validationService = new();
-    private readonly UserPreferencesService _userPreferencesService = new();
+    private readonly CalculationService _calculationService;
+    private readonly IProjectFileService _projectFileService;
+    private readonly CsvTransactionService _csvTransactionService;
+    private readonly ValidationService _validationService;
+    private readonly IUserPreferencesService _userPreferencesService;
     private ProjectDataset _dataset;
     private ForecastLine? _selectedForecastLine;
     private ForecastLine? _hoveredForecastLine;
@@ -84,6 +84,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private DateOnly? _forecastEditLockCutoffDate;
     private bool _viewRefreshQueued;
     private readonly DispatcherTimer _searchRefreshTimer;
+    private readonly DispatcherTimer _preferenceSaveTimer;
     private bool _forecastGroupingQueued;
     private bool _ledgerRefreshQueued;
     private bool _suppressPivotRefresh;
@@ -124,7 +125,32 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private bool _suppressPreferenceSave;
 
     public MainWindowViewModel()
+        : this(new MainWindowViewModelDependencies())
     {
+    }
+
+    public MainWindowViewModel(MainWindowViewModelDependencies dependencies)
+    {
+        ArgumentNullException.ThrowIfNull(dependencies);
+        dependencies.Validate();
+        _calculationService = dependencies.CalculationService;
+        _projectFileService = dependencies.ProjectFileService;
+        _csvTransactionService = dependencies.CsvTransactionService;
+        _validationService = dependencies.ValidationService;
+        _userPreferencesService = dependencies.UserPreferencesService;
+        _schedulingService = dependencies.SchedulingService;
+        _forecastCurveService = dependencies.ForecastCurveService;
+
+        _preferenceSaveTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(350)
+        };
+        _preferenceSaveTimer.Tick += (_, _) =>
+        {
+            _preferenceSaveTimer.Stop();
+            PersistUserPreferences();
+        };
+
         _searchRefreshTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = TimeSpan.FromMilliseconds(180)
@@ -134,7 +160,8 @@ public sealed partial class MainWindowViewModel : NotifyObject
             _searchRefreshTimer.Stop();
             RefreshSearchViews();
         };
-        _dataset = new SampleDataService().Load();
+        _dataset = dependencies.InitialDatasetFactory()
+            ?? throw new InvalidOperationException("The initial dataset factory returned null.");
         _userPreferences = _userPreferencesService.Load();
         _userPreferences.KpiIconKeys ??= new(StringComparer.OrdinalIgnoreCase);
         _userPreferences.KpiIconColorHexes ??= new(StringComparer.OrdinalIgnoreCase);
@@ -153,12 +180,14 @@ public sealed partial class MainWindowViewModel : NotifyObject
         Transactions = CreateCollection<CostTransaction>();
         CategorySummaries = CreateCollection<CategorySummary>();
         ContingencyEntries = CreateCollection<ContingencyEntry>();
+        InitializeContingencyTracking();
         Phases = CreateCollection<PhaseItem>();
         SavedMonthSnapshots = CreateCollection<SavedMonthSnapshot>();
         UnmatchedImportCombinations = CreateCollection<UnmatchedImportCombination>();
         ActivePeriodWarnings = CreateCollection<string>();
         ResourceSummaries = CreateCollection<ResourceSummary>();
         FiscalYearReportLines = CreateCollection<FiscalYearReportLine>();
+        InitializeBudgetCollections();
         ActualsPeriodSummaries = CreateCollection<ActualsPeriodSummary>();
         AuditEvents = CreateCollection<AuditEvent>();
         ValidationIssues = CreateCollection<ValidationIssue>();
@@ -238,14 +267,16 @@ public sealed partial class MainWindowViewModel : NotifyObject
         OpenProjectCommand = new RelayCommand(_ => OpenProject());
         SaveProjectCommand = new RelayCommand(_ => SaveProject(), _ => true);
         SaveProjectAsCommand = new RelayCommand(_ => SaveProjectAs());
-        ImportCsvCommand = new RelayCommand(_ => ImportCsv());
+        ImportCsvCommand = new RelayCommand(_ => ImportCsv(), _ => !IsViewingSavedMonth);
         ExportTransactionsCommand = new RelayCommand(_ => ExportTransactions());
-        RecalculateCommand = new RelayCommand(_ => RecalculateAndRefresh(markDirty: true, reason: "Manual recalculation"));
+        RecalculateCommand = new RelayCommand(_ => RecalculateAndRefresh(markDirty: true, reason: "Manual recalculation"), _ => !IsViewingSavedMonth);
         AddWorkspaceViewCommand = new RelayCommand(_ => AddWorkspaceView());
         AddDetailWorkspaceViewCommand = new RelayCommand(_ => AddDetailWorkspaceView());
-        AddForecastRowCommand = new RelayCommand(_ => InsertForecastLine(null, below: true));
-        NewMonthCommand = new RelayCommand(_ => SetupNewMonth());
+        AddForecastRowCommand = new RelayCommand(_ => InsertForecastLine(null, below: true), _ => !IsViewingSavedMonth);
+        NewMonthCommand = new RelayCommand(_ => SetupNewMonth(), _ => !IsViewingSavedMonth);
         ViewSavedMonthCommand = new RelayCommand(_ => OpenSavedMonthViewer());
+        ToggleSavedMonthViewLockCommand = new RelayCommand(_ => ToggleSavedMonthViewLock(), _ => IsViewingSavedMonth);
+        CloseSavedMonthViewCommand = new RelayCommand(_ => CloseSavedMonthView(), _ => IsViewingSavedMonth);
         ViewUnmatchedImportsCommand = new RelayCommand(_ => OpenUnmatchedImportViewer(), _ => UnmatchedImportCombinations.Count > 0);
         AddPivotRowFieldCommand = new RelayCommand(_ => AddSelectedPivotField(PivotRowFields, requireNumeric: false));
         AddPivotColumnFieldCommand = new RelayCommand(_ => AddSelectedPivotField(PivotColumnFields, requireNumeric: false));

@@ -18,6 +18,8 @@ public sealed class CsvTransactionService
     public List<CostTransaction> Import(string path, int startingRowNumber)
     {
         var rows = ReadRows(path);
+        var isWorkbookImport = string.Equals(Path.GetExtension(path), ".xlsx", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Path.GetExtension(path), ".xlsm", StringComparison.OrdinalIgnoreCase);
         if (rows.Count == 0)
         {
             return [];
@@ -38,7 +40,7 @@ public sealed class CsvTransactionService
                 continue;
             }
 
-            imported.Add(new CostTransaction
+            var transaction = new CostTransaction
             {
                 RowNumber = startingRowNumber++,
                 FyPeriod = Get(row, headers, "fyperiod", "fyperi", "fy", "periodlabel"),
@@ -64,7 +66,19 @@ public sealed class CsvTransactionService
                 Who = Get(row, headers, "who"),
                 EcmNumber = Get(row, headers, "ecmnumber", "ecmnum", "ecm"),
                 ManualName = Get(row, headers, "manualname", "manualresource", "name")
-            });
+            };
+
+            // Exports can include filter descriptions or total rows below the
+            // data range.  A cost transaction must have both a valid FY period
+            // and a task number; retaining footer rows creates phantom costs.
+            if (isWorkbookImport
+                && (!FiscalPeriod.TryParseLabel(transaction.FyPeriod, out _, out _)
+                    || string.IsNullOrWhiteSpace(transaction.TaskNumber)))
+            {
+                continue;
+            }
+
+            imported.Add(transaction);
         }
 
         return imported;
@@ -169,14 +183,8 @@ public sealed class CsvTransactionService
             return ReadWorkbookRows(path);
         }
 
-        var rows = new List<List<string>>();
         using var reader = new StreamReader(path, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
-        while (!reader.EndOfStream)
-        {
-            rows.Add(ParseCsvLine(reader.ReadLine() ?? string.Empty));
-        }
-
-        return rows;
+        return ReadCsvRows(reader);
     }
 
     private static List<List<string>> ReadWorkbookRows(string path)
@@ -206,21 +214,24 @@ public sealed class CsvTransactionService
         return rows;
     }
 
-    private static List<string> ParseCsvLine(string line)
+    private static List<List<string>> ReadCsvRows(TextReader reader)
     {
-        var values = new List<string>();
-        var current = new StringBuilder();
+        var rows = new List<List<string>>();
+        var row = new List<string>();
+        var field = new StringBuilder();
         var inQuotes = false;
+        var recordStarted = false;
 
-        for (var i = 0; i < line.Length; i++)
+        while (reader.Read() is var next && next >= 0)
         {
-            var c = line[i];
+            var c = (char)next;
             if (c == '"')
             {
-                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+                recordStarted = true;
+                if (inQuotes && reader.Peek() == '"')
                 {
-                    current.Append('"');
-                    i++;
+                    field.Append('"');
+                    reader.Read();
                 }
                 else
                 {
@@ -229,17 +240,37 @@ public sealed class CsvTransactionService
             }
             else if (c == ',' && !inQuotes)
             {
-                values.Add(current.ToString());
-                current.Clear();
+                row.Add(field.ToString());
+                field.Clear();
+                recordStarted = true;
+            }
+            else if ((c == '\r' || c == '\n') && !inQuotes)
+            {
+                if (c == '\r' && reader.Peek() == '\n')
+                {
+                    reader.Read();
+                }
+
+                row.Add(field.ToString());
+                field.Clear();
+                rows.Add(row);
+                row = [];
+                recordStarted = false;
             }
             else
             {
-                current.Append(c);
+                field.Append(c);
+                recordStarted = true;
             }
         }
 
-        values.Add(current.ToString());
-        return values;
+        if (recordStarted || row.Count > 0 || field.Length > 0)
+        {
+            row.Add(field.ToString());
+            rows.Add(row);
+        }
+
+        return rows;
     }
 
     private static string Get(IReadOnlyList<string> row, IReadOnlyDictionary<string, int> headers, params string[] keys)

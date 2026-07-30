@@ -889,11 +889,11 @@ public partial class MainWindow
                 rowMenu.Items.Add(CreateAddManagementResourceMenuItem(rowLine));
                 AddForecastLineCommentMenuItem(rowMenu, rowLine);
                 rowMenu.Items.Add(new Separator());
-                var addAbove = new MenuItem { Header = "Add line above" };
+                var addAbove = new MenuItem { Header = "Add line above", IsEnabled = !viewModel.IsViewingSavedMonth };
                 addAbove.Click += (_, _) => BeginEditingForecastResourceCell(viewModel.InsertForecastLine(rowLine, below: false));
                 rowMenu.Items.Add(addAbove);
 
-                var addBelow = new MenuItem { Header = "Add line below" };
+                var addBelow = new MenuItem { Header = "Add line below", IsEnabled = !viewModel.IsViewingSavedMonth };
                 addBelow.Click += (_, _) => BeginEditingForecastResourceCell(viewModel.InsertForecastLine(rowLine, below: true));
                 rowMenu.Items.Add(addBelow);
 
@@ -1018,18 +1018,18 @@ public partial class MainWindow
             if (ReferenceEquals(grid, ForecastLinesGrid) && cell.DataContext is ForecastLine forecastLine)
             {
                 menu.Items.Add(new Separator());
-                var addAbove = new MenuItem { Header = "Add line above" };
+                var addAbove = new MenuItem { Header = "Add line above", IsEnabled = !viewModel.IsViewingSavedMonth };
                 addAbove.Click += (_, _) => BeginEditingForecastResourceCell(viewModel.InsertForecastLine(forecastLine, below: false));
                 menu.Items.Add(addAbove);
 
-                var addBelow = new MenuItem { Header = "Add line below" };
+                var addBelow = new MenuItem { Header = "Add line below", IsEnabled = !viewModel.IsViewingSavedMonth };
                 addBelow.Click += (_, _) => BeginEditingForecastResourceCell(viewModel.InsertForecastLine(forecastLine, below: true));
                 menu.Items.Add(addBelow);
 
                 var deleteLine = new MenuItem
                 {
                     Header = "Delete line",
-                    IsEnabled = forecastLine.IsManuallyAdded,
+                    IsEnabled = forecastLine.IsManuallyAdded && !viewModel.IsViewingSavedMonth,
                     ToolTip = forecastLine.IsManuallyAdded ? null : "Lines that came from imported raw data cannot be deleted"
                 };
                 deleteLine.Click += (_, _) => viewModel.DeleteForecastLine(forecastLine);

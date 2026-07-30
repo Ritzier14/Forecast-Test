@@ -22,7 +22,8 @@ public partial class MainWindow
         ["Monthly Report"] = "ic_tab_monthly_report_16.png",
         ["Pivot Builder"] = "ic_tab_pivot_builder_16.png",
         ["Contingency"] = "ic_tab_contingency_16.png",
-        ["Audit"] = "ic_tab_audit_16.png"
+        ["Audit"] = "ic_tab_audit_16.png",
+        ["Budget"] = "ic_metric_planned_cost_28.png"
     };
 
     private static readonly Dictionary<string, ImageSource> BuiltInImageSources = new(StringComparer.OrdinalIgnoreCase);
@@ -252,6 +253,7 @@ public partial class MainWindow
         ApplyWorkspaceTabHeaderIcon(PivotBuilderTabHeaderIcon, "Pivot Builder");
         ApplyWorkspaceTabHeaderIcon(ContingencyTabHeaderIcon, "Contingency");
         ApplyWorkspaceTabHeaderIcon(AuditTabHeaderIcon, "Audit");
+        ApplyWorkspaceTabHeaderIcon(BudgetTabHeaderIcon, "Budget");
     }
 
     private void ApplyWorkspaceTabHeaderIcon(Image image, string workspaceKey)
@@ -451,8 +453,10 @@ public partial class MainWindow
 
         var absoluteBitmap = new BitmapImage();
         absoluteBitmap.BeginInit();
+        var resourceAssemblyName = typeof(MainWindow).Assembly.GetName().Name
+            ?? throw new InvalidOperationException("Could not resolve the icon resource assembly.");
         absoluteBitmap.UriSource = new Uri(
-            $"pack://application:,,,/{normalizedAssetPath.TrimStart('/')}",
+            $"pack://application:,,,/{resourceAssemblyName};component/{normalizedAssetPath.TrimStart('/')}",
             UriKind.Absolute);
         absoluteBitmap.CacheOption = BitmapCacheOption.OnLoad;
         absoluteBitmap.EndInit();

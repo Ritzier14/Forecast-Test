@@ -486,6 +486,23 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="WorkspaceCategoryTabControlStyle" TargetType="TabControl" BasedOn="{StaticResource {x:Type TabControl}}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid KeyboardNavigation.TabNavigation="Local" SnapsToDevicePixels="True">
+                            <Border Height="1"
+                                    VerticalAlignment="Bottom"
+                                    Background="#DCE4EE" />
+                            <TabPanel IsItemsHost="True"
+                                      Background="Transparent"
+                                      Panel.ZIndex="1" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid Background="#F7F9FC">
         <Grid.ColumnDefinitions>
@@ -682,18 +699,27 @@
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="Project Cost Forecast" FontSize="23" FontWeight="SemiBold" Foreground="#101735" />
-                        <TextBlock Text="{Binding Header.ProjectTitle}" FontSize="13" FontWeight="SemiBold" Foreground="#17213F" Margin="0,3,0,0" />
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock Text="{Binding Header.ProjectTitle}" FontSize="18" FontWeight="SemiBold" Foreground="#17213F" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                             <TextBlock Text="Loaded workbook: " Foreground="#6A7897" FontSize="10" />
                             <TextBlock Text="{Binding Header.SourceWorkbook}" Foreground="#6A7897" FontSize="10" />
                             <Border Width="1" Height="14" Background="#CAD4E2" Margin="14,0" />
                             <Image Source="/Assets/Icons/png/ic_badge_validation_ok_16.png" Width="16" Height="16" Margin="0,0,6,0" />
                             <TextBlock Text="All data validated" Foreground="#52617D" FontSize="10" VerticalAlignment="Center" />
                         </StackPanel>
+                        <TabControl x:Name="WorkspaceCategoryTabControl"
+                                    Style="{StaticResource WorkspaceCategoryTabControlStyle}"
+                                    Margin="0,7,0,0"
+                                    HorizontalAlignment="Left"
+                                    SelectionChanged="WorkspaceCategoryTabControl_SelectionChanged">
+                            <TabItem Header="Forecasting" Tag="Forecasting" IsSelected="True" />
+                            <TabItem Header="Reporting" Tag="Reporting" />
+                            <TabItem Header="Schedule 1" Tag="Schedule 1" />
+                        </TabControl>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
-                        <Button Command="{Binding NewMonthCommand}" ToolTip="Save a month snapshot and set up the next month" Background="White" BorderBrush="#DCE4EF" BorderThickness="1" Padding="15,9" VerticalAlignment="Top">
+                    <StackPanel Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Right">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Command="{Binding NewMonthCommand}" ToolTip="Save a month snapshot and set up the next month" Background="White" BorderBrush="#DCE4EF" BorderThickness="1" Padding="15,9" VerticalAlignment="Top">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="22" Padding="{TemplateBinding Padding}">
@@ -707,8 +733,8 @@
                                 <Border Background="#EEF4FF" CornerRadius="12" Padding="9,3" Margin="12,0,6,0"><TextBlock Text="{Binding Header.CurrentPeriod}" Foreground="#1463F3" FontWeight="SemiBold" /></Border>
                                 <TextBlock Text="New month" Foreground="#34415F" FontSize="12" VerticalAlignment="Center" />
                             </StackPanel>
-                        </Button>
-                        <Button x:Name="CurrentPeriodActionsButton"
+                            </Button>
+                            <Button x:Name="CurrentPeriodActionsButton"
                                 Margin="8,0,0,0"
                                 VerticalAlignment="Center"
                                 Style="{StaticResource CurrentPeriodActionButtonStyle}"
@@ -728,6 +754,25 @@
                                   StrokeLineJoin="Round"
                                   HorizontalAlignment="Center"
                                   VerticalAlignment="Center" />
+                            </Button>
+                        </StackPanel>
+                        <Button x:Name="AdminControlsButton"
+                                Content="Admin controls"
+                                Margin="0,7,0,0"
+                                Padding="12,5"
+                                HorizontalAlignment="Right"
+                                Background="White"
+                                BorderBrush="#DCE4EF"
+                                Foreground="#475569"
+                                ToolTip="Administrative diagnostics and utilities"
+                                Click="AdminControlsButton_Click">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Print non-month column sizes"
+                                              ToolTip="Print and copy all non-month forecast column widths"
+                                              Click="CopyForecastColumnWidths_Click" />
+                                </ContextMenu>
+                            </Button.ContextMenu>
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -739,7 +784,8 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0"
+            <Border x:Name="KpiStripBorder"
+                    Grid.Row="0"
                     Padding="0,6,0,10"
                     Background="Transparent"
                     AllowDrop="True"
@@ -747,8 +793,23 @@
                     DragOver="KpiStrip_DragOver"
                     DragLeave="KpiStrip_DragLeave"
                     Drop="KpiStrip_Drop">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ActiveWorkspaceKey}" Value="Monthly Report">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Grid>
-                    <ScrollViewer x:Name="KpiScrollViewer" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" PreviewMouseRightButtonDown="KpiScrollViewer_PreviewMouseRightButtonDown" PreviewMouseMove="KpiScrollViewer_PreviewMouseMove" PreviewMouseRightButtonUp="KpiScrollViewer_PreviewMouseRightButtonUp">
+                    <ScrollViewer x:Name="KpiScrollViewer"
+                                  HorizontalScrollBarVisibility="Hidden"
+                                  VerticalScrollBarVisibility="Disabled"
+                                  PreviewMouseRightButtonDown="KpiScrollViewer_PreviewMouseRightButtonDown"
+                                  PreviewMouseMove="KpiScrollViewer_PreviewMouseMove"
+                                  PreviewMouseRightButtonUp="KpiScrollViewer_PreviewMouseRightButtonUp">
                         <ItemsControl x:Name="KpiItemsControl" ItemsSource="{Binding KpiPills}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -769,21 +830,24 @@
                                             DragLeave="KpiCard_DragLeave"
                                             Drop="KpiCard_Drop">
                                         <Grid>
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="36" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
                                             <Border Width="32" Height="32" CornerRadius="16" Background="#F2F6FF" VerticalAlignment="Top">
                                                 <Image Source="{Binding IconSource}" Width="22" Height="22" />
                                             </Border>
                                             <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                            <TextBlock Text="{Binding Name}" Foreground="{StaticResource MutedTextBrush}" FontSize="10" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding ValueText}" Foreground="#101735" FontSize="16" FontWeight="Bold" Margin="0,1,0,0" />
-                                            <TextBlock Text="{Binding ComparisonText}"
-                                                       Visibility="{Binding ComparisonVisibility}"
-                                                       Foreground="#7C3AED"
-                                                       FontSize="11"
-                                                       FontWeight="SemiBold"
-                                                       Margin="0,3,0,0"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding Subtext}" Foreground="{StaticResource MutedTextBrush}" FontSize="10" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Name}" Foreground="{StaticResource MutedTextBrush}" FontSize="10" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding ValueText}" Foreground="#101735" FontSize="16" FontWeight="Bold" Margin="0,1,0,0" />
+                                                <TextBlock Text="{Binding ComparisonText}"
+                                                           Visibility="{Binding ComparisonVisibility}"
+                                                           Foreground="#7C3AED"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Margin="0,3,0,0"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Subtext}" Foreground="{StaticResource MutedTextBrush}" FontSize="10" TextTrimming="CharacterEllipsis" />
                                             </StackPanel>
                                         </Grid>
                                     </Border>
@@ -803,7 +867,37 @@
 
                 <Border Grid.Column="0" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="12">
                     <DockPanel LastChildFill="True">
-                        <local:WarningBar DockPanel.Dock="Top" ItemsSource="{Binding ActivePeriodWarnings}" />
+                        <Border DockPanel.Dock="Top"
+                                Background="#F3E8FF"
+                                BorderBrush="#C084FC"
+                                BorderThickness="1"
+                                CornerRadius="7"
+                                Padding="8,5"
+                                Margin="0,0,0,8"
+                                Visibility="{Binding IsViewingSavedMonth, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <DockPanel LastChildFill="True">
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
+                                    <Button Content="{Binding SavedMonthLockButtonText}"
+                                            Command="{Binding ToggleSavedMonthViewLockCommand}"
+                                            MinWidth="88"
+                                            Margin="0,0,8,0"
+                                            Padding="10,3" />
+                                    <Button Content="Return to current month"
+                                            Command="{Binding CloseSavedMonthViewCommand}"
+                                            MinWidth="155"
+                                            Padding="10,3" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding SavedMonthViewMessage}"
+                                           Foreground="#6B21A8"
+                                           FontWeight="SemiBold"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           TextWrapping="Wrap" />
+                            </DockPanel>
+                        </Border>
+                        <local:WarningBar DockPanel.Dock="Top"
+                                          ItemsSource="{Binding ActivePeriodWarnings}"
+                                          IsSuppressed="{Binding IsViewingSavedMonth}" />
 
                         <TabControl x:Name="WorkspaceTabControl"
                                     Style="{StaticResource ForecastWorkspaceTabControlStyle}"
@@ -822,7 +916,7 @@
                                                Height="16"
                                                Margin="0,0,7,0"
                                                Tag="CTC Forecast" />
-                                        <TextBlock Text="Forecast" />
+                                        <TextBlock Text="Summary" />
                                     </StackPanel>
                                 </TabItem.Header>
                                 <DockPanel LastChildFill="True">
@@ -868,7 +962,7 @@
                                                   local:ProjectDataGridProfiles.ShowsFooterRow="True"
                                                   Grid.Row="1"
                                                   ItemsSource="{Binding ForecastLinesView}"
-                                                  IsReadOnly="False"
+                                                  IsReadOnly="{Binding IsSavedMonthViewLocked}"
                                                   RowHeight="30"
                                                   ColumnHeaderHeight="48"
                                                   Background="White"
@@ -888,7 +982,7 @@
                                                             <Setter Property="Template">
                                                                 <Setter.Value>
                                                                     <ControlTemplate TargetType="{x:Type GroupItem}">
-                                                                        <Expander IsExpanded="True" Background="Transparent" BorderThickness="0" Margin="0,1,0,0">
+                                                                        <Expander IsExpanded="True" Background="Transparent" BorderThickness="0" Margin="0">
                                                                             <Expander.Template>
                                                                                 <ControlTemplate TargetType="Expander">
                                                                                     <DockPanel LastChildFill="True">
@@ -1047,7 +1141,7 @@
                             </TabItem>
 
                             <TabItem Tag="Summary View">
-                                <TabItem.Header><StackPanel Orientation="Horizontal" Tag="Summary View" MouseRightButtonUp="WorkspaceTabHeader_MouseRightButtonUp"><Image x:Name="SummaryTabHeaderIcon" Source="/Assets/Icons/png/ic_tab_summary_16.png" Width="16" Height="16" Margin="0,0,7,0" Tag="Summary View"/><TextBlock Text="Summary"/></StackPanel></TabItem.Header>
+                                <TabItem.Header><StackPanel Orientation="Horizontal" Tag="Summary View" MouseRightButtonUp="WorkspaceTabHeader_MouseRightButtonUp"><Image x:Name="SummaryTabHeaderIcon" Source="/Assets/Icons/png/ic_tab_summary_16.png" Width="16" Height="16" Margin="0,0,7,0" Tag="Summary View"/><TextBlock Text="Task Code Review"/></StackPanel></TabItem.Header>
                                 <DockPanel LastChildFill="True">
                                     <ContentControl DockPanel.Dock="Top" Content="{Binding}" ContentTemplate="{StaticResource WorkspaceViewStripTemplate}" />
                                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
@@ -1083,7 +1177,178 @@
                                 <TabItem.Header><StackPanel Orientation="Horizontal" Tag="Monthly Report" MouseRightButtonUp="WorkspaceTabHeader_MouseRightButtonUp"><Image x:Name="MonthlyReportTabHeaderIcon" Source="/Assets/Icons/png/ic_tab_monthly_report_16.png" Width="16" Height="16" Margin="0,0,7,0" Tag="Monthly Report"/><TextBlock Text="Monthly Report"/></StackPanel></TabItem.Header>
                                 <DockPanel LastChildFill="True">
                                 <ContentControl DockPanel.Dock="Top" Content="{Binding}" ContentTemplate="{StaticResource WorkspaceViewStripTemplate}" />
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <Border DockPanel.Dock="Top"
+                                        Background="#F8FAFC"
+                                        BorderBrush="#D7E0EA"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Margin="0,0,0,8"
+                                        Padding="8,6">
+                                    <DockPanel LastChildFill="False">
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="Canvas" Foreground="#64748B" VerticalAlignment="Center" Margin="0,0,7,0" />
+                                            <ComboBox x:Name="ReportCanvasSizeComboBox"
+                                                      Width="70"
+                                                      Height="30"
+                                                      SelectedIndex="0"
+                                                      SelectionChanged="ReportCanvasSetting_SelectionChanged">
+                                                <ComboBoxItem Content="A4" />
+                                                <ComboBoxItem Content="A3" />
+                                            </ComboBox>
+                                            <ComboBox x:Name="ReportCanvasOrientationComboBox"
+                                                      Width="104"
+                                                      Height="30"
+                                                      Margin="6,0,0,0"
+                                                      SelectedIndex="0"
+                                                      SelectionChanged="ReportCanvasSetting_SelectionChanged">
+                                                <ComboBoxItem Content="Portrait" />
+                                                <ComboBoxItem Content="Landscape" />
+                                            </ComboBox>
+                                            <Button Content="Clear report"
+                                                    Height="30"
+                                                    Margin="8,0,0,0"
+                                                    Padding="10,2"
+                                                    Background="White"
+                                                    BorderBrush="#CBD5E1"
+                                                    Click="ClearReportChartsButton_Click" />
+                                        </StackPanel>
+
+                                        <WrapPanel VerticalAlignment="Center">
+                                            <TextBlock Text="Insert" FontWeight="SemiBold" Foreground="#334155" VerticalAlignment="Center" Margin="2,0,10,0" />
+                                            <Button x:Name="ReportLineToolButton"
+                                                    Tag="LineChart"
+                                                    Width="64"
+                                                    Height="52"
+                                                    Margin="0,0,5,0"
+                                                    Background="White"
+                                                    BorderBrush="#CBD5E1"
+                                                    ToolTip="Create a line chart"
+                                                    Click="AddLineReportChartButton_Click">
+                                                <StackPanel>
+                                                    <Grid Width="34" Height="23">
+                                                        <Line X1="2" Y1="21" X2="2" Y2="1" Stroke="#475569" StrokeThickness="1" />
+                                                        <Line X1="2" Y1="21" X2="33" Y2="21" Stroke="#475569" StrokeThickness="1" />
+                                                        <Polyline Points="3,17 10,8 17,16 25,5 32,12" Stroke="#1684D8" StrokeThickness="1.8" Fill="Transparent" />
+                                                    </Grid>
+                                                    <TextBlock Text="Line" FontSize="11" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button x:Name="ReportColumnToolButton"
+                                                    Tag="ColumnChart"
+                                                    Width="64"
+                                                    Height="52"
+                                                    Background="White"
+                                                    BorderBrush="#CBD5E1"
+                                                    ToolTip="Create a column chart"
+                                                    Click="AddColumnReportChartButton_Click">
+                                                <StackPanel>
+                                                    <Grid Width="34" Height="23">
+                                                        <Line X1="2" Y1="21" X2="2" Y2="1" Stroke="#475569" StrokeThickness="1" />
+                                                        <Line X1="2" Y1="21" X2="33" Y2="21" Stroke="#475569" StrokeThickness="1" />
+                                                        <Rectangle Width="5" Height="9" Canvas.Left="7" Canvas.Top="12" Fill="#69B8EB" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="7,0,0,1" />
+                                                        <Rectangle Width="5" Height="16" Canvas.Left="16" Canvas.Top="5" Fill="#1684D8" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,1" />
+                                                        <Rectangle Width="5" Height="12" Canvas.Left="25" Canvas.Top="9" Fill="#69B8EB" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,1" />
+                                                    </Grid>
+                                                    <TextBlock Text="Column" FontSize="11" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button x:Name="ReportProjectTitleToolButton"
+                                                    Tag="ProjectTitle"
+                                                    Content="Project title"
+                                                    Height="30"
+                                                    Margin="5,0,4,0"
+                                                    Padding="9,2"
+                                                    Background="White"
+                                                    BorderBrush="#CBD5E1"
+                                                    Click="AddProjectTitleReportObjectButton_Click" />
+                                            <Button x:Name="ReportCurrentPeriodToolButton"
+                                                    Tag="CurrentPeriod"
+                                                    Content="Period"
+                                                    Height="30"
+                                                    Margin="0,0,4,0"
+                                                    Padding="9,2"
+                                                    Background="White"
+                                                    BorderBrush="#CBD5E1"
+                                                    Click="AddCurrentPeriodReportObjectButton_Click" />
+                                            <Button x:Name="ReportDateToolButton"
+                                                    Tag="Date"
+                                                    Content="Date"
+                                                    Height="30"
+                                                    Margin="0,0,4,0"
+                                                    Padding="9,2"
+                                                    Background="White"
+                                                    BorderBrush="#CBD5E1"
+                                                    Click="AddDateReportObjectButton_Click" />
+                                            <Button x:Name="ReportTableToolButton"
+                                                    Tag="Table"
+                                                    Content="Table"
+                                                    Height="30"
+                                                    Margin="0,0,4,0"
+                                                    Padding="9,2"
+                                                    Background="White"
+                                                    BorderBrush="#CBD5E1"
+                                                    Click="AddTableReportObjectButton_Click" />
+                                            <Button x:Name="ReportTextToolButton"
+                                                    Tag="Text"
+                                                    Content="Text box"
+                                                    Height="30"
+                                                    Margin="0,0,4,0"
+                                                    Padding="9,2"
+                                                    Background="White"
+                                                    BorderBrush="#CBD5E1"
+                                                    Click="AddTextReportObjectButton_Click" />
+                                            <Button x:Name="ReportTitleTextToolButton"
+                                                    Tag="TitleText"
+                                                    Content="Title text"
+                                                    Height="30"
+                                                    Margin="0,0,4,0"
+                                                    Padding="9,2"
+                                                    Background="White"
+                                                    BorderBrush="#CBD5E1"
+                                                    Click="AddTitleTextReportObjectButton_Click" />
+                                            <Button Content="Pie chart"
+                                                    Height="30"
+                                                    Padding="9,2"
+                                                    IsEnabled="False"
+                                                    ToolTip="Pie chart object is reserved for a future update" />
+                                        </WrapPanel>
+                                    </DockPanel>
+                                </Border>
+                                <Border
+                                        MinHeight="350"
+                                        Margin="0,0,0,10"
+                                        Background="#E8EDF3"
+                                        BorderBrush="#CBD5E1"
+                                        BorderThickness="1"
+                                        CornerRadius="6">
+                                    <ScrollViewer x:Name="MonthlyReportCanvasScrollViewer"
+                                                  HorizontalScrollBarVisibility="Auto"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  Padding="12"
+                                                  PreviewMouseRightButtonDown="MonthlyReportCanvas_PreviewMouseRightButtonDown"
+                                                  PreviewMouseMove="MonthlyReportCanvas_PreviewMouseMove"
+                                                  PreviewMouseRightButtonUp="MonthlyReportCanvas_PreviewMouseRightButtonUp">
+                                        <Canvas x:Name="MonthlyReportChartCanvas"
+                                                Width="794"
+                                                Height="1123"
+                                                Background="White"
+                                                ClipToBounds="True"
+                                                AllowDrop="True"
+                                                DragOver="MonthlyReportCanvas_DragOver"
+                                                Drop="MonthlyReportCanvas_Drop">
+                                            <TextBlock x:Name="MonthlyReportChartCanvasHint"
+                                                       Text="Use Line or Column above to add a chart. Drag a chart by its title bar to position it on the page."
+                                                       Foreground="#94A3B8"
+                                                       FontSize="13"
+                                                       Width="420"
+                                                       TextAlignment="Center"
+                                                       TextWrapping="Wrap"
+                                                       Canvas.Left="187"
+                                                       Canvas.Top="145" />
+                                        </Canvas>
+                                    </ScrollViewer>
+                                </Border>
+                                <ScrollViewer x:Name="LegacyMonthlyReportViewer" VerticalScrollBarVisibility="Auto">
                                     <StackPanel Margin="4">
                                         <Border BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" Background="White" Padding="0" Margin="0,0,0,12">
                                             <Grid>
@@ -1388,6 +1653,121 @@
                                 </DockPanel>
                             </TabItem>
 
+                            <TabItem Tag="Budget">
+                                <TabItem.Header>
+                                    <StackPanel Orientation="Horizontal" Tag="Budget" MouseRightButtonUp="WorkspaceTabHeader_MouseRightButtonUp">
+                                        <Image x:Name="BudgetTabHeaderIcon" Source="/Assets/Icons/png/ic_metric_planned_cost_28.png" Width="16" Height="16" Margin="0,0,7,0" Tag="Budget" />
+                                        <TextBlock Text="Budget" />
+                                    </StackPanel>
+                                </TabItem.Header>
+                                <Grid Margin="8">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+
+                                    <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                                        <Border DockPanel.Dock="Right" Background="#F3E8FF" BorderBrush="#C084FC" BorderThickness="1" CornerRadius="14" Padding="10,4">
+                                            <TextBlock Foreground="#6B21A8" FontWeight="SemiBold">
+                                                <Run Text="Active budget: " /><Run Text="{Binding ActiveBudgetLineName, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </Border>
+                                        <StackPanel>
+                                            <TextBlock Text="Financial-year budgets" FontSize="16" FontWeight="Bold" Foreground="#111827" />
+                                            <TextBlock Text="Enter P3M and LTP/AP by FY. Right-click either row and choose Set as active budget." Foreground="{StaticResource MutedTextBrush}" Margin="0,3,0,0" />
+                                        </StackPanel>
+                                    </DockPanel>
+
+                                    <Border Grid.Row="1" BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" CornerRadius="8" Margin="0,0,0,12" MaxHeight="180">
+                                        <DataGrid x:Name="BudgetGrid"
+                                                  ItemsSource="{Binding BudgetLines}"
+                                                  IsReadOnly="{Binding IsViewingSavedMonth}"
+                                                  RowHeight="34"
+                                                  ColumnHeaderHeight="34"
+                                                  SelectionMode="Single"
+                                                  SelectionUnit="FullRow"
+                                                  PreviewMouseRightButtonUp="BudgetGrid_PreviewMouseRightButtonUp" />
+                                    </Border>
+
+                                    <DockPanel Grid.Row="2" LastChildFill="True">
+                                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,16,0" VerticalAlignment="Center">
+                                                <Rectangle Width="18" Height="3" Fill="#1D4ED8" VerticalAlignment="Center" />
+                                                <TextBlock Text="  Spend to date" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,16,0" VerticalAlignment="Center">
+                                                <Canvas Width="18" Height="8" VerticalAlignment="Center">
+                                                    <Line X1="0" Y1="4" X2="18" Y2="4" Stroke="#0F766E" StrokeThickness="3" StrokeDashArray="4 3" />
+                                                </Canvas>
+                                                <TextBlock Text="  Spend + forecast" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Rectangle Width="18" Height="3" Fill="#7C3AED" VerticalAlignment="Center" />
+                                                <TextBlock Text="  Active budget" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <TextBlock DockPanel.Dock="Bottom" Text="{Binding BudgetChartStatusText}" Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,8,0,0" />
+
+                                        <Border BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8">
+                                            <Grid Height="300" ClipToBounds="True">
+                                                <ScrollViewer x:Name="BudgetChartScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" CanContentScroll="False">
+                                                    <Grid Width="{Binding BudgetChartCanvasWidth}" Height="300">
+                                                        <Canvas Width="{Binding BudgetChartCanvasWidth}" Height="300">
+                                                            <ItemsControl ItemsSource="{Binding BudgetChartGridLines}">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate><Canvas Width="{Binding BudgetChartCanvasWidth}" Height="300" /></ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate><Line X1="{Binding X1}" Y1="{Binding Y1}" X2="{Binding X2}" Y2="{Binding Y2}" Stroke="#E5E7EB" StrokeThickness="1" /></DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+
+                                                            <Path Data="{Binding BudgetActualChartGeometry}" Stroke="#1D4ED8" StrokeThickness="3" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Fill="{x:Null}" />
+                                                            <Path Data="{Binding BudgetForecastChartGeometry}" Stroke="#0F766E" StrokeThickness="3" StrokeDashArray="4 3" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Fill="{x:Null}" />
+                                                            <Path Data="{Binding BudgetPlanChartGeometry}" Stroke="#7C3AED" StrokeThickness="3" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Fill="{x:Null}" />
+
+                                                            <ItemsControl ItemsSource="{Binding BudgetChartXAxisLabels}">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate><Canvas Width="{Binding BudgetChartCanvasWidth}" Height="300" /></ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemContainerStyle>
+                                                                    <Style TargetType="ContentPresenter">
+                                                                        <Setter Property="Canvas.Left" Value="{Binding X}" />
+                                                                        <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                                                                    </Style>
+                                                                </ItemsControl.ItemContainerStyle>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate><TextBlock Text="{Binding Text}" Foreground="{StaticResource MutedTextBrush}" FontSize="10" TextAlignment="Center" /></DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </Canvas>
+                                                    </Grid>
+                                                </ScrollViewer>
+
+                                                <Border Width="58" HorizontalAlignment="Left" Background="White" IsHitTestVisible="False" Panel.ZIndex="20">
+                                                    <ItemsControl ItemsSource="{Binding BudgetChartYAxisLabels}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate><Canvas Width="58" Height="300" /></ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemContainerStyle>
+                                                            <Style TargetType="ContentPresenter">
+                                                                <Setter Property="Canvas.Left" Value="{Binding X}" />
+                                                                <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                                                            </Style>
+                                                        </ItemsControl.ItemContainerStyle>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate><TextBlock Text="{Binding Text}" Foreground="{StaticResource MutedTextBrush}" FontSize="11" /></DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </DockPanel>
+                                </Grid>
+                            </TabItem>
+
                             <TabItem Tag="Schedule">
                                 <TabItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="◇" Foreground="#60708D" FontSize="16" Margin="0,0,7,0"/><TextBlock Text="Schedule"/></StackPanel></TabItem.Header>
                                 <DockPanel LastChildFill="True">
@@ -1433,7 +1813,7 @@
                                                        VerticalAlignment="Center"
                                                        Margin="0,2,6,2" />
                                              <Button Content="Baseline Comparison" Padding="8,3" Margin="0,2,6,2" Click="SchedulePopoutComparison_Click" />
-                                             <Button Content="Activity" Padding="8,3" Margin="0,2,14,2" Click="ScheduleActivityPanel_Click" />
+                                             <Button Content="Review panel" Padding="8,3" Margin="0,2,14,2" Click="ScheduleActivityPanel_Click" />
                                              <Button Content="Calendars..." Padding="8,3" Margin="0,2,14,2" Click="ScheduleCalendars_Click" />
                                              <TextBlock Text="Progress" VerticalAlignment="Center" Margin="0,0,4,0" />
                                              <Button Content="0%" Padding="7,3" Margin="0,2,2,2" Click="ScheduleProgress0_Click" />
@@ -1450,11 +1830,11 @@
                                     </Border>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="11*" MinWidth="320" />
+                                            <ColumnDefinition x:Name="ScheduleGridColumn" Width="520" MinWidth="260" />
                                             <ColumnDefinition Width="8" />
-                                            <ColumnDefinition Width="9*" MinWidth="260" />
-                                            <ColumnDefinition x:Name="ScheduleActivityPanelSplitterColumn" Width="0" />
-                                            <ColumnDefinition x:Name="ScheduleActivityPanelColumn" Width="0" />
+                                            <ColumnDefinition x:Name="ScheduleGanttColumn" Width="*" MinWidth="280" />
+                                            <ColumnDefinition x:Name="ScheduleActivityPanelSplitterColumn" Width="8" />
+                                            <ColumnDefinition x:Name="ScheduleActivityPanelColumn" Width="340" MinWidth="280" />
                                         </Grid.ColumnDefinitions>
                                         <DataGrid x:Name="ScheduleGrid"
                                                   local:ProjectDataGridProfiles.Profile="Schedule"
@@ -1571,7 +1951,15 @@
                                                 <DataGridTextColumn Header="Note" Binding="{Binding ScheduleNote}" IsReadOnly="True" Width="Auto" MinWidth="90" />
                                             </DataGrid.Columns>
                                         </DataGrid>
-                                        <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" Background="Transparent" />
+                                        <GridSplitter Grid.Column="1"
+                                                      Width="8"
+                                                      HorizontalAlignment="Stretch"
+                                                      Background="#E2E8F0"
+                                                      Cursor="SizeWE"
+                                                      ResizeDirection="Columns"
+                                                      ResizeBehavior="PreviousAndNext"
+                                                      ShowsPreview="True"
+                                                      ToolTip="Drag to resize the activity list" />
                                         <Border Grid.Column="2" BorderBrush="{StaticResource SoftBorderBrush}" BorderThickness="1" CornerRadius="8" Background="White" ClipToBounds="True">
                                             <DockPanel LastChildFill="True">
                                                 <ScrollViewer x:Name="GanttHeaderScroll" DockPanel.Dock="Top" Height="48" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Focusable="False">
@@ -1589,10 +1977,18 @@
                                                 </ScrollViewer>
                                             </DockPanel>
                                         </Border>
-                                        <GridSplitter x:Name="ScheduleActivityPanelSplitter" Grid.Column="3" Width="8" HorizontalAlignment="Stretch" Background="Transparent" Visibility="Collapsed" />
+                                        <GridSplitter x:Name="ScheduleActivityPanelSplitter"
+                                                      Grid.Column="3"
+                                                      Width="8"
+                                                      HorizontalAlignment="Stretch"
+                                                      Background="#E2E8F0"
+                                                      Cursor="SizeWE"
+                                                      ResizeDirection="Columns"
+                                                      ResizeBehavior="PreviousAndNext"
+                                                      ShowsPreview="True"
+                                                      ToolTip="Drag to resize the review panel" />
                                         <Border x:Name="ScheduleActivityPanel"
                                                 Grid.Column="4"
-                                                Visibility="Collapsed"
                                                 BorderBrush="{StaticResource SoftBorderBrush}"
                                                 BorderThickness="1"
                                                 CornerRadius="10"
@@ -1605,7 +2001,7 @@
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel>
-                                                        <TextBlock Text="Activity" FontSize="16" FontWeight="Bold" Foreground="#0F172A" />
+                                                        <TextBlock Text="Activity review" FontSize="16" FontWeight="Bold" Foreground="#0F172A" />
                                                         <TextBlock Text="{Binding SelectedScheduleActivity.Id, TargetNullValue=No activity selected}" Foreground="{StaticResource MutedTextBrush}" />
                                                     </StackPanel>
                                                     <Button Grid.Column="1" Content="×" Width="28" Height="28" MinWidth="0" Padding="0" BorderThickness="0" Background="Transparent" FontSize="18" Click="ScheduleActivityPanelClose_Click" />

@@ -26,6 +26,13 @@ public sealed class ForecastLine : ObservableModel
     public string TaskNumber { get; set; } = string.Empty;
     public string ResourceName { get; set; } = string.Empty;
     public string ProjectCode { get; set; } = string.Empty;
+    // Initial accounting loads use the resolved ledger resource as their
+    // canonical identity, preventing generic resource descriptions (for
+    // example, "Contractors Payments") from double-counting actuals.
+    public bool UseLedgerResourceMatchOnly { get; set; }
+    // Null preserves the legacy task/resource-wide match. An empty string is a
+    // deliberate project scope for transactions whose project is unassigned.
+    public string? TransactionProjectCode { get; set; }
     public string ReportingCategoryOverride
     {
         get => _reportingCategoryOverride;

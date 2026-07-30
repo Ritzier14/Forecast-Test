@@ -8,7 +8,7 @@ namespace ProjectCostForecast.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
-    private readonly SchedulingService _schedulingService = new();
+    private readonly SchedulingService _schedulingService;
     private ScheduleActivity? _selectedScheduleActivity;
     private bool _scheduleRecalcQueued;
     private bool _suppressScheduleEvents;
@@ -600,8 +600,8 @@ public sealed partial class MainWindowViewModel
             ? formattedLink
             : $"{successor.PredecessorText}, {formattedLink}";
         EnsureScheduleActivityIsScheduled(successor);
-        StatusText = $"Linked {predecessor.Id} → {successor.Id} (FS).";
-        StatusText = $"Linked {predecessor.Id} to {successor.Id} ({new ActivityLink { Type = linkType }.TypeLabel}).";
+        var lagText = lagDays == 0 ? string.Empty : $" {lagDays:+0;-0}d";
+        StatusText = $"Linked {predecessor.Id} to {successor.Id} ({new ActivityLink { Type = linkType }.TypeLabel}{lagText}).";
         return true;
     }
 
@@ -650,7 +650,10 @@ public sealed partial class MainWindowViewModel
         StatusText = $"{activity.Id} added to the link clipboard.";
     }
 
-    public bool PasteScheduleLinkTo(ScheduleActivity successor, ActivityLinkType linkType = ActivityLinkType.FinishToStart)
+    public bool PasteScheduleLinkTo(
+        ScheduleActivity successor,
+        ActivityLinkType linkType = ActivityLinkType.FinishToStart,
+        int lagDays = 0)
     {
         for (var index = 0; index < _scheduleLinkClipboardActivityIds.Count; index++)
         {
@@ -664,7 +667,7 @@ public sealed partial class MainWindowViewModel
                 continue;
             }
 
-            if (TryCreateScheduleLink(predecessor, successor, linkType, 0))
+            if (TryCreateScheduleLink(predecessor, successor, linkType, lagDays))
             {
                 _scheduleLinkClipboardActivityIds.RemoveAt(index);
                 OnPropertyChanged(nameof(ScheduleLinkClipboardText));

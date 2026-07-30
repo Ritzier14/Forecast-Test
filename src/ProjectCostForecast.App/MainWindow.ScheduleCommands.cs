@@ -10,7 +10,10 @@ namespace ProjectCostForecast.App;
 
 public partial class MainWindow
 {
+    private const double DefaultScheduleReviewPanelWidth = 340;
+    private const double MinimumScheduleReviewPanelWidth = 280;
     private ScheduleComparisonWindow? _scheduleComparisonWindow;
+    private GridLength _scheduleReviewPanelWidth = new(DefaultScheduleReviewPanelWidth);
 
     private void ScheduleActivityPanel_Click(object sender, RoutedEventArgs e)
     {
@@ -25,10 +28,17 @@ public partial class MainWindow
 
     private void SetScheduleActivityPanelOpen(bool open)
     {
+        if (!open && ScheduleActivityPanelColumn.ActualWidth > 0)
+        {
+            _scheduleReviewPanelWidth = new GridLength(
+                Math.Max(ScheduleActivityPanelColumn.MinWidth, ScheduleActivityPanelColumn.ActualWidth));
+        }
+
         ScheduleActivityPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
         ScheduleActivityPanelSplitter.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
         ScheduleActivityPanelSplitterColumn.Width = open ? new GridLength(8) : new GridLength(0);
-        ScheduleActivityPanelColumn.Width = open ? new GridLength(360) : new GridLength(0);
+        ScheduleActivityPanelColumn.MinWidth = open ? MinimumScheduleReviewPanelWidth : 0;
+        ScheduleActivityPanelColumn.Width = open ? _scheduleReviewPanelWidth : new GridLength(0);
     }
 
     private void ScheduleInsertAbove_Click(object sender, RoutedEventArgs e)

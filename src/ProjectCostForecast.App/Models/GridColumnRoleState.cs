@@ -6,6 +6,7 @@ namespace ProjectCostForecast.App.Models;
 public static class GridColumnRoleState
 {
     public const string ForecastRowSelector = nameof(ForecastRowSelector);
+    public const string ForecastComments = nameof(ForecastComments);
 
     public static readonly DependencyProperty RoleProperty = DependencyProperty.RegisterAttached(
         "Role",

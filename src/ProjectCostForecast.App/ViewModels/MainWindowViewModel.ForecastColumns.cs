@@ -273,6 +273,11 @@ public sealed partial class MainWindowViewModel
 
     public bool IsForecastPeriodLocked(DateOnly? periodStartDate)
     {
+        if (IsViewingSavedMonth)
+        {
+            return IsSavedMonthViewLocked;
+        }
+
         return _forecastEditLockCutoffDate.HasValue
             && periodStartDate.HasValue
             && periodStartDate.Value < _forecastEditLockCutoffDate.Value;

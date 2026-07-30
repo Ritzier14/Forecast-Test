@@ -16,14 +16,21 @@ public sealed class CategorySummary
     public decimal MonthForecastVariance { get; set; }
 }
 
-public sealed class ContingencyEntry
+public sealed class ContingencyEntry : ObservableModel
 {
-    public DateOnly? Date { get; set; }
-    public decimal ContingencyExpended { get; set; }
-    public decimal RemainingContingency { get; set; }
-    public decimal ProposedExpenditure { get; set; }
-    public string Reason { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
+    private DateOnly? _date;
+    private decimal _contingencyExpended;
+    private decimal _remainingContingency;
+    private decimal _proposedExpenditure;
+    private string _reason = string.Empty;
+    private string _status = string.Empty;
+
+    public DateOnly? Date { get => _date; set => SetProperty(ref _date, value); }
+    public decimal ContingencyExpended { get => _contingencyExpended; set => SetProperty(ref _contingencyExpended, value); }
+    public decimal RemainingContingency { get => _remainingContingency; set => SetProperty(ref _remainingContingency, value); }
+    public decimal ProposedExpenditure { get => _proposedExpenditure; set => SetProperty(ref _proposedExpenditure, value); }
+    public string Reason { get => _reason; set => SetProperty(ref _reason, value ?? string.Empty); }
+    public string Status { get => _status; set => SetProperty(ref _status, value ?? string.Empty); }
 }
 
 public sealed class ResourceSummary
@@ -230,6 +237,10 @@ public sealed class WorkspaceViewTab : ObservableModel
     public bool ShowZeroAsBlank { get; set; } = true;
     public bool GroupForecastLinesByTask { get; set; }
     public string ForecastGroupByKey { get; set; } = string.Empty;
+    public bool ReportCanvasInitialized { get; set; }
+    public string ReportCanvasPageSize { get; set; } = "A4";
+    public string ReportCanvasOrientation { get; set; } = "Portrait";
+    public List<ReportCanvasObjectLayout> ReportCanvasObjects { get; set; } = [];
 
     public string Name
     {

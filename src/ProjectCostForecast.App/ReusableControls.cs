@@ -19,10 +19,22 @@ public sealed class WarningBar : Border
         typeof(WarningBar),
         new PropertyMetadata(null, OnItemsSourceChanged));
 
+    public static readonly DependencyProperty IsSuppressedProperty = DependencyProperty.Register(
+        nameof(IsSuppressed),
+        typeof(bool),
+        typeof(WarningBar),
+        new PropertyMetadata(false, OnIsSuppressedChanged));
+
     public IEnumerable? ItemsSource
     {
         get => (IEnumerable?)GetValue(ItemsSourceProperty);
         set => SetValue(ItemsSourceProperty, value);
+    }
+
+    public bool IsSuppressed
+    {
+        get => (bool)GetValue(IsSuppressedProperty);
+        set => SetValue(IsSuppressedProperty, value);
     }
 
     public WarningBar()
@@ -61,9 +73,14 @@ public sealed class WarningBar : Border
         UpdateVisibility();
     }
 
+    private static void OnIsSuppressedChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
+    {
+        ((WarningBar)dependencyObject).UpdateVisibility();
+    }
+
     private void UpdateVisibility()
     {
-        Visibility = HasItems(ItemsSource) ? Visibility.Visible : Visibility.Collapsed;
+        Visibility = !IsSuppressed && HasItems(ItemsSource) ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private static bool HasItems(IEnumerable? items)

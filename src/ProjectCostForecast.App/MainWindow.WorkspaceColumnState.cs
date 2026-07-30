@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
@@ -66,89 +67,129 @@ public partial class MainWindow
 
     private void WireViewModelSubscriptions()
     {
-        if (ReferenceEquals(_subscribedViewModel, DataContext))
+        var nextViewModel = DataContext as MainWindowViewModel;
+        if (ReferenceEquals(_subscribedViewModel, nextViewModel))
         {
             return;
         }
 
-        _subscribedViewModel = DataContext as MainWindowViewModel;
+        UnwireViewModelSubscriptions();
+        _subscribedViewModel = nextViewModel;
         if (_subscribedViewModel is null)
         {
             return;
         }
 
-        _subscribedViewModel.MonthlyPivotPeriods.CollectionChanged += (_, _) => RebuildMonthlyPivotColumns();
-        _subscribedViewModel.RawTransactionsMonthlyPivotPeriods.CollectionChanged += (_, _) => RebuildMonthlyPivotColumns();
-        _subscribedViewModel.LedgerMonthlyPivotPeriods.CollectionChanged += (_, _) => RebuildMonthlyPivotColumns();
-        _subscribedViewModel.PivotResultColumns.CollectionChanged += (_, _) => RebuildMonthlyPivotColumns();
-        _subscribedViewModel.CtcMonthForecastColumns.CollectionChanged += (_, _) => RebuildForecastGridColumns();
-        _subscribedViewModel.PropertyChanged += (_, e) =>
+        _subscribedViewModel.MonthlyPivotPeriods.CollectionChanged += ViewModelPivotColumns_CollectionChanged;
+        _subscribedViewModel.RawTransactionsMonthlyPivotPeriods.CollectionChanged += ViewModelPivotColumns_CollectionChanged;
+        _subscribedViewModel.LedgerMonthlyPivotPeriods.CollectionChanged += ViewModelPivotColumns_CollectionChanged;
+        _subscribedViewModel.PivotResultColumns.CollectionChanged += ViewModelPivotColumns_CollectionChanged;
+        _subscribedViewModel.CtcMonthForecastColumns.CollectionChanged += ViewModelForecastColumns_CollectionChanged;
+        _subscribedViewModel.BudgetFiscalYears.CollectionChanged += ViewModelBudgetFiscalYears_CollectionChanged;
+        _subscribedViewModel.PropertyChanged += SubscribedViewModel_PropertyChanged;
+    }
+
+    private void UnwireViewModelSubscriptions()
+    {
+        var viewModel = _subscribedViewModel;
+        if (viewModel is null)
         {
-            if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowCtcMonthForecastColumns), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowMonthNameAboveFiscalPeriod), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedCtcMonthForecastYear), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowForecastZeroAsBlank), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowVarianceIndicators), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowCurrencySymbols), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ForecastMonthMillionDecimals), StringComparison.Ordinal))
-            {
-                RebuildForecastGridColumns();
-            }
+            return;
+        }
 
-            if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ForecastFreezeColumnKey), StringComparison.Ordinal))
-            {
-                ApplyForecastFreezeBoundaryForCurrentColumns();
-            }
+        viewModel.MonthlyPivotPeriods.CollectionChanged -= ViewModelPivotColumns_CollectionChanged;
+        viewModel.RawTransactionsMonthlyPivotPeriods.CollectionChanged -= ViewModelPivotColumns_CollectionChanged;
+        viewModel.LedgerMonthlyPivotPeriods.CollectionChanged -= ViewModelPivotColumns_CollectionChanged;
+        viewModel.PivotResultColumns.CollectionChanged -= ViewModelPivotColumns_CollectionChanged;
+        viewModel.CtcMonthForecastColumns.CollectionChanged -= ViewModelForecastColumns_CollectionChanged;
+        viewModel.BudgetFiscalYears.CollectionChanged -= ViewModelBudgetFiscalYears_CollectionChanged;
+        viewModel.PropertyChanged -= SubscribedViewModel_PropertyChanged;
+        _subscribedViewModel = null;
+    }
 
-            if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ActiveWorkspaceKey), StringComparison.Ordinal))
-            {
-                QueueApplyCurrentWorkspaceViewColumnState();
-            }
+    private void ViewModelPivotColumns_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        => RebuildMonthlyPivotColumns();
 
-            if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedWorkspaceView), StringComparison.Ordinal))
-            {
-                QueueApplyCurrentWorkspaceViewColumnState();
-            }
+    private void ViewModelForecastColumns_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        => RebuildForecastGridColumns();
 
-            if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ActiveDetailWorkspaceKey), StringComparison.Ordinal))
-            {
-                QueueApplyCurrentDetailWorkspaceViewColumnState();
-            }
+    private void ViewModelBudgetFiscalYears_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        => RebuildBudgetGridColumns();
 
-            if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedDetailWorkspaceView), StringComparison.Ordinal))
-            {
-                QueueApplyCurrentDetailWorkspaceViewColumnState();
-            }
+    private void SubscribedViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowCtcMonthForecastColumns), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowMonthNameAboveFiscalPeriod), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedCtcMonthForecastYear), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowForecastZeroAsBlank), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowVarianceIndicators), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowCurrencySymbols), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ForecastMonthMillionDecimals), StringComparison.Ordinal))
+        {
+            RebuildForecastGridColumns();
+        }
 
-            if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ForecastGroupByKey), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowOnlyLinesWithActualCost), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowCostThisMonthOnly), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowOnlyLinesWithRemainingForecast), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedMonthlyVarianceFilter), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedBudgetVarianceFilter), StringComparison.Ordinal))
-            {
-                RefreshForecastGridStatePills();
-            }
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.IsViewingSavedMonth), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowCurrencySymbols), StringComparison.Ordinal))
+        {
+            RebuildBudgetGridColumns();
+        }
 
-            if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedForecastLine), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedResourceSummary), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedScheduleActivity), StringComparison.Ordinal))
-            {
-                Dispatcher.BeginInvoke(RefreshCurrentRowVisuals, DispatcherPriority.Render);
-            }
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ForecastFreezeColumnKey), StringComparison.Ordinal))
+        {
+            ApplyForecastFreezeBoundaryForCurrentColumns();
+        }
 
-            if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.WorkspaceTabIconVersion), StringComparison.Ordinal))
-            {
-                RefreshWorkspaceTabIcons();
-            }
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ActiveWorkspaceKey), StringComparison.Ordinal))
+        {
+            QueueApplyCurrentWorkspaceViewColumnState();
+            SwitchMonthlyReportCanvasView();
+        }
 
-            if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.LedgerChartCanvasWidth), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.LedgerActualChartGeometry), StringComparison.Ordinal)
-                || string.Equals(e.PropertyName, nameof(MainWindowViewModel.LedgerForecastChartGeometry), StringComparison.Ordinal))
-            {
-                QueueScrollLedgerChartToEnd();
-            }
-        };
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedWorkspaceView), StringComparison.Ordinal))
+        {
+            QueueApplyCurrentWorkspaceViewColumnState();
+            SwitchMonthlyReportCanvasView();
+        }
+
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ActiveDetailWorkspaceKey), StringComparison.Ordinal))
+        {
+            QueueApplyCurrentDetailWorkspaceViewColumnState();
+        }
+
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedDetailWorkspaceView), StringComparison.Ordinal))
+        {
+            QueueApplyCurrentDetailWorkspaceViewColumnState();
+        }
+
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ForecastGroupByKey), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowOnlyLinesWithActualCost), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowCostThisMonthOnly), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowOnlyLinesWithRemainingForecast), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedMonthlyVarianceFilter), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedBudgetVarianceFilter), StringComparison.Ordinal))
+        {
+            RefreshForecastGridStatePills();
+        }
+
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedForecastLine), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedResourceSummary), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedScheduleActivity), StringComparison.Ordinal))
+        {
+            Dispatcher.BeginInvoke(RefreshCurrentRowVisuals, DispatcherPriority.Render);
+        }
+
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.WorkspaceTabIconVersion), StringComparison.Ordinal))
+        {
+            RefreshWorkspaceTabIcons();
+        }
+
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.LedgerChartCanvasWidth), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.LedgerActualChartGeometry), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.LedgerForecastChartGeometry), StringComparison.Ordinal))
+        {
+            QueueScrollLedgerChartToEnd();
+        }
     }
 
     private void QueueScrollLedgerChartToEnd()

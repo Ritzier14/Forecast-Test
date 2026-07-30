@@ -6,6 +6,8 @@ namespace ProjectCostForecast.App.Models;
 public static class GridColumnPresentationState
 {
     private static readonly Brush DefaultHeaderGradient = CreateDefaultHeaderGradient();
+    private static readonly Brush DefaultColumnBorderBrush = CreateFrozenBrush(0xEE, 0xF3, 0xF8);
+    private static readonly Brush DefaultHeaderBorderBrush = CreateFrozenBrush(0xE2, 0xEA, 0xF4);
 
     public static readonly DependencyProperty IconGlyphProperty =
         DependencyProperty.RegisterAttached(
@@ -47,14 +49,14 @@ public static class GridColumnPresentationState
             "ColumnBorderBrush",
             typeof(Brush),
             typeof(GridColumnPresentationState),
-            new FrameworkPropertyMetadata(Brushes.Transparent));
+            new FrameworkPropertyMetadata(DefaultColumnBorderBrush));
 
     public static readonly DependencyProperty HeaderBorderBrushProperty =
         DependencyProperty.RegisterAttached(
             "HeaderBorderBrush",
             typeof(Brush),
             typeof(GridColumnPresentationState),
-            new FrameworkPropertyMetadata(Brushes.Transparent));
+            new FrameworkPropertyMetadata(DefaultHeaderBorderBrush));
 
     public static readonly DependencyProperty HeaderColorSpecProperty =
         DependencyProperty.RegisterAttached(
@@ -107,5 +109,12 @@ public static class GridColumnPresentationState
         gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xE1, 0xE8, 0xF0), 1));
         gradient.Freeze();
         return gradient;
+    }
+
+    private static Brush CreateFrozenBrush(byte red, byte green, byte blue)
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(red, green, blue));
+        brush.Freeze();
+        return brush;
     }
 }

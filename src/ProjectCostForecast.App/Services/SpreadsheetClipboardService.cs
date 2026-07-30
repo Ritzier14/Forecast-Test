@@ -98,28 +98,42 @@ public static class SpreadsheetClipboardService
             return converted;
         }
 
-        var numericText = trimmed
-            .Replace(CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol, string.Empty, StringComparison.CurrentCulture)
-            .Replace("$", string.Empty, StringComparison.Ordinal)
-            .Replace(",", string.Empty, StringComparison.Ordinal);
-
-        try
+        var currentCultureText = RemoveCurrencySymbol(trimmed, CultureInfo.CurrentCulture);
+        if (TryChangeType(currentCultureText, targetType, CultureInfo.CurrentCulture, out value))
         {
-            value = Convert.ChangeType(numericText, targetType, CultureInfo.CurrentCulture);
             return true;
         }
-        catch
+
+        var invariantText = RemoveCurrencySymbol(trimmed, CultureInfo.InvariantCulture);
+        if (TryChangeType(invariantText, targetType, CultureInfo.InvariantCulture, out value))
         {
-            try
-            {
-                value = Convert.ChangeType(numericText, targetType, CultureInfo.InvariantCulture);
-                return true;
-            }
-            catch
-            {
-                value = null;
-                return false;
-            }
+            return true;
+        }
+
+        value = null;
+        return false;
+    }
+
+    private static string RemoveCurrencySymbol(string text, CultureInfo culture)
+    {
+        var symbol = culture.NumberFormat.CurrencySymbol;
+        var withoutCultureSymbol = string.IsNullOrEmpty(symbol)
+            ? text
+            : text.Replace(symbol, string.Empty, StringComparison.Ordinal);
+        return withoutCultureSymbol.Replace("$", string.Empty, StringComparison.Ordinal).Trim();
+    }
+
+    private static bool TryChangeType(string text, Type targetType, CultureInfo culture, out object? value)
+    {
+        try
+        {
+            value = Convert.ChangeType(text, targetType, culture);
+            return true;
+        }
+        catch (Exception exception) when (exception is FormatException or InvalidCastException or OverflowException)
+        {
+            value = null;
+            return false;
         }
     }
 }

@@ -42,7 +42,7 @@ public partial class MainWindow
     }
 
     private double _ganttDayWidth = 18;
-    private bool _ganttWired;
+    private MainWindowViewModel? _ganttSubscribedViewModel;
     private bool _ganttSyncingScroll;
     private ScrollViewer? _scheduleGridScrollViewer;
     private GanttDragMode _ganttDragMode;
@@ -54,6 +54,7 @@ public partial class MainWindow
     private DateOnly _ganttDragRangeStart;
     private Rectangle? _ganttGhostRect;
     private Line? _ganttLinkLine;
+    private Border? _ganttLinkHint;
     private bool _ganttDragMoved;
     private Point _ganttCreateStart;
     private ScheduleActivity? _schedulePrimarySelection;
@@ -68,21 +69,63 @@ public partial class MainWindow
 
     private void InitializeGanttChart()
     {
-        Loaded += (_, _) => WireGanttSubscriptions();
-        DataContextChanged += (_, _) => WireGanttSubscriptions();
+        Loaded += MainWindow_GanttLoaded;
+        DataContextChanged += MainWindow_GanttDataContextChanged;
+        Unloaded += MainWindow_SubscriptionsUnloaded;
+    }
+
+    private void MainWindow_GanttLoaded(object sender, RoutedEventArgs e)
+    {
+        WireViewModelSubscriptions();
+        WireGanttSubscriptions();
+    }
+
+    private void MainWindow_GanttDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        WireViewModelSubscriptions();
+        WireGanttSubscriptions();
+    }
+
+    private void MainWindow_SubscriptionsUnloaded(object sender, RoutedEventArgs e)
+    {
+        UnwireGanttSubscriptions();
+        UnwireViewModelSubscriptions();
     }
 
     private void WireGanttSubscriptions()
     {
-        if (_ganttWired || DataContext is not MainWindowViewModel viewModel)
+        var nextViewModel = DataContext as MainWindowViewModel;
+        if (ReferenceEquals(_ganttSubscribedViewModel, nextViewModel))
         {
             return;
         }
 
-        _ganttWired = true;
-        viewModel.ScheduleRecalculated += (_, _) => QueueRedrawGantt();
+        UnwireGanttSubscriptions();
+        _ganttSubscribedViewModel = nextViewModel;
+        if (_ganttSubscribedViewModel is null)
+        {
+            return;
+        }
+
+        _ganttSubscribedViewModel.ScheduleRecalculated += GanttViewModel_ScheduleRecalculated;
         QueueRedrawGantt();
         AutoSizeScheduleGridColumns();
+    }
+
+    private void UnwireGanttSubscriptions()
+    {
+        if (_ganttSubscribedViewModel is null)
+        {
+            return;
+        }
+
+        _ganttSubscribedViewModel.ScheduleRecalculated -= GanttViewModel_ScheduleRecalculated;
+        _ganttSubscribedViewModel = null;
+    }
+
+    private void GanttViewModel_ScheduleRecalculated(object? sender, EventArgs e)
+    {
+        QueueRedrawGantt();
     }
 
     private void AutoSizeScheduleGridColumns()
@@ -737,7 +780,11 @@ public partial class MainWindow
             var polyline = new Polyline
             {
                 Stroke = GanttLinkBrush,
-                StrokeThickness = 5,
+                StrokeThickness = 1.5,
+                StrokeLineJoin = PenLineJoin.Round,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round,
+                IsHitTestVisible = false,
                 Points =
                 [
                     new Point(fromX, fromY),
@@ -749,8 +796,16 @@ public partial class MainWindow
                 ],
                 ToolTip = $"{link.PredecessorId} {link.TypeLabel}{(link.LagDays != 0 ? (link.LagDays > 0 ? "+" : "") + link.LagDays : string.Empty)} → {link.SuccessorId}"
             };
-            polyline.Cursor = Cursors.Hand;
-            polyline.MouseLeftButtonDown += (_, e) =>
+            var linkHitTarget = new Polyline
+            {
+                Stroke = Brushes.Transparent,
+                StrokeThickness = 10,
+                Points = polyline.Points,
+                ToolTip = polyline.ToolTip,
+                Cursor = Cursors.Hand
+            };
+            polyline.ToolTip = null;
+            linkHitTarget.MouseLeftButtonDown += (_, e) =>
             {
                 e.Handled = true;
                 if (e.ClickCount != 2)
@@ -760,7 +815,7 @@ public partial class MainWindow
 
                 EditScheduleRelationship(viewModel, successor, link);
             };
-            polyline.MouseRightButtonUp += (_, e) =>
+            linkHitTarget.MouseRightButtonUp += (_, e) =>
             {
                 var menu = new ContextMenu();
                 menu.Items.Add(CreateScheduleMenuItem("Edit relationship...", () => EditScheduleRelationship(viewModel, successor, link)));
@@ -776,11 +831,12 @@ public partial class MainWindow
                 menu.Items.Add(CreateScheduleMenuItem("Lag -1 day", () => viewModel.UpdateScheduleLink(successor, predecessor.Id, link.Type, link.LagDays - 1)));
                 menu.Items.Add(CreateScheduleMenuItem("Lag +1 day", () => viewModel.UpdateScheduleLink(successor, predecessor.Id, link.Type, link.LagDays + 1)));
                 menu.Items.Add(CreateScheduleMenuItem("Remove relationship", () => viewModel.BreakScheduleLink(successor, predecessor.Id)));
-                menu.PlacementTarget = polyline;
+                menu.PlacementTarget = linkHitTarget;
                 menu.Placement = PlacementMode.MousePoint;
                 menu.IsOpen = true;
                 e.Handled = true;
             };
+            GanttBodyCanvas.Children.Add(linkHitTarget);
             GanttBodyCanvas.Children.Add(polyline);
 
             var arrowTipY = succRow >= predRow ? toY + 4 : toY - 4;
@@ -1221,7 +1277,7 @@ public partial class MainWindow
             Stroke = GanttLinkBrush,
             StrokeThickness = 1.4,
             Cursor = Cursors.Cross,
-            ToolTip = "Drag onto another bar to link (finish-to-start)",
+            ToolTip = "Drag to a target start for FS, or farther left/right to add lead/lag",
             Tag = activity
         };
         var centerX = x + 6.5;
@@ -1246,6 +1302,23 @@ public partial class MainWindow
                 IsHitTestVisible = false
             };
             GanttBodyCanvas.Children.Add(_ganttLinkLine);
+            _ganttLinkHint = new Border
+            {
+                Background = Brushes.White,
+                BorderBrush = GanttLinkBrush,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(5, 2, 5, 2),
+                Child = new TextBlock
+                {
+                    Foreground = GanttHeaderTextBrush,
+                    FontSize = 11,
+                    FontWeight = FontWeights.SemiBold
+                },
+                Visibility = Visibility.Collapsed,
+                IsHitTestVisible = false
+            };
+            GanttBodyCanvas.Children.Add(_ganttLinkHint);
             handle.CaptureMouse();
             e.Handled = true;
         };
@@ -1260,6 +1333,7 @@ public partial class MainWindow
             var position = e.GetPosition(GanttBodyCanvas);
             _ganttLinkLine.X2 = position.X;
             _ganttLinkLine.Y2 = position.Y;
+            UpdateGanttLinkDropHint(position);
             _ganttDragMoved = true;
         };
 
@@ -1295,7 +1369,9 @@ public partial class MainWindow
             var targetRow = (int)Math.Floor(position.Y / GanttRowHeight);
             if (targetRow >= 0 && targetRow < viewModel.ScheduleActivities.Count)
             {
-                if (!viewModel.TryCreateScheduleLink(activity, viewModel.ScheduleActivities[targetRow]))
+                var target = viewModel.ScheduleActivities[targetRow];
+                var lagDays = CalculateGanttLinkDropLag(viewModel, target, position.X);
+                if (!viewModel.TryCreateScheduleLink(activity, target, ActivityLinkType.FinishToStart, lagDays))
                 {
                     MessageBox.Show(this, viewModel.StatusText, "Create schedule link", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
@@ -1589,7 +1665,9 @@ public partial class MainWindow
         _ganttDragActivity = null;
         if (targetRow >= 0 && targetRow < viewModel.ScheduleActivities.Count)
         {
-            if (!viewModel.PasteScheduleLinkTo(viewModel.ScheduleActivities[targetRow])
+            var target = viewModel.ScheduleActivities[targetRow];
+            var lagDays = CalculateGanttLinkDropLag(viewModel, target, position.X);
+            if (!viewModel.PasteScheduleLinkTo(target, ActivityLinkType.FinishToStart, lagDays)
                 && viewModel.ScheduleLinkClipboardActivities.Count > 0)
             {
                 MessageBox.Show(this, viewModel.StatusText, "Paste schedule link", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -1681,6 +1759,57 @@ public partial class MainWindow
         RedrawGantt();
     }
 
+    private void UpdateGanttLinkDropHint(Point position)
+    {
+        if (_ganttLinkHint?.Child is not TextBlock text || GanttViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        var targetRow = (int)Math.Floor(position.Y / GanttRowHeight);
+        if (targetRow < 0 || targetRow >= viewModel.ScheduleActivities.Count)
+        {
+            _ganttLinkHint.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var target = viewModel.ScheduleActivities[targetRow];
+        if (target.Kind is ScheduleActivityKind.Heading or ScheduleActivityKind.Hammock
+            || target.EarlyStart is null
+            || ReferenceEquals(target, _ganttDragActivity))
+        {
+            _ganttLinkHint.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var lagDays = CalculateGanttLinkDropLag(viewModel, target, position.X);
+        var lagText = lagDays == 0 ? "FS" : $"FS{lagDays:+0;-0}d";
+        text.Text = $"{target.Id}  {lagText}";
+        _ganttLinkHint.Visibility = Visibility.Visible;
+        _ganttLinkHint.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Canvas.SetLeft(
+            _ganttLinkHint,
+            Math.Clamp(position.X + 12, 0, Math.Max(0, GanttBodyCanvas.Width - _ganttLinkHint.DesiredSize.Width)));
+        Canvas.SetTop(
+            _ganttLinkHint,
+            Math.Clamp(position.Y - _ganttLinkHint.DesiredSize.Height - 8, 0, Math.Max(0, GanttBodyCanvas.Height - _ganttLinkHint.DesiredSize.Height)));
+        Panel.SetZIndex(_ganttLinkHint, 100);
+    }
+
+    private int CalculateGanttLinkDropLag(MainWindowViewModel viewModel, ScheduleActivity target, double dropX)
+    {
+        if (target.EarlyStart is not { } targetStart)
+        {
+            return 0;
+        }
+
+        var rangeStart = GetGanttDateRange(viewModel).Start;
+        var dayOffset = (int)Math.Floor(dropX / _ganttDayWidth);
+        var droppedDate = rangeStart.AddDays(dayOffset);
+        var calendar = viewModel.ScheduleDataRef.ResolveCalendar(target.CalendarId);
+        return SchedulingService.CalculateFinishToStartLagFromDrop(calendar, targetStart, droppedDate);
+    }
+
     private void RemoveGanttDragVisuals()
     {
         if (_ganttGhostRect is not null)
@@ -1693,6 +1822,12 @@ public partial class MainWindow
         {
             GanttBodyCanvas.Children.Remove(_ganttLinkLine);
             _ganttLinkLine = null;
+        }
+
+        if (_ganttLinkHint is not null)
+        {
+            GanttBodyCanvas.Children.Remove(_ganttLinkHint);
+            _ganttLinkHint = null;
         }
     }
 }
