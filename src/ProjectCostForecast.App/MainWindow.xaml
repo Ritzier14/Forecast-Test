@@ -2417,92 +2417,62 @@
                                 BorderBrush="{StaticResource SoftBorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="12"
-                                Padding="5">
-                            <Button x:Name="DetailWorkspaceCollapsedTab"
-                                    Click="DetailWorkspaceCollapseButton_Click"
-                                    ToolTip="Collapse resource drilldown"
-                                    Background="#F8FAFC"
-                                    BorderBrush="#D7E0EA"
-                                    BorderThickness="1"
-                                    Foreground="#475569"
-                                    FontWeight="SemiBold"
-                                    Cursor="Hand"
-                                    Width="30"
-                                    Height="54"
-                                    Padding="0"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Top">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}"
-                                                BorderBrush="{TemplateBinding BorderBrush}"
-                                                BorderThickness="{TemplateBinding BorderThickness}"
-                                                CornerRadius="15"
-                                                SnapsToDevicePixels="True">
-                                            <ContentPresenter HorizontalAlignment="Center"
-                                                              VerticalAlignment="Center" />
-                                        </Border>
-                                    </ControlTemplate>
-                                </Button.Template>
-                                <TextBlock Text="›"
-                                           FontSize="24"
-                                           FontWeight="SemiBold"
-                                           LineHeight="24"
-                                           Foreground="#475569"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center" />
-                            </Button>
+                                Padding="5"
+                                MouseEnter="DetailWorkspaceRail_MouseEnter"
+                                MouseLeave="DetailWorkspaceRail_MouseLeave">
+                            <Grid>
+                                <primitives:Thumb x:Name="CollapsedDetailRailResizeThumb"
+                                                  Width="6"
+                                                  HorizontalAlignment="Left"
+                                                  Cursor="SizeWE"
+                                                  Background="Transparent"
+                                                  Visibility="Collapsed"
+                                                  Panel.ZIndex="2"
+                                                  DragDelta="CollapsedDetailRailResizeThumb_DragDelta"
+                                                  ToolTip="Resize detail rail">
+                                    <primitives:Thumb.Template>
+                                        <ControlTemplate TargetType="primitives:Thumb">
+                                            <Border Background="Transparent" />
+                                        </ControlTemplate>
+                                    </primitives:Thumb.Template>
+                                </primitives:Thumb>
+                                <Button x:Name="DetailWorkspaceCollapsedTab"
+                                        Click="DetailWorkspaceCollapseButton_Click"
+                                        ToolTip="Collapse resource drilldown"
+                                        Background="#F8FAFC"
+                                        BorderBrush="#D7E0EA"
+                                        BorderThickness="1"
+                                        Foreground="#475569"
+                                        FontWeight="SemiBold"
+                                        Cursor="Hand"
+                                        Width="30"
+                                        Height="54"
+                                        Padding="0"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Top">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    CornerRadius="15"
+                                                    SnapsToDevicePixels="True">
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center" />
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <TextBlock x:Name="DetailWorkspaceRailArrow"
+                                               Text="›"
+                                               FontSize="24"
+                                               FontWeight="SemiBold"
+                                               LineHeight="24"
+                                               Foreground="#475569"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Button>
+                            </Grid>
                         </Border>
-                    </Grid>
-                </Border>
-                <Border x:Name="CollapsedDetailWorkspaceHost"
-                        Grid.Column="2"
-                        Width="44"
-                        Visibility="Collapsed"
-                        Background="Transparent">
-                    <Grid>
-                    <primitives:Thumb x:Name="CollapsedDetailRailResizeThumb"
-                                      Width="6"
-                                      HorizontalAlignment="Left"
-                                      Cursor="SizeWE"
-                                      Background="Transparent"
-                                      DragDelta="CollapsedDetailRailResizeThumb_DragDelta"
-                                      ToolTip="Resize detail rail" />
-                    <Button x:Name="CollapsedDetailWorkspaceButton"
-                            Click="DetailWorkspaceExpandButton_Click"
-                            ToolTip="Expand resource drilldown"
-                            Background="#F8FAFC"
-                            BorderBrush="#D7E0EA"
-                            BorderThickness="1"
-                            Foreground="#475569"
-                            FontWeight="SemiBold"
-                            Cursor="Hand"
-                            Width="32"
-                            Height="54"
-                            Padding="0"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Top"
-                            Panel.ZIndex="1">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border Background="{TemplateBinding Background}"
-                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                        BorderThickness="{TemplateBinding BorderThickness}"
-                                        CornerRadius="16"
-                                        SnapsToDevicePixels="True">
-                                    <ContentPresenter HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center" />
-                                </Border>
-                            </ControlTemplate>
-                        </Button.Template>
-                        <TextBlock Text="‹"
-                                   FontSize="24"
-                                   FontWeight="SemiBold"
-                                   LineHeight="24"
-                                   Foreground="#475569"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center" />
-                    </Button>
                     </Grid>
                 </Border>
             </Grid>

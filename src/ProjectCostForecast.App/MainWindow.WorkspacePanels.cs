@@ -207,10 +207,16 @@ public partial class MainWindow
     }
 
     private void DetailWorkspaceCollapseButton_Click(object sender, RoutedEventArgs e)
-        => CollapseDetailWorkspacePanel(clearPin: true);
-
-    private void DetailWorkspaceExpandButton_Click(object sender, RoutedEventArgs e)
-        => ExpandDetailWorkspacePanel(pin: false);
+    {
+        if (DataContext is MainWindowViewModel { IsDetailPanelCollapsed: true })
+        {
+            ExpandDetailWorkspacePanel(pin: false);
+        }
+        else
+        {
+            CollapseDetailWorkspacePanel(clearPin: true);
+        }
+    }
 
     private void DetailWorkspacePinButton_Click(object sender, RoutedEventArgs e)
     {
@@ -235,9 +241,9 @@ public partial class MainWindow
         }
     }
 
-    private void CollapsedDetailWorkspaceHost_MouseEnter(object sender, MouseEventArgs e)
+    private void DetailWorkspaceRail_MouseEnter(object sender, MouseEventArgs e)
     {
-        if (CollapsedDetailWorkspaceButton.IsMouseOver
+        if (DetailWorkspaceCollapsedTab.IsMouseOver
             || DateTime.UtcNow < _detailWorkspaceHoverSuppressedUntil
             || e.OriginalSource is DependencyObject source && FindParent<ButtonBase>(source) is not null)
         {
@@ -251,7 +257,7 @@ public partial class MainWindow
         }
     }
 
-    private void CollapsedDetailWorkspaceHost_MouseLeave(object sender, MouseEventArgs e)
+    private void DetailWorkspaceRail_MouseLeave(object sender, MouseEventArgs e)
     {
         Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
         {
@@ -267,7 +273,7 @@ public partial class MainWindow
     {
         if (_detailWorkspaceOverlayOpen
             && DataContext is MainWindowViewModel { IsDetailPanelPinned: false }
-            && !CollapsedDetailWorkspaceHost.IsMouseOver)
+            && !DetailWorkspaceRail.IsMouseOver)
         {
             CollapseDetailWorkspacePanel(clearPin: false);
         }
@@ -280,13 +286,13 @@ public partial class MainWindow
             return;
         }
 
-        var nextWidth = Math.Clamp(CollapsedDetailWorkspaceHost.Width - e.HorizontalChange, 44, 72);
+        var nextWidth = Math.Clamp(DetailWorkspaceRail.Width - e.HorizontalChange, 44, 72);
         viewModel.SetDetailPanelRailWidth(nextWidth);
         ApplyCollapsedRailWidth(viewModel);
     }
 
     private bool IsMouseOverDetailWorkspace()
-        => DetailWorkspaceShell.IsMouseOver || CollapsedDetailWorkspaceHost.IsMouseOver;
+        => DetailWorkspaceShell.IsMouseOver;
 
     private void CollapseDetailWorkspacePanel(bool clearPin)
     {
@@ -295,24 +301,17 @@ public partial class MainWindow
 
         _detailWorkspaceOverlayOpen = false;
         StopDetailWorkspaceHoverTimer();
-        DetailWorkspaceShell.Visibility = Visibility.Collapsed;
-        CollapsedDetailWorkspaceHost.Visibility = Visibility.Visible;
+        DetailWorkspaceShell.Visibility = Visibility.Visible;
         DetailWorkspacePanel.Visibility = Visibility.Collapsed;
-        DetailWorkspaceShell.Background = Brushes.Transparent;
-        DetailWorkspaceShell.BorderBrush = Brushes.Transparent;
-        DetailWorkspaceShell.BorderThickness = new Thickness(0);
-        DetailWorkspaceShell.Padding = new Thickness(0);
-        DetailWorkspaceShell.CornerRadius = new CornerRadius(0);
-        DetailWorkspaceRail.Margin = new Thickness(0);
-        DetailWorkspaceRail.Background = Brushes.Transparent;
-        DetailWorkspaceRail.BorderBrush = Brushes.Transparent;
-        DetailWorkspaceRail.BorderThickness = new Thickness(0);
-        DetailWorkspaceRail.CornerRadius = new CornerRadius(0);
-        DetailWorkspaceRail.Padding = new Thickness(0);
-        DetailWorkspaceRail.Width = 42;
+        Panel.SetZIndex(DetailWorkspaceShell, 0);
+        DetailWorkspaceShell.ClearValue(FrameworkElement.WidthProperty);
+        DetailWorkspaceShell.HorizontalAlignment = HorizontalAlignment.Stretch;
         DetailWorkspaceCollapsedTab.Background = BrushFactory.Frozen("#F8FAFC");
         DetailWorkspaceCollapsedTab.BorderBrush = BrushFactory.Frozen("#D7E0EA");
         DetailWorkspaceCollapsedTab.BorderThickness = new Thickness(1);
+        DetailWorkspaceCollapsedTab.ToolTip = "Expand resource drilldown";
+        DetailWorkspaceRailArrow.Text = "‹";
+        CollapsedDetailRailResizeThumb.Visibility = Visibility.Visible;
         WorkspaceGridSplitter.Visibility = Visibility.Collapsed;
         WorkspaceSplitterColumn.Width = new GridLength(0);
         DetailWorkspaceContentColumn.Width = new GridLength(0);
@@ -339,8 +338,8 @@ public partial class MainWindow
         _detailWorkspaceHoverTimer.Tick += (_, _) =>
         {
             StopDetailWorkspaceHoverTimer();
-            if (CollapsedDetailWorkspaceHost.IsMouseOver
-                && !CollapsedDetailWorkspaceButton.IsMouseOver
+            if (DetailWorkspaceRail.IsMouseOver
+                && !DetailWorkspaceCollapsedTab.IsMouseOver
                 && DateTime.UtcNow >= _detailWorkspaceHoverSuppressedUntil
                 && DataContext is MainWindowViewModel { IsDetailPanelCollapsed: true, IsDetailPanelPinned: false })
             {
@@ -360,7 +359,6 @@ public partial class MainWindow
     {
         _detailWorkspaceOverlayOpen = true;
         DetailWorkspaceShell.Visibility = Visibility.Visible;
-        CollapsedDetailWorkspaceHost.Visibility = Visibility.Visible;
         DetailWorkspacePanel.Visibility = Visibility.Visible;
         Panel.SetZIndex(DetailWorkspaceShell, 40);
         DetailWorkspaceShell.HorizontalAlignment = HorizontalAlignment.Right;
@@ -389,7 +387,6 @@ public partial class MainWindow
         _detailWorkspaceOverlayOpen = false;
         StopDetailWorkspaceHoverTimer();
         DetailWorkspaceShell.Visibility = Visibility.Visible;
-        CollapsedDetailWorkspaceHost.Visibility = Visibility.Collapsed;
         DetailWorkspacePanel.Visibility = Visibility.Visible;
         Panel.SetZIndex(DetailWorkspaceShell, 0);
         DetailWorkspaceShell.ClearValue(FrameworkElement.WidthProperty);
@@ -405,10 +402,12 @@ public partial class MainWindow
         DetailWorkspaceRail.BorderThickness = new Thickness(1);
         DetailWorkspaceRail.CornerRadius = new CornerRadius(12);
         DetailWorkspaceRail.Padding = new Thickness(5);
-        DetailWorkspaceRail.Width = 42;
         DetailWorkspaceCollapsedTab.Background = BrushFactory.Frozen("#F8FAFC");
         DetailWorkspaceCollapsedTab.BorderBrush = BrushFactory.Frozen("#D7E0EA");
         DetailWorkspaceCollapsedTab.BorderThickness = new Thickness(1);
+        DetailWorkspaceCollapsedTab.ToolTip = "Collapse resource drilldown";
+        DetailWorkspaceRailArrow.Text = "›";
+        CollapsedDetailRailResizeThumb.Visibility = Visibility.Collapsed;
         WorkspaceGridSplitter.Visibility = Visibility.Visible;
         DetailWorkspaceContentColumn.Width = new GridLength(1, GridUnitType.Star);
         WorkspaceSplitterColumn.Width = new GridLength(12);
@@ -444,7 +443,6 @@ public partial class MainWindow
     private void SuppressDetailWorkspacePanel()
     {
         DetailWorkspaceShell.Visibility = Visibility.Collapsed;
-        CollapsedDetailWorkspaceHost.Visibility = Visibility.Collapsed;
         DetailWorkspacePanel.Visibility = Visibility.Collapsed;
         WorkspaceGridSplitter.Visibility = Visibility.Collapsed;
         WorkspaceSplitterColumn.Width = new GridLength(0);
@@ -489,11 +487,16 @@ public partial class MainWindow
     {
         var width = viewModel.DetailPanelRailWidth;
         width = Math.Clamp(width, 44, 72);
-        CollapsedDetailWorkspaceHost.Width = width;
-        DetailWorkspaceColumn.Width = new GridLength(width);
-        CollapsedDetailWorkspaceButton.Width = Math.Min(32, Math.Max(28, width - 12));
-        CollapsedDetailWorkspaceButton.Height = 54;
-        DetailWorkspaceCollapsedTab.Width = 30;
+        DetailWorkspaceRail.Width = width;
+        var collapsedWidth = width
+                             + DetailWorkspaceRail.Margin.Left
+                             + DetailWorkspaceRail.Margin.Right
+                             + DetailWorkspaceShell.Padding.Left
+                             + DetailWorkspaceShell.Padding.Right
+                             + DetailWorkspaceShell.BorderThickness.Left
+                             + DetailWorkspaceShell.BorderThickness.Right;
+        DetailWorkspaceColumn.Width = new GridLength(Math.Ceiling(collapsedWidth));
+        DetailWorkspaceCollapsedTab.Width = Math.Min(32, Math.Max(28, width - 12));
         DetailWorkspaceCollapsedTab.Height = 54;
     }
 
