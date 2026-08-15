@@ -288,10 +288,13 @@ public sealed partial class MainWindowViewModel
         RefreshViews(ForecastLinesView, RawTransactionsView);
     }
 
-    private void ClearAllRecords()
+    private void ClearAllRecords(bool newProject = false)
     {
-        const string message = "Clear all current forecast lines, transactions, contingency items, saved month snapshots, and audit history? This cannot be undone unless you reopen or restore from a saved file.";
-        if (MessageBox.Show(message, "Clear all records", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        var message = newProject
+            ? "Start a new blank project? Current project records will be cleared. This cannot be undone unless you reopen or restore from a saved file."
+            : "Clear all current forecast lines, transactions, contingency items, saved month snapshots, and audit history? This cannot be undone unless you reopen or restore from a saved file.";
+        var title = newProject ? "New project" : "Clear all records";
+        if (MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
         {
             return;
         }
@@ -300,13 +303,15 @@ public sealed partial class MainWindowViewModel
         {
             Header = new ProjectHeader
             {
-                ProjectTitle = Header.ProjectTitle,
-                ReportTitle = Header.ReportTitle,
+                ProjectTitle = newProject ? "New project" : Header.ProjectTitle,
+                ReportTitle = newProject ? "Project Cost Forecast" : Header.ReportTitle,
                 CurrentPeriod = Header.CurrentPeriod,
-                SourceWorkbook = Header.SourceWorkbook,
-                ImportNotes = Header.ImportNotes
+                SourceWorkbook = newProject ? string.Empty : Header.SourceWorkbook,
+                ImportNotes = newProject ? string.Empty : Header.ImportNotes
             },
-            Phases = _dataset.Phases.Select(phase => new PhaseItem
+            Phases = newProject
+                ? []
+                : _dataset.Phases.Select(phase => new PhaseItem
             {
                 Name = phase.Name,
                 Start = phase.Start,
@@ -318,7 +323,9 @@ public sealed partial class MainWindowViewModel
                 Label = period.Label,
                 StartDate = period.StartDate
             }).ToList(),
-            FiscalYearBudgets = _dataset.FiscalYearBudgets.Select(budget => new FiscalYearBudget
+            FiscalYearBudgets = newProject
+                ? []
+                : _dataset.FiscalYearBudgets.Select(budget => new FiscalYearBudget
             {
                 FiscalYear = budget.FiscalYear,
                 Budget = budget.Budget
@@ -326,8 +333,21 @@ public sealed partial class MainWindowViewModel
         };
 
         LoadDataset(clearedDataset, markDirty: true);
-        AddAuditEvent("Project", Header.ProjectTitle, "ClearAll", "Existing records", "Cleared", "Cleared all working records for a fresh import");
-        StatusText = "Cleared all current records. You can now import a new data sheet.";
+        if (newProject)
+        {
+            ProjectFilePath = string.Empty;
+        }
+
+        AddAuditEvent(
+            "Project",
+            Header.ProjectTitle,
+            newProject ? "NewProject" : "ClearAll",
+            "Existing records",
+            "Cleared",
+            newProject ? "Created a new blank project" : "Cleared all working records for a fresh import");
+        StatusText = newProject
+            ? "New project created. You can now import a new data sheet."
+            : "Cleared all current records. You can now import a new data sheet.";
     }
 
     private static IEnumerable<ResourceSummary> BuildResourceSummaries(IEnumerable<CostTransaction> transactions, IEnumerable<ForecastLine> forecastLines)

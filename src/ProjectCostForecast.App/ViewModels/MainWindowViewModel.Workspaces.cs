@@ -349,8 +349,16 @@ public sealed partial class MainWindowViewModel
             StyleKey = layout.StyleKey,
             ChartKind = layout.ChartKind,
             Grouping = layout.Grouping,
+            DataSetKey = layout.DataSetKey,
+            ReportChartCostCodeFilterEnabled = layout.ReportChartCostCodeFilterEnabled,
+            ReportChartCostCodeFilter = layout.ReportChartCostCodeFilter,
+            ReportChartCostCodeFilters = layout.ReportChartCostCodeFilters?.ToList() ?? [],
+            ReportChartHeadingFilterEnabled = layout.ReportChartHeadingFilterEnabled,
+            ReportChartSubHeadingFilterEnabled = layout.ReportChartSubHeadingFilterEnabled,
+            ReportChartValueKeys = layout.ReportChartValueKeys?.ToList() ?? [],
             FromDate = layout.FromDate,
-            ToDate = layout.ToDate
+            ToDate = layout.ToDate,
+            XAxisTickFrequency = layout.XAxisTickFrequency
         };
     }
 

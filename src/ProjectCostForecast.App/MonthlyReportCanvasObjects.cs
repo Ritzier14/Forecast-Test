@@ -45,9 +45,22 @@ public partial class MainWindow
 
     private void SwitchMonthlyReportCanvasView()
     {
-        if (!_monthlyReportCanvasInitialized || GetCurrentMonthlyReportView() is not { } view)
+        if (!_monthlyReportCanvasInitialized)
         {
             return;
+        }
+
+        if (GetCurrentMonthlyReportView() is not { } view)
+        {
+            ClearReportCanvasObjectSelection();
+            CancelReportCanvasObjectPlacement();
+            return;
+        }
+
+        CancelReportCanvasObjectPlacement();
+        if (!ReferenceEquals(_loadedMonthlyReportView, view))
+        {
+            ClearReportCanvasObjectSelection();
         }
 
         if (ReferenceEquals(_loadedMonthlyReportView, view))
@@ -141,18 +154,20 @@ public partial class MainWindow
 
     private void AddReportCanvasObject(ReportCanvasObjectLayout layout)
     {
+        if (string.Equals(layout.ObjectType, "Header", StringComparison.OrdinalIgnoreCase))
+        {
+            layout.X = 24;
+            layout.Width = Math.Max(120, MonthlyReportChartCanvas.Width - 48);
+        }
+
         if (string.Equals(layout.ObjectType, "Chart", StringComparison.OrdinalIgnoreCase))
         {
-            if (DataContext is not MainWindowViewModel viewModel
-                || !Enum.TryParse(layout.ChartKind, true, out ReportChartKind kind)
-                || !Enum.TryParse(layout.Grouping, true, out ReportChartGrouping grouping)
-                || layout.FromDate is not { } fromDate
-                || layout.ToDate is not { } toDate)
+            if (DataContext is not MainWindowViewModel viewModel)
             {
                 return;
             }
 
-            AddReportChartCard(layout, BuildReportChartModel(viewModel, kind, grouping, fromDate, toDate));
+            AddReportChartCard(layout, BuildReportChartModel(viewModel, layout));
             return;
         }
 
@@ -184,7 +199,7 @@ public partial class MainWindow
                 content = CreateStyledProjectTitle(layout);
                 break;
             case "CurrentPeriod":
-                heading = "Current period";
+                heading = "Period";
                 content = CreateStyledCurrentPeriod(layout);
                 break;
             case "Date":
@@ -195,9 +210,21 @@ public partial class MainWindow
                 heading = "Report table";
                 content = CreateStyledTable(layout);
                 break;
+            case "DataSetTable":
+                heading = GetReportDataSetTitle(layout.DataSetKey);
+                content = CreateReportDataSetTable(layout);
+                break;
+            case "DataSetMetric":
+                heading = GetReportDataSetTitle(layout.DataSetKey);
+                content = CreateReportDataSetMetric(layout);
+                break;
             case "TitleText":
                 heading = "Title text";
                 content = CreateStyledEditableText(layout, isTitle: true);
+                break;
+            case "Header":
+                heading = "Header";
+                content = CreateStyledReportHeader(layout);
                 break;
             case "Text":
                 heading = "Text box";
@@ -256,7 +283,124 @@ public partial class MainWindow
         var chart = new ReportChartCard(model, layout);
         chart.RemoveRequested += (_, _) => RemoveReportCanvasItem(chart, layout);
         chart.PositionChanged += ReportCanvasCard_PositionChanged;
+        chart.DataSetDropRequested += ReportChartCard_DataSetDropRequested;
+        chart.DataSetRemoved += ReportChartCard_DataSetRemoved;
         AddCardToCanvas(chart, layout);
+    }
+
+    private IReadOnlyList<string> GetReportCostCodeOptions()
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return [];
+        }
+
+        return viewModel.ProjectTaskCodes
+            .Where(taskCode => !string.IsNullOrWhiteSpace(taskCode.SystemCode))
+            .OrderBy(taskCode => taskCode.DisplayOrder)
+            .ThenBy(taskCode => taskCode.SystemCode, StringComparer.OrdinalIgnoreCase)
+            .Select(taskCode => taskCode.SystemCode.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private void ReportChartCard_DataSetDropRequested(object? sender, ReportChartDataSetEventArgs e)
+    {
+        if (sender is not ReportChartCard chart)
+        {
+            return;
+        }
+
+        var layout = chart.Layout;
+        if (string.Equals(e.DataSetKey, "CostCodeSummary", StringComparison.OrdinalIgnoreCase))
+        {
+            layout.ReportChartCostCodeFilterEnabled = true;
+        }
+        else if (e.DataSetKey.StartsWith(ReportCostCodeValuePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            layout.ReportChartCostCodeFilterEnabled = true;
+            var costCode = e.DataSetKey[ReportCostCodeValuePrefix.Length..].Trim();
+            layout.ReportChartCostCodeFilters ??= [];
+            if (!string.IsNullOrWhiteSpace(costCode)
+                && !layout.ReportChartCostCodeFilters.Contains(costCode, StringComparer.OrdinalIgnoreCase))
+            {
+                layout.ReportChartCostCodeFilters.Add(costCode);
+            }
+            layout.ReportChartCostCodeFilter = layout.ReportChartCostCodeFilters.Count == 1
+                ? layout.ReportChartCostCodeFilters[0]
+                : string.Empty;
+        }
+        else if (string.Equals(e.DataSetKey, "HeadingFilter", StringComparison.OrdinalIgnoreCase))
+        {
+            layout.ReportChartHeadingFilterEnabled = true;
+        }
+        else if (string.Equals(e.DataSetKey, "SubHeadingFilter", StringComparison.OrdinalIgnoreCase))
+        {
+            layout.ReportChartSubHeadingFilterEnabled = true;
+        }
+        else if (IsReportValueDataSetKey(e.DataSetKey))
+        {
+            layout.ReportChartValueKeys ??= [];
+            if (!layout.ReportChartValueKeys.Contains(e.DataSetKey, StringComparer.OrdinalIgnoreCase))
+            {
+                layout.ReportChartValueKeys.Add(e.DataSetKey);
+            }
+        }
+        else
+        {
+            return;
+        }
+
+        RefreshReportChartCard(chart);
+    }
+
+    private void ReportChartCard_DataSetRemoved(object? sender, ReportChartDataSetEventArgs e)
+    {
+        if (sender is not ReportChartCard chart)
+        {
+            return;
+        }
+
+        var layout = chart.Layout;
+        if (string.Equals(e.DataSetKey, "CostCodeSummary", StringComparison.OrdinalIgnoreCase))
+        {
+            layout.ReportChartCostCodeFilterEnabled = false;
+            layout.ReportChartCostCodeFilter = string.Empty;
+            layout.ReportChartCostCodeFilters?.Clear();
+        }
+        else if (e.DataSetKey.StartsWith(ReportCostCodeValuePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var costCode = e.DataSetKey[ReportCostCodeValuePrefix.Length..].Trim();
+            layout.ReportChartCostCodeFilters?.RemoveAll(key => string.Equals(key, costCode, StringComparison.OrdinalIgnoreCase));
+            layout.ReportChartCostCodeFilter = layout.ReportChartCostCodeFilters?.Count == 1
+                ? layout.ReportChartCostCodeFilters[0]
+                : string.Empty;
+        }
+        else if (string.Equals(e.DataSetKey, "HeadingFilter", StringComparison.OrdinalIgnoreCase))
+        {
+            layout.ReportChartHeadingFilterEnabled = false;
+        }
+        else if (string.Equals(e.DataSetKey, "SubHeadingFilter", StringComparison.OrdinalIgnoreCase))
+        {
+            layout.ReportChartSubHeadingFilterEnabled = false;
+        }
+        else
+        {
+            layout.ReportChartValueKeys?.RemoveAll(key => string.Equals(key, e.DataSetKey, StringComparison.OrdinalIgnoreCase));
+        }
+
+        RefreshReportChartCard(chart);
+    }
+
+    private void RefreshReportChartCard(ReportChartCard chart)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        chart.UpdateChart(BuildReportChartModel(viewModel, chart.Layout));
+        viewModel.IsDirty = true;
     }
 
     private void AddCardToCanvas(FrameworkElement card, ReportCanvasObjectLayout layout)
@@ -296,6 +440,11 @@ public partial class MainWindow
 
     private void RemoveReportCanvasItem(FrameworkElement element, ReportCanvasObjectLayout layout)
     {
+        if (ReferenceEquals(_selectedReportCanvasObject, layout))
+        {
+            ClearReportCanvasObjectSelection();
+        }
+
         MonthlyReportChartCanvas.Children.Remove(element);
         if (GetCurrentMonthlyReportView() is { } view)
         {
@@ -334,22 +483,89 @@ public partial class MainWindow
     }
 
     private void AddProjectTitleReportObjectButton_Click(object sender, RoutedEventArgs e) =>
-        AddNewReportObject("ProjectTitle", 360, 86);
+        BeginReportCanvasObjectPlacement("ProjectTitle", sender as Button);
 
     private void AddCurrentPeriodReportObjectButton_Click(object sender, RoutedEventArgs e) =>
-        AddNewReportObject("CurrentPeriod", 220, 78);
+        BeginReportCanvasObjectPlacement("CurrentPeriod", sender as Button);
 
     private void AddDateReportObjectButton_Click(object sender, RoutedEventArgs e) =>
-        AddNewReportObject("Date", 220, 76);
+        BeginReportCanvasObjectPlacement("Date", sender as Button);
 
     private void AddTableReportObjectButton_Click(object sender, RoutedEventArgs e) =>
-        AddNewReportObject("Table", 700, 320);
+        BeginReportCanvasObjectPlacement("Table", sender as Button);
 
     private void AddTextReportObjectButton_Click(object sender, RoutedEventArgs e) =>
-        AddNewReportObject("Text", 340, 170, "Enter report text here.");
+        BeginReportCanvasObjectPlacement("Text", sender as Button);
 
     private void AddTitleTextReportObjectButton_Click(object sender, RoutedEventArgs e) =>
-        AddNewReportObject("TitleText", 360, 100, "Report title");
+        BeginReportCanvasObjectPlacement("TitleText", sender as Button);
+
+    private void AddHeaderReportObjectButton_Click(object sender, RoutedEventArgs e) =>
+        BeginReportCanvasObjectPlacement("Header", sender as Button);
+
+    private static bool TryGetReportCanvasObjectDefaults(
+        string objectType,
+        out double width,
+        out double height,
+        out string text)
+    {
+        (width, height, text) = objectType switch
+        {
+            "LineChart" => (540, 310, string.Empty),
+            "ColumnChart" => (540, 310, string.Empty),
+            "ProjectTitle" => (360, 86, string.Empty),
+            "CurrentPeriod" => (220, 78, string.Empty),
+            "Date" => (220, 76, string.Empty),
+            "Table" => (700, 320, string.Empty),
+            "Text" => (340, 170, "Enter report text here."),
+            "TitleText" => (360, 100, "Report title"),
+            "Header" => (746, 64, "Report heading"),
+            _ => (0, 0, string.Empty)
+        };
+
+        return width > 0 && height > 0;
+    }
+
+    private static bool TryGetReportDataSetDefaults(
+        string dataSetKey,
+        out double width,
+        out double height)
+    {
+        (width, height) = dataSetKey switch
+        {
+            "CostCodeSummary" => (700, 340),
+            "TotalBudget" => (230, 118),
+            "TotalSpend" => (230, 118),
+            "TotalForecast" => (230, 118),
+            _ => (0, 0)
+        };
+
+        return width > 0 && height > 0;
+    }
+
+    private void AddReportDataSetObjectAt(string dataSetKey, Point position)
+    {
+        if (!TryGetReportDataSetDefaults(dataSetKey, out var width, out var height))
+        {
+            return;
+        }
+
+        var size = new Size(width, height);
+        var layout = new ReportCanvasObjectLayout
+        {
+            ObjectType = string.Equals(dataSetKey, "CostCodeSummary", StringComparison.OrdinalIgnoreCase)
+                ? "DataSetTable"
+                : "DataSetMetric",
+            DataSetKey = dataSetKey,
+            X = Math.Clamp(position.X, 0, Math.Max(0, MonthlyReportChartCanvas.Width - width)),
+            Y = Math.Clamp(position.Y, 0, Math.Max(0, MonthlyReportChartCanvas.Height - height)),
+            Width = size.Width,
+            Height = size.Height,
+            StyleKey = "Blue"
+        };
+        AddReportCanvasLayout(layout);
+        AddReportCanvasObject(layout);
+    }
 
     private void AddNewReportObject(
         string objectType,
@@ -370,6 +586,11 @@ public partial class MainWindow
             Text = text,
             StyleKey = GetSelectedReportToolbarStyle(objectType)
         };
+        if (string.Equals(objectType, "Header", StringComparison.OrdinalIgnoreCase))
+        {
+            layout.X = 24;
+            layout.Width = Math.Max(120, MonthlyReportChartCanvas.Width - 48);
+        }
         AddReportCanvasLayout(layout);
         AddReportCanvasObject(layout);
     }
@@ -391,17 +612,18 @@ internal sealed class ReportCanvasObjectCard : Border
         Background = Brushes.White;
         BorderBrush = new SolidColorBrush(Color.FromRgb(148, 163, 184));
         BorderThickness = new Thickness(1);
-        CornerRadius = new CornerRadius(5);
+        CornerRadius = new CornerRadius(8);
+        ClipToBounds = true;
 
         var grid = new Grid();
-        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(34) });
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
         var header = new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
-            BorderThickness = new Thickness(0, 0, 0, 1),
+            Height = 24,
+            Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
             Cursor = Cursors.SizeAll,
             Padding = new Thickness(10, 0, 4, 0)
         };
@@ -422,7 +644,7 @@ internal sealed class ReportCanvasObjectCard : Border
         headerPanel.Children.Add(remove);
         headerPanel.Children.Add(new TextBlock
         {
-            Text = heading,
+            Text = string.Empty,
             FontSize = 11,
             FontWeight = FontWeights.SemiBold,
             Foreground = new SolidColorBrush(Color.FromRgb(71, 85, 105)),
@@ -432,10 +654,11 @@ internal sealed class ReportCanvasObjectCard : Border
         header.PreviewMouseLeftButtonDown += Header_MouseLeftButtonDown;
         header.PreviewMouseMove += Header_MouseMove;
         header.PreviewMouseLeftButtonUp += Header_MouseLeftButtonUp;
+        Panel.SetZIndex(header, 25);
         grid.Children.Add(header);
 
         _contentHost = new ContentControl { Content = content };
-        Grid.SetRow(_contentHost, 1);
+        Grid.SetRow(_contentHost, 0);
         grid.Children.Add(_contentHost);
 
         var resizeThumb = ReportCanvasResizeBehavior.CreateThumb(
@@ -444,8 +667,8 @@ internal sealed class ReportCanvasObjectCard : Border
             minimumWidth: string.Equals(layout.ObjectType, "LegacyReport", StringComparison.OrdinalIgnoreCase) ? 360 : 120,
             minimumHeight: string.Equals(layout.ObjectType, "LegacyReport", StringComparison.OrdinalIgnoreCase) ? 260 : 70,
             () => PositionChanged?.Invoke(this, EventArgs.Empty));
-        Grid.SetRowSpan(resizeThumb, 2);
-        Panel.SetZIndex(resizeThumb, 20);
+        Grid.SetRowSpan(resizeThumb, 1);
+        Panel.SetZIndex(resizeThumb, 40);
         grid.Children.Add(resizeThumb);
         Child = grid;
     }
@@ -453,6 +676,14 @@ internal sealed class ReportCanvasObjectCard : Border
     public ReportCanvasObjectLayout Layout { get; }
     public event EventHandler? RemoveRequested;
     public event EventHandler? PositionChanged;
+
+    public void SetSelected(bool selected)
+    {
+        BorderBrush = selected
+            ? BrushFactory.Frozen("#2563EB")
+            : new SolidColorBrush(Color.FromRgb(148, 163, 184));
+        BorderThickness = new Thickness(selected ? 2 : 1);
+    }
 
     public FrameworkElement? TakeContent()
     {

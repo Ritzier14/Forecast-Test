@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using ProjectCostForecast.App.Models;
+using ProjectCostForecast.App.ViewModels;
 
 namespace ProjectCostForecast.App;
 
@@ -32,11 +33,19 @@ public partial class MainWindow
         }
 
         var modifiers = Keyboard.Modifiers;
+        var anchorLine = _forecastRowSelectionAnchor as ForecastLine
+            ?? grid.CurrentCell.Item as ForecastLine
+            ?? grid.SelectedItem as ForecastLine
+            ?? grid.SelectedCells.Select(cell => cell.Item).OfType<ForecastLine>().FirstOrDefault();
         if ((modifiers & ModifierKeys.Shift) == ModifierKeys.Shift
-            && _forecastRowSelectionAnchor is not null
-            && grid.Items.Contains(_forecastRowSelectionAnchor))
+            && anchorLine is not null
+            && item is ForecastLine endLine)
         {
-            SelectGridRowRange(grid, _forecastRowSelectionAnchor, item);
+            SelectGridRowRange(
+                grid,
+                anchorLine,
+                endLine,
+                preserveExistingSelection: (modifiers & ModifierKeys.Control) == ModifierKeys.Control);
             return;
         }
 
@@ -50,12 +59,18 @@ public partial class MainWindow
         SelectGridRows(grid, [item], item);
     }
 
-    private void SelectGridRowRange(DataGrid grid, object startItem, object endItem)
+    private void SelectGridRowRange(
+        DataGrid grid,
+        object startItem,
+        object endItem,
+        bool preserveExistingSelection = false)
     {
-        var visibleItems = grid.Items
-            .Cast<object>()
-            .Where(item => item != CollectionView.NewItemPlaceholder)
-            .ToList();
+        var visibleItems = ReferenceEquals(grid, ForecastLinesGrid)
+            ? GetForecastRowItemsInViewOrder(grid)
+            : grid.Items
+                .Cast<object>()
+                .Where(item => item != CollectionView.NewItemPlaceholder)
+                .ToList();
         var startIndex = visibleItems.IndexOf(startItem);
         var endIndex = visibleItems.IndexOf(endItem);
         if (startIndex < 0 || endIndex < 0)
@@ -63,11 +78,50 @@ public partial class MainWindow
             return;
         }
 
-        var selectedRows = visibleItems
+        var rangeItems = visibleItems
             .Skip(Math.Min(startIndex, endIndex))
             .Take(Math.Abs(endIndex - startIndex) + 1)
             .ToList();
+        var existingRows = preserveExistingSelection
+            ? GetFullySelectedGridRowItems(grid)
+            : null;
+        var selectedRows = existingRows is not null
+            ? visibleItems
+                .Where(item => existingRows.Contains(item) || rangeItems.Contains(item))
+                .ToList()
+            : rangeItems;
         SelectGridRows(grid, selectedRows, endItem);
+    }
+
+    private List<object> GetForecastRowItemsInViewOrder(DataGrid grid)
+    {
+        var gridItems = grid.Items
+            .Cast<object>()
+            .OfType<ForecastLine>()
+            .Cast<object>()
+            .ToList();
+        if (gridItems.Count > 0)
+        {
+            return gridItems;
+        }
+
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            var viewItems = viewModel.ForecastLinesView
+                .Cast<object>()
+                .OfType<ForecastLine>()
+                .Cast<object>()
+                .ToList();
+            if (viewItems.Count > 0)
+            {
+                return viewItems;
+            }
+        }
+
+        return grid.Items
+            .Cast<object>()
+            .Where(item => item is ForecastLine)
+            .ToList();
     }
 
     private void ToggleGridRowSelection(DataGrid grid, object item)
@@ -81,7 +135,10 @@ public partial class MainWindow
         var existingCells = grid.SelectedCells
             .Where(cell => ReferenceEquals(cell.Item, item))
             .ToList();
-        var isFullySelected = existingCells.Count >= visibleColumns.Count;
+        var selectedColumns = existingCells
+            .Select(cell => cell.Column)
+            .ToHashSet();
+        var isFullySelected = visibleColumns.All(selectedColumns.Contains);
         if (isFullySelected)
         {
             foreach (var cell in existingCells)
@@ -144,6 +201,45 @@ public partial class MainWindow
         return grid.Columns
             .Where(column => column.Visibility == Visibility.Visible)
             .OrderBy(column => column.DisplayIndex)
+            .ToList();
+    }
+
+    private static HashSet<object> GetFullySelectedGridRowItems(DataGrid grid)
+    {
+        var visibleColumns = GetVisibleSpreadsheetColumns(grid);
+        var visibleColumnSet = visibleColumns.ToHashSet();
+        var selectedColumnsByItem = new Dictionary<object, HashSet<DataGridColumn>>(ReferenceEqualityComparer.Instance);
+        foreach (var cell in grid.SelectedCells)
+        {
+            if (cell.Item is null
+                || cell.Item == CollectionView.NewItemPlaceholder
+                || cell.Column is null
+                || !visibleColumnSet.Contains(cell.Column))
+            {
+                continue;
+            }
+
+            if (!selectedColumnsByItem.TryGetValue(cell.Item, out var selectedColumns))
+            {
+                selectedColumns = [];
+                selectedColumnsByItem[cell.Item] = selectedColumns;
+            }
+
+            selectedColumns.Add(cell.Column);
+        }
+
+        return selectedColumnsByItem
+            .Where(entry => visibleColumns.All(entry.Value.Contains))
+            .Select(entry => entry.Key)
+            .ToHashSet(ReferenceEqualityComparer.Instance);
+    }
+
+    private IReadOnlyList<ForecastLine> GetFullySelectedForecastLines(DataGrid grid)
+    {
+        var fullySelectedItems = GetFullySelectedGridRowItems(grid);
+        return GetForecastRowItemsInViewOrder(grid)
+            .OfType<ForecastLine>()
+            .Where(fullySelectedItems.Contains)
             .ToList();
     }
 

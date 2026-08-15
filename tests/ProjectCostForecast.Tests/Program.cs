@@ -10,7 +10,7 @@ using System.Windows.Controls;
 
 var root = FindRepositoryRoot();
 var dataPath = Path.Combine(root, "src", "ProjectCostForecast.App", "Data", "SampleData.json");
-var initialCostLoadPath = Path.Combine(root, "src", "ProjectCostForecast.App", "Data", "InitialCostLoad.xlsx");
+var initialCostLoadPath = Path.Combine(root, "src", "ProjectCostForecast.App", "Data", "data_anonymised.xlsx");
 var dataset = new ProjectFileService().Load(dataPath);
 var calculationService = new CalculationService();
 calculationService.Recalculate(dataset);
@@ -31,6 +31,67 @@ AssertEqual("26-12", initialCostLoadDataset.Header.CurrentPeriod, "Fresh startup
 AssertTrue(initialCostLoadDataset.ForecastPeriods.Any(period => period.Label == "26-12"), "Fresh startup includes the default working month");
 AssertTrue(initialCostLoadDataset.ForecastPeriods.Any(period => period.Label == "27-01"), "Fresh startup includes the next month for roll-forward");
 AssertTrue(initialCostLoadDataset.SavedMonthSnapshots.All(snapshot => snapshot.Period != initialCostLoadDataset.Header.CurrentPeriod), "Fresh startup does not treat the unsaved working month as already rolled forward");
+
+AssertEqual(new DateOnly(2026, 1, 1), GetCalendarMonthStart("26-07"), "FY26-07 maps to January 2026");
+AssertEqual(new DateOnly(2026, 7, 1), GetCalendarMonthStart("27-01"), "FY27-01 maps to July 2026");
+var outOfOrderPeriodsDataset = new InitialCostLoadService(new DateOnly(2026, 7, 18)).BuildDataset(
+[
+    new CostTransaction
+    {
+        RowNumber = 1,
+        FyPeriod = "24-08",
+        TaskNumber = "DATE-001",
+        DocDate = new DateOnly(2023, 11, 21),
+        Amount = 10m,
+        ManualName = "Date fixture"
+    },
+    new CostTransaction
+    {
+        RowNumber = 2,
+        FyPeriod = "24-07",
+        TaskNumber = "DATE-001",
+        DocDate = new DateOnly(2024, 1, 7),
+        Amount = 20m,
+        ManualName = "Date fixture"
+    }
+], "date-fixture.xlsx");
+AssertTrue(
+    outOfOrderPeriodsDataset.ForecastPeriods.Take(2).Select(period => period.Label).SequenceEqual(["24-07", "24-08"]),
+    "Initial cost-load orders periods by fiscal calendar rather than document posting date");
+AssertEqual(new DateOnly(2024, 1, 1), outOfOrderPeriodsDataset.ForecastPeriods.Single(period => period.Label == "24-07").StartDate, "FY24-07 keeps its canonical calendar start");
+AssertEqual(new DateOnly(2024, 2, 1), outOfOrderPeriodsDataset.ForecastPeriods.Single(period => period.Label == "24-08").StartDate, "FY24-08 keeps its canonical calendar start");
+var sparseCalendarYearDataset = new InitialCostLoadService(new DateOnly(2023, 7, 18)).BuildDataset(
+[
+    new CostTransaction
+    {
+        RowNumber = 1,
+        FyPeriod = "22-07",
+        TaskNumber = "CAL-001",
+        DocDate = new DateOnly(2022, 1, 15),
+        Amount = 10m,
+        ManualName = "Calendar fixture"
+    },
+    new CostTransaction
+    {
+        RowNumber = 2,
+        FyPeriod = "23-06",
+        TaskNumber = "CAL-001",
+        DocDate = new DateOnly(2022, 12, 15),
+        Amount = 20m,
+        ManualName = "Calendar fixture"
+    }
+], "calendar-fixture.xlsx");
+var calendar2022Labels = sparseCalendarYearDataset.ForecastPeriods
+    .Where(period => period.StartDate?.Year == 2022)
+    .Select(period => period.Label)
+    .ToList();
+AssertTrue(
+    calendar2022Labels.SequenceEqual(FiscalPeriod.BuildContinuousRange(22, 7, 23, 6)),
+    "Calendar 2022 spans fiscal periods 22-07 through 23-06");
+AssertEqual(12, calendar2022Labels.Count, "Calendar 2022 includes every fiscal month");
+AssertTrue(
+    sparseCalendarYearDataset.ForecastLines.Single().MonthlyForecasts.Any(forecast => forecast.PeriodLabel == "22-08" && forecast.Amount == 0m),
+    "Missing fiscal months receive zero forecast entries");
 
 var clipboardRows = SpreadsheetClipboardService.Parse("A\tB\r\nC\tD");
 AssertEqual(2, clipboardRows.Count, "Clipboard parser row count");
@@ -420,6 +481,40 @@ var metadataDataset = new ProjectDataset
 };
 var metadataViewModel = CreateViewModel();
 InvokeLoadDataset(metadataViewModel, metadataDataset);
+AssertEqual(new DateOnly(2026, 5, 1), metadataDataset.ForecastPeriods.Single().StartDate, "Loading a project repairs legacy fiscal-period calendar dates");
+var sparseLoadedDataset = new ProjectDataset
+{
+    Header = new ProjectHeader { CurrentPeriod = "23-06" },
+    ForecastPeriods =
+    [
+        new ForecastPeriod { Label = "22-07", StartDate = new DateOnly(2022, 1, 1) },
+        new ForecastPeriod { Label = "23-06", StartDate = new DateOnly(2022, 12, 1) }
+    ],
+    ForecastLines =
+    [
+        new ForecastLine
+        {
+            TaskNumber = "SPARSE-001",
+            ResourceName = "Sparse",
+            MonthlyForecasts =
+            [
+                new MonthlyForecast { PeriodLabel = "22-07", PeriodStartDate = new DateOnly(2022, 1, 1), Amount = 5m },
+                new MonthlyForecast { PeriodLabel = "23-06", PeriodStartDate = new DateOnly(2022, 12, 1), Amount = 7m }
+            ]
+        }
+    ]
+};
+var sparseLoadedViewModel = CreateViewModel();
+InvokeLoadDataset(sparseLoadedViewModel, sparseLoadedDataset);
+AssertTrue(
+    sparseLoadedDataset.ForecastPeriods
+        .Where(period => period.StartDate?.Year == 2022)
+        .Select(period => period.Label)
+        .SequenceEqual(FiscalPeriod.BuildContinuousRange(22, 7, 23, 6)),
+    "Loading a sparse project fills the fiscal months inside each calendar year");
+AssertTrue(
+    sparseLoadedDataset.ForecastLines.Single().MonthlyForecasts.Any(forecast => forecast.PeriodLabel == "22-08" && forecast.Amount == 0m),
+    "Loading a sparse project aligns zero forecast cells with filled months");
 var migratedLine = metadataViewModel.ForecastLines.Single(line => line.TaskNumber == "RAW-001");
 var fallbackLine = metadataViewModel.ForecastLines.Single(line => line.TaskNumber == "MAN-001");
 AssertEqual("Legacy Category", migratedLine.ReportingCategoryOverride, "Legacy ProjectCode migrates into reporting category override");
@@ -737,6 +832,18 @@ InvokeEnsureColumnPresentation(resetWidthColumn);
 resetWidthColumn.Width = 243d;
 AssertTrue(InvokeResetColumnWidthToDefault(resetWidthColumn), "Resizable column can reset to its configured default width");
 AssertNearlyEqual(137d, resetWidthColumn.Width.DisplayValue, 0.01, "Column width reset restores the configured default width");
+
+var forecastVirtualization = GetForecastGridVirtualizationSettings();
+AssertTrue(forecastVirtualization.Rows, "Forecast grid keeps row virtualization enabled");
+AssertTrue(forecastVirtualization.Columns, "Forecast grid keeps column virtualization enabled");
+AssertTrue(forecastVirtualization.Panel, "Forecast grid uses a virtualizing items panel");
+AssertTrue(forecastVirtualization.Grouping, "Grouped forecast rows remain virtualized");
+
+var resizableForecastLine = new ForecastLine();
+AssertTrue(!resizableForecastLine.HasCustomRowHeight, "Forecast rows use the grid default height until resized");
+resizableForecastLine.SetRowDisplayHeight(96);
+AssertTrue(resizableForecastLine.HasCustomRowHeight, "Resizing records a row-specific height");
+AssertNearlyEqual(96d, resizableForecastLine.RowDisplayHeight, 0.01, "Row-specific height is stored on the row data");
 
 viewModel.ActiveWorkspaceKey = "CTC Forecast";
 var defaultForecastView = viewModel.SelectedWorkspaceView!;
@@ -1279,6 +1386,16 @@ static ForecastLine FindForecastLine(ProjectDataset dataset, string taskNumber, 
         && string.Equals(line.ResourceName, resourceName, StringComparison.OrdinalIgnoreCase));
 }
 
+static DateOnly GetCalendarMonthStart(string periodLabel)
+{
+    if (!FiscalPeriod.TryGetCalendarMonthStart(periodLabel, out var calendarMonthStart))
+    {
+        throw new InvalidOperationException($"Could not map fiscal period {periodLabel} to a calendar month.");
+    }
+
+    return calendarMonthStart;
+}
+
 static string FindRepositoryRoot()
 {
     var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -1357,6 +1474,40 @@ static bool InvokeResetColumnWidthToDefault(DataGridColumn column)
         ?? throw new MissingMethodException(typeof(MainWindow).FullName, "ResetColumnWidthToDefault");
     return (bool)(method.Invoke(null, [column])
         ?? throw new InvalidOperationException("Column width reset returned null."));
+}
+
+static (bool Rows, bool Columns, bool Panel, bool Grouping) GetForecastGridVirtualizationSettings()
+{
+    (bool Rows, bool Columns, bool Panel, bool Grouping) result = default;
+    Exception? failure = null;
+    var thread = new Thread(() =>
+    {
+        try
+        {
+            var grid = new DataGrid { Name = "ForecastLinesGrid" };
+            var method = typeof(MainWindow).GetMethod("ConfigureForecastGridPerformance", BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new MissingMethodException(typeof(MainWindow).FullName, "ConfigureForecastGridPerformance");
+            method.Invoke(null, [grid]);
+            result = (
+                grid.EnableRowVirtualization,
+                grid.EnableColumnVirtualization,
+                VirtualizingPanel.GetIsVirtualizing(grid),
+                VirtualizingPanel.GetIsVirtualizingWhenGrouping(grid));
+        }
+        catch (Exception exception)
+        {
+            failure = exception;
+        }
+    });
+    thread.SetApartmentState(ApartmentState.STA);
+    thread.Start();
+    thread.Join();
+    if (failure is not null)
+    {
+        throw new InvalidOperationException("Could not inspect forecast grid virtualization settings.", failure);
+    }
+
+    return result;
 }
 
 static void InvokeLoadDataset(MainWindowViewModel viewModel, ProjectDataset dataset)

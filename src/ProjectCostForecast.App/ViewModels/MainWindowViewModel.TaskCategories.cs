@@ -121,6 +121,7 @@ public sealed partial class MainWindowViewModel
         ReplaceCollection(ProjectTaskCodes, _dataset.ProjectTaskCodes);
         ReplaceCollection(ProjectCategories, _dataset.ProjectCategories);
         RefreshForecastLineTaskCategoryResolution();
+        OnPropertyChanged(nameof(ProjectTaskCodes));
         OnPropertyChanged(nameof(ProjectCategoryNames));
         _calculationService.Recalculate(_dataset);
         ReplaceCollection(CategorySummaries, _dataset.CategorySummaries);

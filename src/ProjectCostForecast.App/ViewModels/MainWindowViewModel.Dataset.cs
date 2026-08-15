@@ -32,6 +32,7 @@ public sealed partial class MainWindowViewModel
         _dataset.ProjectTaskCodes ??= [];
         _dataset.ProjectCategories ??= [];
         _dataset.BudgetLines ??= [];
+        var forecastPeriodDatesMigrated = NormaliseForecastPeriodDates(_dataset);
         InitializeWorkspaceViews(_dataset.WorkspaceViews);
         RefreshCurrentWorkspaceViews();
         foreach (var line in _dataset.ForecastLines)
@@ -63,8 +64,204 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(Header));
 
         SelectedForecastLine = ForecastLines.FirstOrDefault();
-        IsDirty = markDirty;
+        IsDirty = markDirty || forecastPeriodDatesMigrated;
         ApplyUserPreferences();
+    }
+
+    private static bool NormaliseForecastPeriodDates(ProjectDataset dataset)
+    {
+        dataset.ForecastPeriods ??= [];
+        dataset.ForecastLines ??= [];
+        dataset.ManagementResources ??= [];
+        dataset.SavedMonthSnapshots ??= [];
+
+        var datesByPeriod = new Dictionary<string, DateOnly>(StringComparer.OrdinalIgnoreCase);
+        var changed = false;
+
+        foreach (var period in dataset.ForecastPeriods)
+        {
+            if (!FiscalPeriod.TryGetCalendarMonthStart(period.Label, out var calendarMonthStart))
+            {
+                continue;
+            }
+
+            if (period.StartDate != calendarMonthStart)
+            {
+                period.StartDate = calendarMonthStart;
+                changed = true;
+            }
+
+            datesByPeriod[period.Label] = calendarMonthStart;
+        }
+
+        if (datesByPeriod.Count > 0)
+        {
+            var firstMonth = datesByPeriod.Values.Min();
+            var lastMonth = datesByPeriod.Values.Max();
+            for (var monthStart = firstMonth; monthStart.DayNumber <= lastMonth.DayNumber; monthStart = monthStart.AddMonths(1))
+            {
+                var periodLabel = FiscalPeriod.LabelFromCalendarMonth(monthStart);
+                if (datesByPeriod.ContainsKey(periodLabel))
+                {
+                    continue;
+                }
+
+                dataset.ForecastPeriods.Add(new ForecastPeriod
+                {
+                    Label = periodLabel,
+                    StartDate = monthStart
+                });
+                datesByPeriod[periodLabel] = monthStart;
+                changed = true;
+            }
+        }
+
+        dataset.ForecastPeriods = dataset.ForecastPeriods
+            .OrderBy(period => period.StartDate ?? DateOnly.MaxValue)
+            .ThenBy(period => FiscalPeriod.SortKey(period.Label))
+            .ToList();
+
+        datesByPeriod = dataset.ForecastPeriods
+            .Where(period => FiscalPeriod.TryGetCalendarMonthStart(period.Label, out _))
+            .ToDictionary(
+                period => period.Label,
+                period => period.StartDate!.Value,
+                StringComparer.OrdinalIgnoreCase);
+
+        foreach (var line in dataset.ForecastLines)
+        {
+            changed |= EnsureForecastPeriods(line, datesByPeriod);
+        }
+
+        foreach (var resource in dataset.ManagementResources)
+        {
+            changed |= EnsureManagementPeriods(resource, datesByPeriod);
+        }
+
+        foreach (var snapshot in dataset.SavedMonthSnapshots)
+        {
+            snapshot.ForecastLines ??= [];
+            foreach (var line in snapshot.ForecastLines)
+            {
+                changed |= EnsureSavedMonthPeriods(line, datesByPeriod);
+            }
+        }
+
+        return changed;
+    }
+
+    private static bool EnsureForecastPeriods(
+        ForecastLine line,
+        IReadOnlyDictionary<string, DateOnly> datesByPeriod)
+    {
+        line.MonthlyForecasts ??= [];
+        var changed = false;
+        foreach (var period in datesByPeriod)
+        {
+            var forecast = line.MonthlyForecasts.FirstOrDefault(item =>
+                string.Equals(item.PeriodLabel, period.Key, StringComparison.OrdinalIgnoreCase));
+            if (forecast is null)
+            {
+                line.MonthlyForecasts.Add(new MonthlyForecast
+                {
+                    PeriodLabel = period.Key,
+                    PeriodStartDate = period.Value
+                });
+                changed = true;
+                continue;
+            }
+
+            changed |= SetCanonicalPeriodDate(
+                forecast.PeriodLabel,
+                datesByPeriod,
+                date => forecast.PeriodStartDate = date,
+                forecast.PeriodStartDate);
+        }
+
+        return changed;
+    }
+
+    private static bool EnsureManagementPeriods(
+        ManagementResource resource,
+        IReadOnlyDictionary<string, DateOnly> datesByPeriod)
+    {
+        resource.MonthlyAllocations ??= [];
+        var changed = false;
+        foreach (var period in datesByPeriod)
+        {
+            var allocation = resource.MonthlyAllocations.FirstOrDefault(item =>
+                string.Equals(item.PeriodLabel, period.Key, StringComparison.OrdinalIgnoreCase));
+            if (allocation is null)
+            {
+                resource.MonthlyAllocations.Add(new ManagementResourceAllocation
+                {
+                    PeriodLabel = period.Key,
+                    PeriodStartDate = period.Value
+                });
+                changed = true;
+                continue;
+            }
+
+            changed |= SetCanonicalPeriodDate(
+                allocation.PeriodLabel,
+                datesByPeriod,
+                date => allocation.PeriodStartDate = date,
+                allocation.PeriodStartDate);
+        }
+
+        return changed;
+    }
+
+    private static bool EnsureSavedMonthPeriods(
+        SavedMonthForecastLine line,
+        IReadOnlyDictionary<string, DateOnly> datesByPeriod)
+    {
+        line.MonthlyForecasts ??= [];
+        var changed = false;
+        foreach (var period in datesByPeriod)
+        {
+            var forecast = line.MonthlyForecasts.FirstOrDefault(item =>
+                string.Equals(item.PeriodLabel, period.Key, StringComparison.OrdinalIgnoreCase));
+            if (forecast is null)
+            {
+                line.MonthlyForecasts.Add(new SavedMonthPeriodAmount
+                {
+                    PeriodLabel = period.Key,
+                    PeriodStartDate = period.Value
+                });
+                changed = true;
+                continue;
+            }
+
+            changed |= SetCanonicalPeriodDate(
+                forecast.PeriodLabel,
+                datesByPeriod,
+                date => forecast.PeriodStartDate = date,
+                forecast.PeriodStartDate);
+        }
+
+        return changed;
+    }
+
+    private static bool SetCanonicalPeriodDate(
+        string? periodLabel,
+        IReadOnlyDictionary<string, DateOnly> datesByPeriod,
+        Action<DateOnly> setDate,
+        DateOnly? currentDate)
+    {
+        if (string.IsNullOrWhiteSpace(periodLabel)
+            || !datesByPeriod.TryGetValue(periodLabel, out var canonicalDate))
+        {
+            return false;
+        }
+
+        if (currentDate == canonicalDate)
+        {
+            return false;
+        }
+
+        setDate(canonicalDate);
+        return true;
     }
 
     public void ToggleCtcMonthForecastColumns()

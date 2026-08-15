@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -18,6 +19,7 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
     private const double CellPadding = 6;
     private static readonly AccountingNoDecimalsConverter AccountingConverter = new();
     private static readonly Brush HighlightFill = BrushFactory.Frozen("#66FDE68A");
+    private static readonly ConditionalWeakTable<DataGrid, ScrollViewer> ScrollViewersByGrid = new();
     private static readonly (Brush Background, Brush Border)[] Palette =
     [
         (BrushFactory.Frozen("#EDF8F0"), BrushFactory.Frozen("#E2EEE5")),
@@ -135,14 +137,21 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
 
         var scrollingClip = new Rect(horizontalOffset + frozenLeft, 0, Math.Max(0, viewportWidth - frozenLeft), HeaderHeight);
         drawingContext.PushClip(new RectangleGeometry(scrollingClip));
-        foreach (var layout in columnLayouts.Where(layout => !layout.Frozen))
+        foreach (var layout in columnLayouts.Where(layout =>
+                     !layout.Frozen
+                     && layout.Left + layout.Width >= scrollingClip.Left
+                     && layout.Left <= scrollingClip.Right))
         {
             DrawCell(drawingContext, layout.Column, layout.Left, layout.Width, palette, summary);
         }
         drawingContext.Pop();
 
-        drawingContext.PushClip(new RectangleGeometry(new Rect(horizontalOffset, 0, frozenLeft, HeaderHeight)));
-        foreach (var layout in columnLayouts.Where(layout => layout.Frozen))
+        var frozenClip = new Rect(horizontalOffset, 0, frozenLeft, HeaderHeight);
+        drawingContext.PushClip(new RectangleGeometry(frozenClip));
+        foreach (var layout in columnLayouts.Where(layout =>
+                     layout.Frozen
+                     && layout.Left + layout.Width >= frozenClip.Left
+                     && layout.Left <= frozenClip.Right))
         {
             DrawCell(drawingContext, layout.Column, layout.Left, layout.Width, palette, summary);
         }
@@ -599,12 +608,33 @@ public sealed class ForecastGroupHeaderPresenter : FrameworkElement
         grid.SizeChanged -= GridSizeChanged;
         grid.SizeChanged += GridSizeChanged;
 
-        _scrollViewer ??= FindChild<ScrollViewer>(grid);
+        _scrollViewer ??= GetScrollViewer(grid);
         if (_scrollViewer is not null)
         {
             _scrollViewer.ScrollChanged -= GridScrollChanged;
             _scrollViewer.ScrollChanged += GridScrollChanged;
         }
+    }
+
+    private static ScrollViewer? GetScrollViewer(DataGrid grid)
+    {
+        if (ScrollViewersByGrid.TryGetValue(grid, out var cached))
+        {
+            if (cached.IsDescendantOf(grid))
+            {
+                return cached;
+            }
+
+            ScrollViewersByGrid.Remove(grid);
+        }
+
+        var scrollViewer = FindChild<ScrollViewer>(grid);
+        if (scrollViewer is not null)
+        {
+            ScrollViewersByGrid.Add(grid, scrollViewer);
+        }
+
+        return scrollViewer;
     }
 
     private void DetachGrid(DataGrid? grid = null)

@@ -53,7 +53,7 @@
     "svg": "Assets/Icons/svg/ic_view_grid_16.svg",
     "size_px": 16,
     "default_color": "#334155",
-    "usage": "Views dropdown and Default/Scenario items"
+    "usage": "Views dropdown"
   },
   {
     "file": "Assets/Icons/png/ic_chevron_down_16.png",

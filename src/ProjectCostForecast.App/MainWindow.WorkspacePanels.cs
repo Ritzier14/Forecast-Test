@@ -1,7 +1,9 @@
 ﻿using System.Collections;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
+using System.Text;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -149,6 +151,59 @@ public partial class MainWindow
         }
     }
 
+    private void ResourceDrilldownColumnSizesButton_Click(object sender, RoutedEventArgs e)
+    {
+        var grids = new (string Name, DataGrid Grid)[]
+        {
+            ("Cost into Resource", LedgerTransactionsGrid),
+            ("Cost into Resource - monthly pivot", LedgerMonthlyPivotGrid),
+            ("Monthly Forecast", SelectedMonthlyForecastsGrid)
+        };
+        var report = new StringBuilder();
+        report.AppendLine("Resource Drilldown column sizes");
+        report.AppendLine($"Captured {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+
+        foreach (var (name, grid) in grids)
+        {
+            report.AppendLine();
+            report.AppendLine($"[{name}]  Visible={grid.Visibility == Visibility.Visible}");
+            if (grid.Columns.Count == 0)
+            {
+                report.AppendLine("(no columns)");
+                continue;
+            }
+
+            foreach (var column in grid.Columns.OrderBy(column =>
+                         column.DisplayIndex >= 0 ? column.DisplayIndex : grid.Columns.IndexOf(column)))
+            {
+                var header = column.Header?.ToString() ?? string.Empty;
+                var width = GetStableColumnWidth(column);
+                var displayIndex = column.DisplayIndex >= 0
+                    ? column.DisplayIndex
+                    : grid.Columns.IndexOf(column);
+                report.AppendLine(
+                    $"{displayIndex,3}  {header,-28}  {width,8:0.##} px  {column.Visibility}");
+            }
+        }
+
+        var text = report.ToString().TrimEnd();
+        Debug.WriteLine(text);
+        var copied = TryCopyReportToClipboard(text);
+
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.StatusText = copied
+                ? "Resource Drilldown column sizes printed and copied to the clipboard."
+                : "Resource Drilldown column sizes printed; clipboard was unavailable.";
+        }
+
+        ShowCopyableReportWindow(
+            "Resource Drilldown column sizes",
+            "Current Resource Drilldown column widths. The report is also written to the diagnostic output.",
+            text,
+            copied);
+    }
+
     private void QueueFocusPendingWorkspaceViewEditor()
     {
         Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
@@ -203,11 +258,45 @@ public partial class MainWindow
 
     private void HideDetailWorkspacePanel_Click(object sender, RoutedEventArgs e)
     {
+        if (IsMonthlyReportWorkspace())
+        {
+            SuppressDetailWorkspacePanel();
+            if (DataContext is MainWindowViewModel reportViewModel)
+            {
+                reportViewModel.SetDetailPanelCollapsed(true);
+                reportViewModel.SetDetailPanelPinned(false);
+                ApplyPinButtonVisual(reportViewModel);
+            }
+
+            return;
+        }
+
         CollapseDetailWorkspacePanel(clearPin: true);
     }
 
     private void DetailWorkspaceCollapseButton_Click(object sender, RoutedEventArgs e)
     {
+        if (IsMonthlyReportWorkspace())
+        {
+            if (DataContext is MainWindowViewModel reportViewModel && reportViewModel.IsDetailPanelCollapsed)
+            {
+                if (_selectedReportCanvasObject is not null)
+                {
+                    ShowReportFormatTablePanel();
+                }
+                else
+                {
+                    SuppressDetailWorkspacePanel();
+                }
+            }
+            else
+            {
+                CollapseDetailWorkspacePanel(clearPin: true);
+            }
+
+            return;
+        }
+
         if (DataContext is MainWindowViewModel { IsDetailPanelCollapsed: true })
         {
             ExpandDetailWorkspacePanel(pin: false);
@@ -227,6 +316,21 @@ public partial class MainWindow
 
         var nextPinned = !viewModel.IsDetailPanelPinned;
         viewModel.SetDetailPanelPinned(nextPinned);
+        if (IsMonthlyReportWorkspace())
+        {
+            if (_selectedReportCanvasObject is not null)
+            {
+                ShowReportFormatTablePanel();
+            }
+            else
+            {
+                SuppressDetailWorkspacePanel();
+            }
+
+            ApplyPinButtonVisual(viewModel);
+            return;
+        }
+
         if (nextPinned)
         {
             ExpandDetailWorkspacePanel(pin: true);
@@ -303,13 +407,14 @@ public partial class MainWindow
         StopDetailWorkspaceHoverTimer();
         DetailWorkspaceShell.Visibility = Visibility.Visible;
         DetailWorkspacePanel.Visibility = Visibility.Collapsed;
+        ReportFormatTablePanel.Visibility = Visibility.Collapsed;
         Panel.SetZIndex(DetailWorkspaceShell, 0);
         DetailWorkspaceShell.ClearValue(FrameworkElement.WidthProperty);
         DetailWorkspaceShell.HorizontalAlignment = HorizontalAlignment.Stretch;
         DetailWorkspaceCollapsedTab.Background = BrushFactory.Frozen("#F8FAFC");
         DetailWorkspaceCollapsedTab.BorderBrush = BrushFactory.Frozen("#D7E0EA");
         DetailWorkspaceCollapsedTab.BorderThickness = new Thickness(1);
-        DetailWorkspaceCollapsedTab.ToolTip = "Expand resource drilldown";
+        DetailWorkspaceCollapsedTab.ToolTip = $"Expand {GetDetailWorkspacePanelLabel()}";
         DetailWorkspaceRailArrow.Text = "‹";
         CollapsedDetailRailResizeThumb.Visibility = Visibility.Visible;
         WorkspaceGridSplitter.Visibility = Visibility.Collapsed;
@@ -360,6 +465,7 @@ public partial class MainWindow
         _detailWorkspaceOverlayOpen = true;
         DetailWorkspaceShell.Visibility = Visibility.Visible;
         DetailWorkspacePanel.Visibility = Visibility.Visible;
+        ReportFormatTablePanel.Visibility = Visibility.Collapsed;
         Panel.SetZIndex(DetailWorkspaceShell, 40);
         DetailWorkspaceShell.HorizontalAlignment = HorizontalAlignment.Right;
         DetailWorkspaceShell.Width = Math.Max(420, ActualWidth * 0.28);
@@ -388,6 +494,7 @@ public partial class MainWindow
         StopDetailWorkspaceHoverTimer();
         DetailWorkspaceShell.Visibility = Visibility.Visible;
         DetailWorkspacePanel.Visibility = Visibility.Visible;
+        ReportFormatTablePanel.Visibility = Visibility.Collapsed;
         Panel.SetZIndex(DetailWorkspaceShell, 0);
         DetailWorkspaceShell.ClearValue(FrameworkElement.WidthProperty);
         DetailWorkspaceShell.HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -405,7 +512,7 @@ public partial class MainWindow
         DetailWorkspaceCollapsedTab.Background = BrushFactory.Frozen("#F8FAFC");
         DetailWorkspaceCollapsedTab.BorderBrush = BrushFactory.Frozen("#D7E0EA");
         DetailWorkspaceCollapsedTab.BorderThickness = new Thickness(1);
-        DetailWorkspaceCollapsedTab.ToolTip = "Collapse resource drilldown";
+        DetailWorkspaceCollapsedTab.ToolTip = $"Collapse {GetDetailWorkspacePanelLabel()}";
         DetailWorkspaceRailArrow.Text = "›";
         CollapsedDetailRailResizeThumb.Visibility = Visibility.Collapsed;
         WorkspaceGridSplitter.Visibility = Visibility.Visible;
@@ -442,8 +549,11 @@ public partial class MainWindow
 
     private void SuppressDetailWorkspacePanel()
     {
+        _detailWorkspaceOverlayOpen = false;
+        StopDetailWorkspaceHoverTimer();
         DetailWorkspaceShell.Visibility = Visibility.Collapsed;
         DetailWorkspacePanel.Visibility = Visibility.Collapsed;
+        ReportFormatTablePanel.Visibility = Visibility.Collapsed;
         WorkspaceGridSplitter.Visibility = Visibility.Collapsed;
         WorkspaceSplitterColumn.Width = new GridLength(0);
         DetailWorkspaceContentColumn.Width = new GridLength(0);
@@ -452,10 +562,78 @@ public partial class MainWindow
 
     private bool IsDetailWorkspaceSuppressed()
         => DataContext is MainWindowViewModel viewModel
-        && string.Equals(viewModel.ActiveWorkspaceKey, "Schedule", StringComparison.OrdinalIgnoreCase);
+        && (string.Equals(viewModel.ActiveWorkspaceKey, "Schedule", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(viewModel.ActiveWorkspaceKey, "Monthly Report", StringComparison.OrdinalIgnoreCase));
+
+    private bool IsMonthlyReportWorkspace()
+        => DataContext is MainWindowViewModel viewModel
+        && string.Equals(viewModel.ActiveWorkspaceKey, "Monthly Report", StringComparison.OrdinalIgnoreCase);
+
+    private string GetDetailWorkspacePanelLabel()
+        => IsMonthlyReportWorkspace() ? "format table" : "resource drilldown";
+
+    private void ShowReportFormatTablePanel()
+    {
+        if (!IsMonthlyReportWorkspace() || _selectedReportCanvasObject is null)
+        {
+            return;
+        }
+
+        _detailWorkspaceOverlayOpen = false;
+        StopDetailWorkspaceHoverTimer();
+        DetailWorkspaceShell.Visibility = Visibility.Visible;
+        ReportFormatTablePanel.Visibility = Visibility.Visible;
+        DetailWorkspacePanel.Visibility = Visibility.Collapsed;
+        Panel.SetZIndex(DetailWorkspaceShell, 0);
+        DetailWorkspaceShell.ClearValue(FrameworkElement.WidthProperty);
+        DetailWorkspaceShell.HorizontalAlignment = HorizontalAlignment.Stretch;
+        DetailWorkspaceShell.Background = BrushFactory.Frozen("#F8FAFD");
+        DetailWorkspaceShell.BorderBrush = BrushFactory.Frozen("#DCE4EE");
+        DetailWorkspaceShell.BorderThickness = new Thickness(1);
+        DetailWorkspaceShell.Padding = new Thickness(4);
+        DetailWorkspaceShell.CornerRadius = new CornerRadius(14);
+        DetailWorkspaceRail.Margin = new Thickness(8, 0, 0, 0);
+        DetailWorkspaceRail.Background = BrushFactory.Frozen("#FCFCFD");
+        DetailWorkspaceRail.BorderBrush = BrushFactory.Frozen("#DCE4EE");
+        DetailWorkspaceRail.BorderThickness = new Thickness(1);
+        DetailWorkspaceRail.CornerRadius = new CornerRadius(12);
+        DetailWorkspaceRail.Padding = new Thickness(5);
+        DetailWorkspaceCollapsedTab.Background = BrushFactory.Frozen("#F8FAFC");
+        DetailWorkspaceCollapsedTab.BorderBrush = BrushFactory.Frozen("#D7E0EA");
+        DetailWorkspaceCollapsedTab.BorderThickness = new Thickness(1);
+        DetailWorkspaceCollapsedTab.ToolTip = "Collapse format table";
+        DetailWorkspaceRailArrow.Text = "›";
+        CollapsedDetailRailResizeThumb.Visibility = Visibility.Collapsed;
+        WorkspaceGridSplitter.Visibility = Visibility.Visible;
+        DetailWorkspaceContentColumn.Width = new GridLength(1, GridUnitType.Star);
+        WorkspaceSplitterColumn.Width = new GridLength(12);
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.SetDetailPanelCollapsed(false);
+            ApplyCollapsedRailWidth(viewModel);
+            DetailWorkspaceColumn.Width = GetDetailWorkspaceExpandedWidth();
+            ApplyPinButtonVisual(viewModel);
+        }
+
+        UpdateReportFormatTablePanel();
+    }
 
     private void ApplyDetailWorkspaceAvailability(MainWindowViewModel viewModel)
     {
+        if (string.Equals(viewModel.ActiveWorkspaceKey, "Monthly Report", StringComparison.OrdinalIgnoreCase))
+        {
+            if (_selectedReportCanvasObject is not null)
+            {
+                ShowReportFormatTablePanel();
+            }
+            else
+            {
+                SuppressDetailWorkspacePanel();
+            }
+
+            return;
+        }
+
         if (string.Equals(viewModel.ActiveWorkspaceKey, "Schedule", StringComparison.OrdinalIgnoreCase))
         {
             SuppressDetailWorkspacePanel();
@@ -502,12 +680,22 @@ public partial class MainWindow
 
     private void ApplyPinButtonVisual(MainWindowViewModel viewModel)
     {
+        var panelLabel = GetDetailWorkspacePanelLabel();
+        var reportPanelIsActive = IsMonthlyReportWorkspace();
         DetailWorkspacePinButton.Content = viewModel.IsDetailPanelPinned ? "Pinned" : "Pin";
         DetailWorkspacePinButton.ToolTip = viewModel.IsDetailPanelPinned
-            ? "Unpin resource drilldown"
-            : "Pin resource drilldown open";
+            ? $"Unpin {panelLabel}"
+            : $"Pin {panelLabel} open";
         DetailWorkspacePinButton.Background = viewModel.IsDetailPanelPinned
             ? BrushFactory.Frozen("#DBEAFE")
             : BrushFactory.Frozen("#F8FAFC");
+        ReportFormatTablePinButton.Content = viewModel.IsDetailPanelPinned ? "Pinned" : "Pin";
+        ReportFormatTablePinButton.ToolTip = viewModel.IsDetailPanelPinned
+            ? "Unpin format table"
+            : "Pin format table open";
+        ReportFormatTablePinButton.Background = viewModel.IsDetailPanelPinned
+            ? BrushFactory.Frozen("#DBEAFE")
+            : BrushFactory.Frozen("#F8FAFC");
+        ReportFormatTablePinButton.Visibility = reportPanelIsActive ? Visibility.Visible : Visibility.Collapsed;
     }
 }

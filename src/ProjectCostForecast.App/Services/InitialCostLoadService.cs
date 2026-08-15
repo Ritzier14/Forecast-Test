@@ -53,19 +53,22 @@ public sealed class InitialCostLoadService
             .Select(group => new ForecastPeriod
             {
                 Label = group.Key,
-                StartDate = group
-                    .Where(transaction => transaction.DocDate.HasValue)
-                    .Select(transaction => transaction.DocDate!.Value)
-                    .OrderBy(date => date)
-                    .Select(date => new DateOnly(date.Year, date.Month, 1))
-                    .FirstOrDefault()
+                StartDate = FiscalPeriod.TryGetCalendarMonthStart(group.Key, out var calendarMonthStart)
+                    ? calendarMonthStart
+                    : group
+                        .Where(transaction => transaction.DocDate.HasValue)
+                        .Select(transaction => transaction.DocDate!.Value)
+                        .OrderBy(date => date)
+                        .Select(date => new DateOnly(date.Year, date.Month, 1))
+                        .FirstOrDefault()
             })
             .ToList();
         var workingMonthStart = new DateOnly(_asOfDate.Year, _asOfDate.Month, 1).AddMonths(-1);
         EnsureForecastPeriod(periods, workingMonthStart);
         EnsureForecastPeriod(periods, workingMonthStart.AddMonths(1));
+        EnsureContinuousForecastPeriods(periods);
         periods = periods.OrderBy(period => period.StartDate ?? DateOnly.MaxValue).ToList();
-        var currentPeriod = FiscalPeriodLabelFromCalendarMonth(workingMonthStart);
+        var currentPeriod = FiscalPeriod.LabelFromCalendarMonth(workingMonthStart);
         var projectCodes = transactions
             .Select(transaction => transaction.ProjectCode)
             .Where(projectCode => !string.IsNullOrWhiteSpace(projectCode))
@@ -115,7 +118,8 @@ public sealed class InitialCostLoadService
 
     private static void EnsureForecastPeriod(ICollection<ForecastPeriod> periods, DateOnly monthStart)
     {
-        var label = FiscalPeriodLabelFromCalendarMonth(monthStart);
+        monthStart = new DateOnly(monthStart.Year, monthStart.Month, 1);
+        var label = FiscalPeriod.LabelFromCalendarMonth(monthStart);
         if (periods.Any(period => string.Equals(period.Label, label, StringComparison.OrdinalIgnoreCase)))
         {
             return;
@@ -128,11 +132,34 @@ public sealed class InitialCostLoadService
         });
     }
 
-    private static string FiscalPeriodLabelFromCalendarMonth(DateOnly monthStart)
+    private static void EnsureContinuousForecastPeriods(ICollection<ForecastPeriod> periods)
     {
-        var fiscalYear = monthStart.Month >= 7 ? monthStart.Year + 1 : monthStart.Year;
-        var fiscalMonth = ((monthStart.Month + 5) % 12) + 1;
-        return FiscalPeriod.FormatLabel(fiscalYear, fiscalMonth);
+        var datedPeriods = periods
+            .Where(period => period.StartDate.HasValue)
+            .Select(period => new DateOnly(period.StartDate!.Value.Year, period.StartDate.Value.Month, 1))
+            .OrderBy(date => date)
+            .ToList();
+        if (datedPeriods.Count == 0)
+        {
+            return;
+        }
+
+        var start = datedPeriods.First();
+        var end = datedPeriods.Last();
+        for (var monthStart = start; monthStart.DayNumber <= end.DayNumber; monthStart = monthStart.AddMonths(1))
+        {
+            var label = FiscalPeriod.LabelFromCalendarMonth(monthStart);
+            if (periods.Any(period => string.Equals(period.Label, label, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            periods.Add(new ForecastPeriod
+            {
+                Label = label,
+                StartDate = monthStart
+            });
+        }
     }
 
     private static CostTransaction CloneAndResolveResource(CostTransaction transaction)

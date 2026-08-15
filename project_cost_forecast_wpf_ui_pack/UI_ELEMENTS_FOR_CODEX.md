@@ -73,7 +73,7 @@ Window
 - `NavigationItems`
   - `OverviewNavItem`: icon `ic_nav_home_20.png`
   - `ForecastsNavItem`: selected; icon `ic_nav_forecasts_20.png`
-    - child scenario links: `Default`, `Scenario A`, `Scenario B`
+    - project actions are shown beneath the selected Forecasts item
   - `ReportsNavItem`: icon `ic_nav_reports_20.png`
   - `ResourcesNavItem`: icon `ic_nav_resources_20.png`
   - `SettingsNavItem`: icon `ic_nav_settings_20.png`

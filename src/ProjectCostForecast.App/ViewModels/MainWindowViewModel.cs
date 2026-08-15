@@ -107,6 +107,8 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private bool _showCtcMonthForecastColumns = true;
     private bool _showMonthNameAboveFiscalPeriod;
     private bool _showCtcMonthForecastYearTotals;
+    private bool _showActualCostInMonthCells;
+    private bool _isBudgetColumnUnlocked;
     private bool _createInitialCostLoadSavedMonths;
     private bool _showCurrencySymbols;
     private int _forecastMonthMillionDecimals = 2;
@@ -264,6 +266,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
 
         ClearFiltersCommand = new RelayCommand(_ => ClearFilters());
         ClearAllCommand = new RelayCommand(_ => ClearAllRecords());
+        NewProjectCommand = new RelayCommand(_ => ClearAllRecords(newProject: true));
         OpenProjectCommand = new RelayCommand(_ => OpenProject());
         SaveProjectCommand = new RelayCommand(_ => SaveProject(), _ => true);
         SaveProjectAsCommand = new RelayCommand(_ => SaveProjectAs());
@@ -369,6 +372,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public ICollectionView CategorySummariesView { get; }
     public ICommand ClearFiltersCommand { get; }
     public ICommand ClearAllCommand { get; }
+    public ICommand NewProjectCommand { get; }
     public ICommand OpenProjectCommand { get; }
     public ICommand SaveProjectCommand { get; }
     public ICommand SaveProjectAsCommand { get; }
@@ -888,6 +892,30 @@ public sealed partial class MainWindowViewModel : NotifyObject
                 _dataset.ShowCtcMonthForecastYearTotals = value;
                 RebuildCtcMonthForecastColumns();
                 IsDirty = true;
+                SaveUserPreferences();
+            }
+        }
+    }
+
+    public bool ShowActualCostInMonthCells
+    {
+        get => _showActualCostInMonthCells;
+        set
+        {
+            if (SetProperty(ref _showActualCostInMonthCells, value))
+            {
+                SaveUserPreferences();
+            }
+        }
+    }
+
+    public bool IsBudgetColumnUnlocked
+    {
+        get => _isBudgetColumnUnlocked;
+        set
+        {
+            if (SetProperty(ref _isBudgetColumnUnlocked, value))
+            {
                 SaveUserPreferences();
             }
         }

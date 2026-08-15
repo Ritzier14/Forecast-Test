@@ -5,6 +5,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using ProjectCostForecast.App.Models;
+using ProjectCostForecast.App.Services;
 using ProjectCostForecast.App.ViewModels;
 
 namespace ProjectCostForecast.App;
@@ -14,12 +15,12 @@ public partial class MainWindow
     private int _reportChartCount;
 
     private void AddLineReportChartButton_Click(object sender, RoutedEventArgs e) =>
-        ShowReportChartBuilder(ReportChartKind.Line);
+        BeginReportCanvasObjectPlacement("LineChart", sender as Button);
 
     private void AddColumnReportChartButton_Click(object sender, RoutedEventArgs e) =>
-        ShowReportChartBuilder(ReportChartKind.Column);
+        BeginReportCanvasObjectPlacement("ColumnChart", sender as Button);
 
-    private void ShowReportChartBuilder(ReportChartKind chartKind, Point? dropPosition = null)
+    private void ShowReportChartBuilder(ReportChartKind chartKind, Point? dropPosition = null, Size? requestedSize = null)
     {
         if (DataContext is not MainWindowViewModel viewModel)
         {
@@ -39,7 +40,28 @@ public partial class MainWindow
             return;
         }
 
-        var model = BuildReportChartModel(viewModel, chartKind, dialog.Grouping, dialog.FromDate, dialog.ToDate);
+        var offset = (_reportChartCount++ % 6) * 26;
+        var position = dropPosition ?? new Point(24 + offset, 24 + offset);
+        var requestedWidth = requestedSize?.Width ?? 540;
+        var requestedHeight = requestedSize?.Height ?? 310;
+        var width = Math.Clamp(requestedWidth, 180, MonthlyReportChartCanvas.Width);
+        var height = Math.Clamp(requestedHeight, 140, MonthlyReportChartCanvas.Height);
+        var toolbarKey = chartKind == ReportChartKind.Line ? "LineChart" : "ColumnChart";
+        var layout = new ReportCanvasObjectLayout
+        {
+            ObjectType = "Chart",
+            X = Math.Clamp(position.X, 0, Math.Max(0, MonthlyReportChartCanvas.Width - width)),
+            Y = Math.Clamp(position.Y, 0, Math.Max(0, MonthlyReportChartCanvas.Height - height)),
+            Width = width,
+            Height = height,
+            StyleKey = GetSelectedReportToolbarStyle(toolbarKey),
+            ChartKind = chartKind.ToString(),
+            Grouping = dialog.Grouping.ToString(),
+            FromDate = dialog.FromDate,
+            ToDate = dialog.ToDate,
+            XAxisTickFrequency = 8
+        };
+        var model = BuildReportChartModel(viewModel, layout);
         if (model.Series.Count == 0 || model.Series.All(series => series.Values.All(value => value == 0)))
         {
             MessageBox.Show(
@@ -51,24 +73,41 @@ public partial class MainWindow
             return;
         }
 
-        var offset = (_reportChartCount++ % 6) * 26;
-        var position = dropPosition ?? new Point(24 + offset, 24 + offset);
-        var toolbarKey = chartKind == ReportChartKind.Line ? "LineChart" : "ColumnChart";
-        var layout = new ReportCanvasObjectLayout
-        {
-            ObjectType = "Chart",
-            X = Math.Min(position.X, Math.Max(0, MonthlyReportChartCanvas.Width - 540)),
-            Y = Math.Min(position.Y, Math.Max(0, MonthlyReportChartCanvas.Height - 310)),
-            Width = 540,
-            Height = 310,
-            StyleKey = GetSelectedReportToolbarStyle(toolbarKey),
-            ChartKind = chartKind.ToString(),
-            Grouping = dialog.Grouping.ToString(),
-            FromDate = dialog.FromDate,
-            ToDate = dialog.ToDate
-        };
         AddReportCanvasLayout(layout);
         AddReportChartCard(layout, model);
+    }
+
+    private static ReportChartModel BuildReportChartModel(
+        MainWindowViewModel viewModel,
+        ReportCanvasObjectLayout layout)
+    {
+        if (!Enum.TryParse(layout.ChartKind, true, out ReportChartKind kind)
+            || !Enum.TryParse(layout.Grouping, true, out ReportChartGrouping grouping)
+            || layout.FromDate is not { } fromDate
+            || layout.ToDate is not { } toDate)
+        {
+            return new ReportChartModel(ReportChartKind.Line, "Report chart", [], []);
+        }
+
+        var valueKeys = layout.ReportChartValueKeys ?? [];
+        var costCodeFilters = layout.ReportChartCostCodeFilterEnabled
+            ? GetReportChartCostCodeFilters(layout)
+            : [];
+        return valueKeys.Count > 0
+            ? BuildReportValueChartModel(
+                viewModel,
+                kind,
+                fromDate,
+                toDate,
+                costCodeFilters,
+                valueKeys)
+            : BuildReportChartModel(
+                viewModel,
+                kind,
+                grouping,
+                fromDate,
+                toDate,
+                costCodeFilters);
     }
 
     private static ReportChartModel BuildReportChartModel(
@@ -76,10 +115,14 @@ public partial class MainWindow
         ReportChartKind kind,
         ReportChartGrouping grouping,
         DateOnly fromDate,
-        DateOnly toDate)
+        DateOnly toDate,
+        IReadOnlyList<string> costCodeFilters)
     {
         var transactions = viewModel.Transactions
-            .Where(item => item.DocDate is { } date && date >= fromDate && date <= toDate)
+            .Where(item => item.DocDate is { } date
+                && date >= fromDate
+                && date <= toDate
+                && MatchesReportCostCodeFilter(item, costCodeFilters))
             .ToList();
 
         string GroupKey(CostTransaction item) => grouping switch
@@ -136,6 +179,166 @@ public partial class MainWindow
         return new ReportChartModel(kind, title, categories, series);
     }
 
+    private static ReportChartModel BuildReportValueChartModel(
+        MainWindowViewModel viewModel,
+        ReportChartKind kind,
+        DateOnly fromDate,
+        DateOnly toDate,
+        IReadOnlyList<string> costCodeFilters,
+        IReadOnlyList<string> valueKeys)
+    {
+        var allTransactions = viewModel.Transactions.ToList();
+        var datedTransactions = allTransactions
+            .Where(item => item.DocDate is { } date
+                && date >= fromDate
+                && date <= toDate
+                && MatchesReportCostCodeFilter(item, costCodeFilters))
+            .ToList();
+        var filteredForecastLines = viewModel.ForecastLines
+            .Where(line => ForecastLineMatchesReportCostCodeFilter(line, costCodeFilters))
+            .ToList();
+
+        var startMonth = new DateOnly(fromDate.Year, fromDate.Month, 1);
+        var endMonth = new DateOnly(toDate.Year, toDate.Month, 1);
+        var months = new List<DateOnly>();
+        for (var month = startMonth; month <= endMonth; month = month.AddMonths(1))
+        {
+            months.Add(month);
+        }
+
+        var categories = months
+            .Select(month => month.ToString("MMM yy", CultureInfo.InvariantCulture))
+            .ToList();
+        var budgetTotal = filteredForecastLines.Sum(line => line.Budget);
+        var series = valueKeys
+            .Where(IsReportValueDataSetKey)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(key => new ReportChartSeries(
+                GetReportValueDataSetTitle(key),
+                months.Select(month => GetReportValueForMonth(
+                    key,
+                    month,
+                    datedTransactions,
+                    filteredForecastLines,
+                    budgetTotal)).ToList(),
+                IsReportReferenceDataSetKey(key)))
+            .ToList();
+
+        var costCodeFilter = costCodeFilters.Count == 0
+            ? string.Empty
+            : GetReportChartCostCodeFilterLabel(costCodeFilters);
+        var title = string.Join(" / ", series.Select(item => item.Name));
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            title = "Report values";
+        }
+
+        title += $" Â· {fromDate:dd MMM yyyy} â€“ {toDate:dd MMM yyyy}";
+        if (!string.IsNullOrWhiteSpace(costCodeFilter))
+        {
+            title += $" Â· Cost code: {costCodeFilter}";
+        }
+
+        return new ReportChartModel(kind, title, categories, series);
+    }
+
+    private static decimal GetReportValueForMonth(
+        string key,
+        DateOnly month,
+        IReadOnlyList<CostTransaction> transactions,
+        IReadOnlyList<ForecastLine> forecastLines,
+        decimal budgetTotal)
+    {
+        return key switch
+        {
+            "TotalBudget" => budgetTotal,
+            "TotalSpend" => transactions
+                .Where(item => item.DocDate is { } date && date.Year == month.Year && date.Month == month.Month)
+                .Sum(item => item.Amount),
+            "TotalForecast" => forecastLines
+                .SelectMany(line => line.MonthlyForecasts)
+                .Where(item => item.PeriodStartDate is { } date
+                    && date.Year == month.Year
+                    && date.Month == month.Month)
+                .Sum(item => item.Amount),
+            _ => 0m
+        };
+    }
+
+    private static IReadOnlyList<string> GetReportChartCostCodeFilters(ReportCanvasObjectLayout layout)
+    {
+        var filters = (layout.ReportChartCostCodeFilters ?? [])
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (filters.Count == 0 && !string.IsNullOrWhiteSpace(layout.ReportChartCostCodeFilter))
+        {
+            filters.Add(layout.ReportChartCostCodeFilter.Trim());
+        }
+
+        return filters;
+    }
+
+    internal static string GetReportChartCostCodeFilterLabel(ReportCanvasObjectLayout layout)
+        => GetReportChartCostCodeFilterLabel(GetReportChartCostCodeFilters(layout));
+
+    internal static string GetReportChartCostCodeFilterLabel(IReadOnlyList<string> filters)
+        => filters.Count switch
+        {
+            0 => "Cost codes (all)",
+            1 => $"Cost code ({filters[0]})",
+            _ => "Cost (multiple)"
+        };
+
+    internal static bool IsReportFilterDataSetKey(string key)
+        => string.Equals(key, "CostCodeSummary", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(key, "HeadingFilter", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(key, "SubHeadingFilter", StringComparison.OrdinalIgnoreCase)
+            || key.StartsWith(ReportCostCodeValuePrefix, StringComparison.OrdinalIgnoreCase);
+
+    internal static bool IsReportValueDataSetKey(string key) => key is "TotalBudget" or "TotalSpend" or "TotalForecast";
+
+    private static bool IsReportReferenceDataSetKey(string key) => string.Equals(key, "TotalBudget", StringComparison.OrdinalIgnoreCase);
+
+    internal static string GetReportValueDataSetTitle(string key) => key switch
+    {
+        "TotalBudget" => "Total budget",
+        "TotalSpend" => "Total spend",
+        "TotalForecast" => "Total forecast",
+        _ => "Value"
+    };
+
+    private static bool MatchesReportCostCodeFilter(CostTransaction transaction, IReadOnlyList<string> costCodeFilters)
+    {
+        if (costCodeFilters.Count == 0)
+        {
+            return true;
+        }
+
+        var taskCode = CalculationService.Normalise(transaction.TaskNumber);
+        return costCodeFilters.Any(filter => string.Equals(
+            taskCode,
+            CalculationService.Normalise(filter),
+            StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool ForecastLineMatchesReportCostCodeFilter(
+        ForecastLine line,
+        IReadOnlyList<string> costCodeFilters)
+    {
+        if (costCodeFilters.Count == 0)
+        {
+            return true;
+        }
+
+        var taskCode = CalculationService.Normalise(line.TaskNumber);
+        return costCodeFilters.Any(filter => string.Equals(
+            taskCode,
+            CalculationService.Normalise(filter),
+            StringComparison.OrdinalIgnoreCase));
+    }
+
     private void ReportCanvasSetting_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!IsInitialized || MonthlyReportChartCanvas is null
@@ -188,6 +391,8 @@ public partial class MainWindow
 
     private void ClearReportChartsButton_Click(object sender, RoutedEventArgs e)
     {
+        CancelReportCanvasObjectPlacement();
+        ClearReportCanvasObjectSelection();
         DetachLegacyReportViewer();
         foreach (var item in MonthlyReportChartCanvas.Children
                      .OfType<FrameworkElement>()
@@ -224,13 +429,18 @@ internal enum ReportChartGrouping
     Resource
 }
 
-internal sealed record ReportChartSeries(string Name, IReadOnlyList<decimal> Values);
+internal sealed record ReportChartSeries(string Name, IReadOnlyList<decimal> Values, bool IsReferenceLine = false);
 
 internal sealed record ReportChartModel(
     ReportChartKind Kind,
     string Title,
     IReadOnlyList<string> Categories,
     IReadOnlyList<ReportChartSeries> Series);
+
+internal sealed class ReportChartDataSetEventArgs(string dataSetKey) : EventArgs
+{
+    public string DataSetKey { get; } = dataSetKey;
+}
 
 internal sealed class ReportChartBuilderWindow : Window
 {
@@ -346,6 +556,10 @@ internal sealed class ReportChartBuilderWindow : Window
 internal sealed class ReportChartCard : Border
 {
     private readonly ReportCanvasObjectLayout _objectLayout;
+    private readonly ReportChartVisual _chartVisual;
+    private readonly TextBlock _titleText;
+    private readonly StackPanel _dataSetPillPanel;
+    private readonly Border _dataSetStrip;
     private Point _dragOrigin;
     private double _leftOrigin;
     private double _topOrigin;
@@ -359,23 +573,29 @@ internal sealed class ReportChartCard : Border
         Background = Brushes.White;
         BorderBrush = new SolidColorBrush(Color.FromRgb(148, 163, 184));
         BorderThickness = new Thickness(1);
-        CornerRadius = new CornerRadius(5);
+        CornerRadius = new CornerRadius(8);
+        ClipToBounds = true;
         Effect = new System.Windows.Media.Effects.DropShadowEffect
         {
             BlurRadius = 10,
             Opacity = 0.16,
             ShadowDepth = 2
         };
+        AllowDrop = true;
+        DragOver += ReportChartCard_DragOver;
+        Drop += ReportChartCard_Drop;
 
         var layout = new Grid();
-        layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(38) });
+        layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(24) });
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
         var header = new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
-            BorderThickness = new Thickness(0, 0, 0, 1),
+            Height = 24,
+            Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
             Cursor = Cursors.SizeAll,
             Padding = new Thickness(10, 0, 5, 0)
         };
@@ -394,24 +614,47 @@ internal sealed class ReportChartCard : Border
         removeButton.Click += (_, _) => RemoveRequested?.Invoke(this, EventArgs.Empty);
         DockPanel.SetDock(removeButton, Dock.Right);
         headerLayout.Children.Add(removeButton);
-        headerLayout.Children.Add(new TextBlock
+        _titleText = new TextBlock
         {
-            Text = model.Title,
+            Text = string.Empty,
             FontWeight = FontWeights.SemiBold,
             FontSize = 12,
             Foreground = new SolidColorBrush(Color.FromRgb(51, 65, 85)),
             VerticalAlignment = VerticalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis
-        });
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Visibility = Visibility.Collapsed
+        };
+        headerLayout.Children.Add(_titleText);
         header.Child = headerLayout;
         header.PreviewMouseLeftButtonDown += Header_MouseLeftButtonDown;
         header.PreviewMouseMove += Header_MouseMove;
         header.PreviewMouseLeftButtonUp += Header_MouseLeftButtonUp;
         layout.Children.Add(header);
 
-        var chart = new ReportChartVisual(model, objectLayout.StyleKey) { Margin = new Thickness(8) };
-        Grid.SetRow(chart, 1);
-        layout.Children.Add(chart);
+        _dataSetPillPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        _dataSetStrip = new Border
+        {
+            Background = BrushFactory.Frozen("#F8FAFC"),
+            BorderBrush = BrushFactory.Frozen("#E2E8F0"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(8, 3, 8, 3),
+            Child = new ScrollViewer
+            {
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Content = _dataSetPillPanel
+            }
+        };
+        Grid.SetRow(_dataSetStrip, 1);
+        layout.Children.Add(_dataSetStrip);
+
+        _chartVisual = new ReportChartVisual(model, objectLayout.StyleKey, objectLayout) { Margin = new Thickness(8) };
+        Grid.SetRow(_chartVisual, 2);
+        layout.Children.Add(_chartVisual);
 
         var resizeThumb = ReportCanvasResizeBehavior.CreateThumb(
             this,
@@ -419,14 +662,148 @@ internal sealed class ReportChartCard : Border
             minimumWidth: 260,
             minimumHeight: 180,
             () => PositionChanged?.Invoke(this, EventArgs.Empty));
-        Grid.SetRowSpan(resizeThumb, 2);
+        Grid.SetRowSpan(resizeThumb, 3);
         Panel.SetZIndex(resizeThumb, 20);
         layout.Children.Add(resizeThumb);
         Child = layout;
+        RebuildDataSetPills();
     }
 
     public event EventHandler? RemoveRequested;
     public event EventHandler? PositionChanged;
+    public event EventHandler<ReportChartDataSetEventArgs>? DataSetDropRequested;
+    public event EventHandler<ReportChartDataSetEventArgs>? DataSetRemoved;
+
+    public ReportCanvasObjectLayout Layout => _objectLayout;
+
+    public void UpdateChart(ReportChartModel model)
+    {
+        _titleText.Text = model.Title;
+        _chartVisual.UpdateModel(model);
+        RebuildDataSetPills();
+    }
+
+    public void RefreshChart() => _chartVisual.InvalidateVisual();
+
+    private void RebuildDataSetPills()
+    {
+        _dataSetPillPanel.Children.Clear();
+        var hasFilterPill = _objectLayout.ReportChartCostCodeFilterEnabled
+            || _objectLayout.ReportChartHeadingFilterEnabled
+            || _objectLayout.ReportChartSubHeadingFilterEnabled;
+        if (!hasFilterPill)
+        {
+            _dataSetStrip.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        _dataSetStrip.Visibility = Visibility.Visible;
+        if (_objectLayout.ReportChartCostCodeFilterEnabled)
+        {
+            _dataSetPillPanel.Children.Add(CreateCostCodeFilterPill());
+        }
+
+        if (_objectLayout.ReportChartHeadingFilterEnabled)
+        {
+            _dataSetPillPanel.Children.Add(CreateSimpleFilterPill("Heading (all)", "HeadingFilter"));
+        }
+
+        if (_objectLayout.ReportChartSubHeadingFilterEnabled)
+        {
+            _dataSetPillPanel.Children.Add(CreateSimpleFilterPill("Sub heading (all)", "SubHeadingFilter"));
+        }
+
+    }
+
+    private Border CreateCostCodeFilterPill()
+    {
+        var content = new StackPanel { Orientation = Orientation.Horizontal };
+        content.Children.Add(new TextBlock
+        {
+            Text = MainWindow.GetReportChartCostCodeFilterLabel(_objectLayout),
+            Foreground = BrushFactory.Frozen("#1E3A8A"),
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        content.Children.Add(CreatePillRemoveButton("CostCodeSummary"));
+        return CreatePillBorder(content, "#EEF4FF", "#BFDBFE");
+    }
+
+    private Border CreateSimpleFilterPill(string label, string dataSetKey)
+    {
+        var content = new StackPanel { Orientation = Orientation.Horizontal };
+        content.Children.Add(new TextBlock
+        {
+            Text = label,
+            Foreground = BrushFactory.Frozen("#1E3A8A"),
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        content.Children.Add(CreatePillRemoveButton(dataSetKey));
+        return CreatePillBorder(content, "#EEF4FF", "#BFDBFE");
+    }
+
+    private Button CreatePillRemoveButton(string dataSetKey)
+    {
+        var button = new Button
+        {
+            Content = "×",
+            Width = 20,
+            Height = 20,
+            Margin = new Thickness(5, 0, -3, 0),
+            Padding = new Thickness(0),
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Foreground = BrushFactory.Frozen("#64748B"),
+            ToolTip = "Remove from chart"
+        };
+        button.Click += (_, _) => DataSetRemoved?.Invoke(this, new ReportChartDataSetEventArgs(dataSetKey));
+        return button;
+    }
+
+    private static Border CreatePillBorder(UIElement content, string background, string border)
+        => new()
+        {
+            Background = BrushFactory.Frozen(background),
+            BorderBrush = BrushFactory.Frozen(border),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(12),
+            Padding = new Thickness(8, 2, 6, 2),
+            Margin = new Thickness(0, 0, 6, 0),
+            Child = content
+        };
+
+    private void ReportChartCard_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(MainWindow.ReportDataSetDragFormat) is string dataSetKey
+            && (MainWindow.IsReportFilterDataSetKey(dataSetKey)
+                || MainWindow.IsReportValueDataSetKey(dataSetKey)))
+        {
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+    }
+
+    private void ReportChartCard_Drop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(MainWindow.ReportDataSetDragFormat) is string dataSetKey
+            && (MainWindow.IsReportFilterDataSetKey(dataSetKey)
+                || MainWindow.IsReportValueDataSetKey(dataSetKey)))
+        {
+            DataSetDropRequested?.Invoke(this, new ReportChartDataSetEventArgs(dataSetKey));
+            e.Handled = true;
+        }
+    }
+
+    public void SetSelected(bool selected)
+    {
+        BorderBrush = selected
+            ? BrushFactory.Frozen("#2563EB")
+            : new SolidColorBrush(Color.FromRgb(148, 163, 184));
+        BorderThickness = new Thickness(selected ? 2 : 1);
+    }
 
     public void SyncPositionFromCanvas()
     {
@@ -512,18 +889,26 @@ internal sealed class ReportChartVisual : FrameworkElement
         Color.FromRgb(51, 65, 85),
         Color.FromRgb(203, 213, 225)
     ];
-    private readonly ReportChartModel _model;
+    private ReportChartModel _model;
+    private readonly ReportCanvasObjectLayout _objectLayout;
     private readonly Color[] _palette;
 
-    public ReportChartVisual(ReportChartModel model, string? styleKey)
+    public ReportChartVisual(ReportChartModel model, string? styleKey, ReportCanvasObjectLayout objectLayout)
     {
         _model = model;
+        _objectLayout = objectLayout;
         _palette = styleKey switch
         {
             "Green" => GreenPalette,
             "Monochrome" => MonochromePalette,
             _ => BluePalette
         };
+    }
+
+    public void UpdateModel(ReportChartModel model)
+    {
+        _model = model;
+        InvalidateVisual();
     }
 
     protected override void OnRender(DrawingContext dc)
@@ -540,7 +925,10 @@ internal sealed class ReportChartVisual : FrameworkElement
         const double right = 16;
         var plotWidth = Math.Max(1, ActualWidth - left - right);
         var plotHeight = Math.Max(1, ActualHeight - top - bottom);
-        var allValues = _model.Series.SelectMany(series => series.Values).Select(decimal.ToDouble).ToList();
+        var renderedData = BuildRenderedChartData();
+        var categories = renderedData.Categories;
+        var series = renderedData.Series;
+        var allValues = series.SelectMany(item => item.Values).Select(decimal.ToDouble).ToList();
         var minimum = Math.Min(0, allValues.DefaultIfEmpty(0).Min());
         var maximum = Math.Max(0, allValues.DefaultIfEmpty(0).Max());
         if (Math.Abs(maximum - minimum) < 0.001)
@@ -565,24 +953,23 @@ internal sealed class ReportChartVisual : FrameworkElement
 
         if (_model.Kind == ReportChartKind.Line)
         {
-            DrawLines(dc, left, top, plotWidth, plotHeight, minimum, maximum);
+            DrawLines(dc, left, top, plotWidth, plotHeight, minimum, maximum, categories.Count, series);
         }
         else
         {
-            DrawColumns(dc, left, plotWidth, zeroY, top, plotHeight, minimum, maximum);
+            DrawColumns(dc, left, plotWidth, zeroY, top, plotHeight, minimum, maximum, categories.Count, series);
         }
 
-        var labelStride = Math.Max(1, (int)Math.Ceiling(_model.Categories.Count / 8d));
-        for (var index = 0; index < _model.Categories.Count; index += labelStride)
+        for (var index = 0; index < categories.Count; index++)
         {
-            var x = left + (index + 0.5) * plotWidth / _model.Categories.Count;
-            DrawText(dc, _model.Categories[index], 9, new Point(x - 18, top + plotHeight + 7), pixelsPerDip, Color.FromRgb(100, 116, 139));
+            var x = left + (index + 0.5) * plotWidth / categories.Count;
+            DrawText(dc, categories[index], 9, new Point(x - 28, top + plotHeight + 7), pixelsPerDip, Color.FromRgb(100, 116, 139));
         }
 
         var legendX = left;
-        for (var index = 0; index < _model.Series.Count; index++)
+        for (var index = 0; index < series.Count; index++)
         {
-            var name = _model.Series[index].Name;
+            var name = series[index].Name;
             var itemWidth = Math.Min(125, 24 + name.Length * 6);
             if (legendX + itemWidth > ActualWidth - right)
             {
@@ -595,16 +982,60 @@ internal sealed class ReportChartVisual : FrameworkElement
         }
     }
 
-    private void DrawLines(DrawingContext dc, double left, double top, double width, double height, double minimum, double maximum)
+    private (IReadOnlyList<string> Categories, IReadOnlyList<ReportChartSeries> Series) BuildRenderedChartData()
     {
-        foreach (var (series, seriesIndex) in _model.Series.Select((value, index) => (value, index)))
+        var categoryCount = _model.Categories.Count;
+        var tickFrequency = Math.Clamp(
+            _objectLayout.XAxisTickFrequency > 0 ? _objectLayout.XAxisTickFrequency : 8,
+            2,
+            24);
+        var bucketCount = Math.Min(categoryCount, tickFrequency);
+        var bucketRanges = Enumerable.Range(0, bucketCount)
+            .Select(index =>
+            {
+                var start = index * categoryCount / bucketCount;
+                var end = ((index + 1) * categoryCount / bucketCount) - 1;
+                return (Start: start, End: end);
+            })
+            .ToList();
+        var categories = bucketRanges
+            .Select(range => range.Start == range.End
+                ? _model.Categories[range.Start]
+                : $"{_model.Categories[range.Start]} - {_model.Categories[range.End]}")
+            .ToList();
+        var series = _model.Series
+            .Select(item => new ReportChartSeries(
+                item.Name,
+                bucketRanges
+                    .Select(range => item.IsReferenceLine
+                        ? item.Values[range.Start]
+                        : Enumerable.Range(range.Start, range.End - range.Start + 1)
+                            .Sum(categoryIndex => item.Values[categoryIndex]))
+                    .ToList(),
+                item.IsReferenceLine))
+            .ToList();
+        return (categories, series);
+    }
+
+    private void DrawLines(
+        DrawingContext dc,
+        double left,
+        double top,
+        double width,
+        double height,
+        double minimum,
+        double maximum,
+        int categoryCount,
+        IReadOnlyList<ReportChartSeries> seriesList)
+    {
+        foreach (var (series, seriesIndex) in seriesList.Select((value, index) => (value, index)))
         {
             var geometry = new StreamGeometry();
             using (var context = geometry.Open())
             {
                 for (var index = 0; index < series.Values.Count; index++)
                 {
-                    var x = left + (index + 0.5) * width / _model.Categories.Count;
+                    var x = left + (index + 0.5) * width / categoryCount;
                     var y = top + (maximum - decimal.ToDouble(series.Values[index])) / (maximum - minimum) * height;
                     if (index == 0)
                     {
@@ -622,18 +1053,28 @@ internal sealed class ReportChartVisual : FrameworkElement
         }
     }
 
-    private void DrawColumns(DrawingContext dc, double left, double width, double zeroY, double top, double height, double minimum, double maximum)
+    private void DrawColumns(
+        DrawingContext dc,
+        double left,
+        double width,
+        double zeroY,
+        double top,
+        double height,
+        double minimum,
+        double maximum,
+        int categoryCount,
+        IReadOnlyList<ReportChartSeries> seriesList)
     {
-        var categoryWidth = width / _model.Categories.Count;
-        var seriesCount = Math.Max(1, _model.Series.Count);
+        var categoryWidth = width / categoryCount;
+        var seriesCount = Math.Max(1, seriesList.Count);
         var barWidth = Math.Max(2, Math.Min(18, categoryWidth * 0.72 / seriesCount));
-        for (var categoryIndex = 0; categoryIndex < _model.Categories.Count; categoryIndex++)
+        for (var categoryIndex = 0; categoryIndex < categoryCount; categoryIndex++)
         {
             var groupWidth = barWidth * seriesCount;
             var groupLeft = left + categoryIndex * categoryWidth + (categoryWidth - groupWidth) / 2;
-            for (var seriesIndex = 0; seriesIndex < _model.Series.Count; seriesIndex++)
+            for (var seriesIndex = 0; seriesIndex < seriesList.Count; seriesIndex++)
             {
-                var value = decimal.ToDouble(_model.Series[seriesIndex].Values[categoryIndex]);
+                var value = decimal.ToDouble(seriesList[seriesIndex].Values[categoryIndex]);
                 var valueY = top + (maximum - value) / (maximum - minimum) * height;
                 var rect = new Rect(groupLeft + seriesIndex * barWidth, Math.Min(zeroY, valueY), Math.Max(1, barWidth - 1), Math.Max(1, Math.Abs(zeroY - valueY)));
                 dc.DrawRectangle(new SolidColorBrush(_palette[seriesIndex % _palette.Length]), null, rect);

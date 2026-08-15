@@ -49,6 +49,12 @@ public partial class MainWindow
 
     private void ManagementResourceGrid_Loaded(object sender, System.Windows.RoutedEventArgs e)
     {
+        if (!ManagementResourcesTab.IsSelected)
+        {
+            return;
+        }
+
+        EnsureManagementResourceGridColumns();
         QueueSynchronizeManagementResourceGrids();
     }
 

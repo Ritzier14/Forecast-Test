@@ -36,6 +36,34 @@ public static class FiscalPeriod
         return true;
     }
 
+    /// <summary>
+    /// Converts a July-to-June fiscal period label into the corresponding
+    /// calendar-month start. The fiscal year number is the year in which the
+    /// fiscal year ends, so period 26-07 is January 2026 and period 27-01 is
+    /// July 2026.
+    /// </summary>
+    public static bool TryGetCalendarMonthStart(string? periodLabel, out DateOnly calendarMonthStart)
+    {
+        calendarMonthStart = default;
+        if (!TryParseLabel(periodLabel, out var fiscalYear, out var fiscalMonth))
+        {
+            return false;
+        }
+
+        var calendarYear = fiscalMonth >= 7 ? fiscalYear : fiscalYear - 1;
+        var calendarMonth = ((fiscalMonth + 5) % 12) + 1;
+        calendarMonthStart = new DateOnly(calendarYear, calendarMonth, 1);
+        return true;
+    }
+
+    public static string LabelFromCalendarMonth(DateOnly calendarMonthStart)
+    {
+        var monthStart = new DateOnly(calendarMonthStart.Year, calendarMonthStart.Month, 1);
+        var fiscalYear = monthStart.Month >= 7 ? monthStart.Year + 1 : monthStart.Year;
+        var fiscalMonth = ((monthStart.Month + 5) % 12) + 1;
+        return FormatLabel(fiscalYear, fiscalMonth);
+    }
+
     public static int SortKey(string? periodLabel)
     {
         if (TryParseLabel(periodLabel, out var year, out var month))

@@ -118,11 +118,20 @@ public partial class MainWindow
 
     private void SubscribedViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.Transactions), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ForecastLines), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ProjectTaskCodes), StringComparison.Ordinal))
+        {
+            RefreshReportCostCodeFilterPills();
+        }
+
         if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowCtcMonthForecastColumns), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowMonthNameAboveFiscalPeriod), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedCtcMonthForecastYear), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowForecastZeroAsBlank), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowVarianceIndicators), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowActualCostInMonthCells), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.IsBudgetColumnUnlocked), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowCurrencySymbols), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ForecastMonthMillionDecimals), StringComparison.Ordinal))
         {

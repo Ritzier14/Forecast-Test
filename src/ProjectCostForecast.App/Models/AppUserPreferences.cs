@@ -19,6 +19,8 @@ public sealed class AppUserPreferences
     public bool ShowCtcMonthForecastColumns { get; set; } = true;
     public bool ShowMonthNameAboveFiscalPeriod { get; set; }
     public bool ShowCtcMonthForecastYearTotals { get; set; }
+    public bool ShowActualCostInMonthCells { get; set; }
+    public bool IsBudgetColumnUnlocked { get; set; }
     public bool ShowCurrencySymbols { get; set; }
     public int ForecastMonthMillionDecimals { get; set; } = 2;
     public List<int> SelectedCtcMonthForecastYears { get; set; } = [];

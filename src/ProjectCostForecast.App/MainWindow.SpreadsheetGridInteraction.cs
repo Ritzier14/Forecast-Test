@@ -89,6 +89,26 @@ public partial class MainWindow
 
             if (_spreadsheetAttachedGrids.Add(grid))
             {
+                if (ReferenceEquals(grid, ForecastLinesGrid))
+                {
+                    // DataGrid can mark the preview mouse event handled while
+                    // processing its own selection. Keep the forecast row
+                    // resize/auto-fit/modified-selection handler in the route
+                    // even in that case.
+                    grid.AddHandler(
+                        UIElement.PreviewMouseLeftButtonDownEvent,
+                        new MouseButtonEventHandler(ForecastLinesGrid_PreviewMouseLeftButtonDown),
+                        handledEventsToo: true);
+                    grid.AddHandler(
+                        UIElement.PreviewMouseMoveEvent,
+                        new MouseEventHandler(ForecastLinesGrid_PreviewMouseMove),
+                        handledEventsToo: true);
+                    grid.AddHandler(
+                        UIElement.PreviewMouseLeftButtonUpEvent,
+                        new MouseButtonEventHandler(ForecastLinesGrid_PreviewMouseLeftButtonUp),
+                        handledEventsToo: true);
+                    grid.LostMouseCapture += ForecastLinesGrid_LostMouseCapture;
+                }
                 grid.PreviewMouseLeftButtonDown += SpreadsheetGrid_PreviewMouseLeftButtonDown;
                 grid.PreviewMouseLeftButtonUp += SpreadsheetGrid_PreviewMouseLeftButtonUp;
                 grid.MouseMove += SpreadsheetGrid_MouseMove;
@@ -256,6 +276,11 @@ public partial class MainWindow
     private void SpreadsheetGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (sender is not DataGrid grid || e.ChangedButton != MouseButton.Left || e.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        if (ReferenceEquals(grid, ForecastLinesGrid))
         {
             return;
         }
@@ -618,6 +643,12 @@ public partial class MainWindow
             return;
         }
 
+        if (ReferenceEquals(grid, ForecastLinesGrid) && _forecastRowResize is not null)
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (IsScrollBarInteractionSource(source))
         {
             return;
@@ -630,6 +661,21 @@ public partial class MainWindow
             if (FindParent<DataGridRowHeader>(source) is { } rowHeader
                 && FindParent<DataGridRow>(rowHeader) is { } row)
             {
+                if (ReferenceEquals(grid, ForecastLinesGrid) && row.Item is ForecastLine rowLine)
+                {
+                    if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != ModifierKeys.None)
+                    {
+                        // The forecast grid's handled-events preview handler
+                        // owns modifier row selection. Leaving this event
+                        // untouched avoids toggling the same row twice.
+                        return;
+                    }
+
+                    SelectForecastRowsFromSelectorClick(grid, rowLine);
+                    e.Handled = true;
+                    return;
+                }
+
                 SelectGridRowContext(grid, row.Item);
                 QueueSpreadsheetSelectionUpdate(grid, [row.Item]);
             }
@@ -651,9 +697,34 @@ public partial class MainWindow
 
         if (IsForecastRowSelectorCell(grid, cell))
         {
+            if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != ModifierKeys.None)
+            {
+                // Modifier clicks are handled by the forecast grid preview
+                // route, which runs even when DataGrid has marked the event.
+                return;
+            }
+
             SelectForecastRowsFromSelectorClick(grid, cell.DataContext);
             e.Handled = true;
             return;
+        }
+
+        if (ReferenceEquals(grid, ForecastLinesGrid)
+            && cell.DataContext is ForecastLine forecastLine)
+        {
+            var rowSelectionModifiers = Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift);
+            if (rowSelectionModifiers != ModifierKeys.None)
+            {
+                // Keep the shared handler as the normal cell activation path;
+                // modifier row selection is owned by the forecast grid's
+                // handled-events preview route to avoid duplicate Ctrl toggles.
+                return;
+            }
+
+            // Leave the existing anchor intact for Shift/Control clicks. The
+            // row-selection helper below needs the previous anchor to build a
+            // range; a normal click establishes a new anchor.
+            _forecastRowSelectionAnchor = forecastLine;
         }
 
         if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != ModifierKeys.None)
@@ -886,6 +957,8 @@ public partial class MainWindow
                 && DataContext is MainWindowViewModel viewModel)
             {
                 var rowMenu = new ContextMenu();
+                rowMenu.Items.Add(CreateOpenForecastTaskPlanningMenuItem(rowLine));
+                rowMenu.Items.Add(new Separator());
                 rowMenu.Items.Add(CreateAddManagementResourceMenuItem(rowLine));
                 AddForecastLineCommentMenuItem(rowMenu, rowLine);
                 rowMenu.Items.Add(new Separator());
@@ -959,6 +1032,10 @@ public partial class MainWindow
         if (line is not null)
         {
             menu.Items.Add(new Separator());
+            if (ReferenceEquals(grid, ForecastLinesGrid))
+            {
+                menu.Items.Add(CreateOpenForecastTaskPlanningMenuItem(line));
+            }
             menu.Items.Add(CreateAddManagementResourceMenuItem(line));
             AddForecastLineCommentMenuItem(menu, line);
             if (ReferenceEquals(grid, ForecastLinesGrid)
@@ -1015,6 +1092,13 @@ public partial class MainWindow
 
         if (DataContext is MainWindowViewModel viewModel)
         {
+            if (ReferenceEquals(grid, ForecastLinesGrid))
+            {
+                menu.Items.Add(new Separator());
+                menu.Items.Add(CreateShowActualCostMenuItem(viewModel));
+                menu.Items.Add(CreateBudgetColumnUnlockMenuItem(viewModel));
+            }
+
             if (ReferenceEquals(grid, ForecastLinesGrid) && cell.DataContext is ForecastLine forecastLine)
             {
                 menu.Items.Add(new Separator());
@@ -1671,7 +1755,8 @@ public partial class MainWindow
         {
             var item = cell.DataContext;
             var isCurrentRow = IsCurrentGridRowItem(grid, item, currentRowContext);
-            GridSelectionVisualState.SetIsCurrentRow(cell, isCurrentRow);
+            var isFullySelectedRow = item is not null && fullySelectedRowItems.Contains(item);
+            GridSelectionVisualState.SetIsCurrentRow(cell, isCurrentRow || isFullySelectedRow);
             var column = cell.Column;
             var hasCellContext = item is not null
                 && item != CollectionView.NewItemPlaceholder
@@ -2570,7 +2655,18 @@ public partial class MainWindow
         }
 
         var path = GetSpreadsheetColumnBindingPath(column);
-        return path is not null && TrySetPropertyPathValue(item, path, text);
+        if (path is null || !TrySetPropertyPathValue(item, path, text))
+        {
+            return false;
+        }
+
+        if (item is ForecastLine forecastLine
+            && string.Equals(path, nameof(ForecastLine.Budget), StringComparison.Ordinal))
+        {
+            changedForecastLines?.Add(forecastLine);
+        }
+
+        return true;
     }
 
     private static bool CanConvertGridCellValue(object item, DataGridColumn column, string text)

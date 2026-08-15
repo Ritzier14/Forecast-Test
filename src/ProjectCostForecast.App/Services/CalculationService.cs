@@ -46,6 +46,36 @@ public sealed class CalculationService
         }
     }
 
+    public void PopulateActualCostsByForecastMonth(
+        IEnumerable<ForecastLine> lines,
+        IEnumerable<CostTransaction> transactions)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+        ArgumentNullException.ThrowIfNull(transactions);
+
+        var transactionTotals = BuildForecastTransactionTotals(transactions);
+        var ledgerResourceTransactionTotals = BuildForecastTransactionTotals(transactions, ledgerResourceOnly: true);
+        var uniqueLines = new HashSet<ForecastLine>(ReferenceEqualityComparer.Instance);
+        foreach (var line in lines)
+        {
+            if (!uniqueLines.Add(line))
+            {
+                continue;
+            }
+
+            var totals = line.UseLedgerResourceMatchOnly
+                ? ledgerResourceTransactionTotals
+                : transactionTotals;
+            var key = CreateForecastMatchKey(
+                line.TaskNumber,
+                line.ResourceName,
+                line.TransactionProjectCode,
+                line.TransactionProjectCode is not null);
+            totals.TryGetValue(key, out var matchingTransactions);
+            ApplyActualCostAmounts(line, matchingTransactions);
+        }
+    }
+
     private static void RecalculateForecastLine(ForecastLine line, IReadOnlyDictionary<ForecastMatchKey, ForecastTransactionTotals> transactionTotals, string currentPeriod)
     {
         var key = CreateForecastMatchKey(
@@ -62,11 +92,20 @@ public sealed class CalculationService
         line.MonthForecast = line.MonthlyForecasts
             .Where(m => string.Equals(m.PeriodLabel, currentPeriod, StringComparison.OrdinalIgnoreCase))
             .Sum(m => m.Amount);
+        ApplyActualCostAmounts(line, matchingTransactions);
         line.PlannedCostFcc = line.TotalForecastCtc + line.CostToDate;
         line.VarianceLastMonthToDate = line.LastMonthPlannedCost - line.PlannedCostFcc;
         line.MonthForecastVariance = line.LastMonthForecast - line.CurrentMonthCost;
         line.TotalBudgetVariance = line.Budget - line.PlannedCostFcc;
         line.NotifyMonthForecastValuesChanged();
+    }
+
+    private static void ApplyActualCostAmounts(ForecastLine line, ForecastTransactionTotals? matchingTransactions)
+    {
+        foreach (var forecast in line.MonthlyForecasts)
+        {
+            forecast.ActualCostAmount = matchingTransactions?.AmountByPeriod.GetValueOrDefault(Normalise(forecast.PeriodLabel)) ?? 0m;
+        }
     }
 
     private static Dictionary<ForecastMatchKey, ForecastTransactionTotals> BuildForecastTransactionTotals(

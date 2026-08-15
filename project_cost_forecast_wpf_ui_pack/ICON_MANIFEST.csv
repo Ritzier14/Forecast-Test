@@ -6,7 +6,7 @@ Assets/Icons/png/ic_nav_reports_20.png,Assets/Icons/svg/ic_nav_reports_20.svg,20
 Assets/Icons/png/ic_nav_resources_20.png,Assets/Icons/svg/ic_nav_resources_20.svg,20,#64748B,left main nav: Resources
 Assets/Icons/png/ic_nav_settings_20.png,Assets/Icons/svg/ic_nav_settings_20.svg,20,#64748B,left bottom Settings
 Assets/Icons/png/ic_collapse_20.png,Assets/Icons/svg/ic_collapse_20.svg,20,#64748B,left bottom Collapse
-Assets/Icons/png/ic_view_grid_16.png,Assets/Icons/svg/ic_view_grid_16.svg,16,#334155,Views dropdown and Default/Scenario items
+Assets/Icons/png/ic_view_grid_16.png,Assets/Icons/svg/ic_view_grid_16.svg,16,#334155,Views dropdown
 Assets/Icons/png/ic_chevron_down_16.png,Assets/Icons/svg/ic_chevron_down_16.svg,16,#334155,all dropdown buttons and expanded groups
 Assets/Icons/png/ic_chevron_right_16.png,Assets/Icons/svg/ic_chevron_right_16.svg,16,#334155,collapsed groups / tree chevrons
 Assets/Icons/png/ic_close_16.png,Assets/Icons/svg/ic_close_16.svg,16,#64748B,Resource Drilldown close button

@@ -21,6 +21,8 @@ public sealed class ForecastLine : ObservableModel
     private string _reportingCategoryOverride = string.Empty;
     private string _taskName = string.Empty;
     private string _reportingCategory = string.Empty;
+    private double _rowDisplayHeight = 30;
+    private bool _hasCustomRowHeight;
 
     public int RowNumber { get; set; }
     public string TaskNumber { get; set; } = string.Empty;
@@ -41,6 +43,23 @@ public sealed class ForecastLine : ObservableModel
 
     public double FormatGroup { get; set; }
     public bool IsManuallyAdded { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public double RowDisplayHeight => _rowDisplayHeight;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool HasCustomRowHeight => _hasCustomRowHeight;
+
+    public void SetRowDisplayHeight(double height)
+    {
+        if (!double.IsFinite(height) || height <= 0)
+        {
+            return;
+        }
+
+        SetProperty(ref _rowDisplayHeight, height, nameof(RowDisplayHeight));
+        SetProperty(ref _hasCustomRowHeight, true, nameof(HasCustomRowHeight));
+    }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public string TaskName
@@ -126,6 +145,8 @@ public sealed class ForecastLine : ObservableModel
     }
 
     public List<MonthlyForecast> MonthlyForecasts { get; set; } = [];
+    public List<ForecastTaskPhase> TaskPhases { get; set; } = [];
+    public List<ForecastTaskCostLine> TaskCostLines { get; set; } = [];
 
     public decimal this[string forecastKey]
     {
@@ -200,11 +221,58 @@ public sealed class ForecastLine : ObservableModel
     }
 }
 
+public sealed class ForecastTaskPhase
+{
+    public string Name { get; set; } = string.Empty;
+    public string StartPeriodLabel { get; set; } = string.Empty;
+    public string EndPeriodLabel { get; set; } = string.Empty;
+}
+
+public sealed class ForecastTaskCostLine : ObservableModel
+{
+    private string _name = "Future variation";
+    private decimal _amount;
+    private string _startPeriodLabel = string.Empty;
+    private string _endPeriodLabel = string.Empty;
+    private bool _isAwarded;
+
+    public string Name
+    {
+        get => _name;
+        set => SetProperty(ref _name, value ?? string.Empty);
+    }
+
+    public decimal Amount
+    {
+        get => _amount;
+        set => SetProperty(ref _amount, value);
+    }
+
+    public string StartPeriodLabel
+    {
+        get => _startPeriodLabel;
+        set => SetProperty(ref _startPeriodLabel, value ?? string.Empty);
+    }
+
+    public string EndPeriodLabel
+    {
+        get => _endPeriodLabel;
+        set => SetProperty(ref _endPeriodLabel, value ?? string.Empty);
+    }
+
+    public bool IsAwarded
+    {
+        get => _isAwarded;
+        set => SetProperty(ref _isAwarded, value);
+    }
+}
+
 public sealed class MonthlyForecast : ObservableModel
 {
     private static readonly Brush LockedBackgroundBrush = BrushFactory.Frozen(0xF3, 0xF4, 0xF6);
     private static readonly Brush LockedForegroundBrush = BrushFactory.Frozen(0x94, 0xA3, 0xB8);
     private decimal _amount;
+    private decimal _actualCostAmount;
     private bool _isLocked;
     private Brush _backgroundBrush = Brushes.White;
     private Brush _foregroundBrush = Brushes.Black;
@@ -225,6 +293,13 @@ public sealed class MonthlyForecast : ObservableModel
                 AmountChanged?.Invoke(this, new ValueChangedEventArgs<decimal>(oldValue, value));
             }
         }
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public decimal ActualCostAmount
+    {
+        get => _actualCostAmount;
+        set => SetProperty(ref _actualCostAmount, value);
     }
 
     public bool IsLocked

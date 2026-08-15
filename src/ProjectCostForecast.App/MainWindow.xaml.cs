@@ -105,6 +105,8 @@ public partial class MainWindow : Window
     private MainWindowViewModel? _subscribedViewModel;
     private Point? _forecastLeftDragStart;
     private ForecastLine? _forecastDragLine;
+    private ForecastRowResizeSession? _forecastRowResize;
+    private bool _forecastRowResizeCursorActive;
     private object? _forecastRowSelectionAnchor;
     private Point? _workspaceTabDragStart;
     private TabItem? _workspaceDraggedTabItem;
@@ -121,6 +123,7 @@ public partial class MainWindow : Window
     private string _forecastOverlayGeometrySignature = string.Empty;
     private bool _forecastOverlaysCleared = true;
     private bool _managementResourceWidthSyncActive;
+    private bool _managementResourceColumnsDirty = true;
     private bool _ganttRedrawQueued;
     private bool _scheduleGridColumnsAutoSized;
     private bool _ledgerChartScrollQueued;
@@ -258,12 +261,6 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
-        if (DataContext is MainWindowViewModel viewModel && !viewModel.ConfirmClose())
-        {
-            e.Cancel = true;
-            return;
-        }
-
         if (DataContext is MainWindowViewModel closingViewModel)
         {
             closingViewModel.SetStartInFullScreen(WindowState == WindowState.Maximized);
@@ -290,6 +287,7 @@ public partial class MainWindow : Window
         ApplyDetailWorkspaceAvailability(viewModel);
         if (ReferenceEquals(tabItem, ManagementResourcesTab))
         {
+            EnsureManagementResourceGridColumns();
             QueueSynchronizeManagementResourceGrids();
         }
     }
@@ -532,6 +530,16 @@ public partial class MainWindow : Window
         menu.PlacementTarget = button;
         menu.Placement = PlacementMode.Bottom;
         menu.IsOpen = true;
+        e.Handled = true;
+    }
+
+    private void ReimplementationTodoButton_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new ReimplementationTodoWindow
+        {
+            Owner = this
+        };
+        window.ShowDialog();
         e.Handled = true;
     }
 

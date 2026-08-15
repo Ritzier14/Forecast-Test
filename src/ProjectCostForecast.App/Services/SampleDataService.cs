@@ -15,7 +15,7 @@ public sealed class SampleDataService
 
     public ProjectDataset Load()
     {
-        var initialCostLoadPath = Path.Combine(AppContext.BaseDirectory, "Data", "InitialCostLoad.xlsx");
+        var initialCostLoadPath = Path.Combine(AppContext.BaseDirectory, "Data", "data_anonymised.xlsx");
         if (File.Exists(initialCostLoadPath))
         {
             return new InitialCostLoadService().Load(initialCostLoadPath);
@@ -26,7 +26,7 @@ public sealed class SampleDataService
         var path = Path.Combine(AppContext.BaseDirectory, "Data", "SampleData.json");
         if (!File.Exists(path))
         {
-            throw new FileNotFoundException("Neither the initial cost-load workbook nor the JSON seed data file was found in Data.", path);
+            throw new FileNotFoundException("Neither data_anonymised.xlsx nor the JSON seed data file was found in Data.", path);
         }
 
         using var stream = File.OpenRead(path);

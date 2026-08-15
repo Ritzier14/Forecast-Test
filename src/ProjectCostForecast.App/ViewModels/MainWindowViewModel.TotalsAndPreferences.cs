@@ -432,6 +432,8 @@ public sealed partial class MainWindowViewModel
             ShowCtcMonthForecastColumns = _userPreferences.ShowCtcMonthForecastColumns;
             ShowMonthNameAboveFiscalPeriod = _userPreferences.ShowMonthNameAboveFiscalPeriod;
             ShowCtcMonthForecastYearTotals = _userPreferences.ShowCtcMonthForecastYearTotals;
+            ShowActualCostInMonthCells = _userPreferences.ShowActualCostInMonthCells;
+            IsBudgetColumnUnlocked = _userPreferences.IsBudgetColumnUnlocked;
             ShowCurrencySymbols = _userPreferences.ShowCurrencySymbols;
             ForecastMonthMillionDecimals = _userPreferences.ForecastMonthMillionDecimals < 0
                 ? 2
@@ -503,6 +505,8 @@ public sealed partial class MainWindowViewModel
         _userPreferences.ShowCtcMonthForecastColumns = ShowCtcMonthForecastColumns;
         _userPreferences.ShowMonthNameAboveFiscalPeriod = ShowMonthNameAboveFiscalPeriod;
         _userPreferences.ShowCtcMonthForecastYearTotals = ShowCtcMonthForecastYearTotals;
+        _userPreferences.ShowActualCostInMonthCells = ShowActualCostInMonthCells;
+        _userPreferences.IsBudgetColumnUnlocked = IsBudgetColumnUnlocked;
         _userPreferences.ShowCurrencySymbols = ShowCurrencySymbols;
         _userPreferences.ForecastMonthMillionDecimals = ForecastMonthMillionDecimals;
         _userPreferences.SelectedCtcMonthForecastYears = _selectedCtcMonthForecastYears.OrderBy(year => year).ToList();
@@ -570,8 +574,16 @@ public sealed partial class MainWindowViewModel
                     StyleKey = item.StyleKey,
                     ChartKind = item.ChartKind,
                     Grouping = item.Grouping,
+                    DataSetKey = item.DataSetKey,
+                    ReportChartCostCodeFilterEnabled = item.ReportChartCostCodeFilterEnabled,
+                    ReportChartCostCodeFilter = item.ReportChartCostCodeFilter,
+                    ReportChartCostCodeFilters = item.ReportChartCostCodeFilters?.ToList() ?? [],
+                    ReportChartHeadingFilterEnabled = item.ReportChartHeadingFilterEnabled,
+                    ReportChartSubHeadingFilterEnabled = item.ReportChartSubHeadingFilterEnabled,
+                    ReportChartValueKeys = item.ReportChartValueKeys?.ToList() ?? [],
                     FromDate = item.FromDate,
-                    ToDate = item.ToDate
+                    ToDate = item.ToDate,
+                    XAxisTickFrequency = item.XAxisTickFrequency
                 }).ToList(),
                 HiddenColumnKeys = view.HiddenColumnKeys
                     .Where(key => !string.IsNullOrWhiteSpace(key))
@@ -645,8 +657,16 @@ public sealed partial class MainWindowViewModel
                 StyleKey = item.StyleKey,
                 ChartKind = item.ChartKind,
                 Grouping = item.Grouping,
+                DataSetKey = item.DataSetKey,
+                ReportChartCostCodeFilterEnabled = item.ReportChartCostCodeFilterEnabled,
+                ReportChartCostCodeFilter = item.ReportChartCostCodeFilter,
+                ReportChartCostCodeFilters = item.ReportChartCostCodeFilters?.ToList() ?? [],
+                ReportChartHeadingFilterEnabled = item.ReportChartHeadingFilterEnabled,
+                ReportChartSubHeadingFilterEnabled = item.ReportChartSubHeadingFilterEnabled,
+                ReportChartValueKeys = item.ReportChartValueKeys?.ToList() ?? [],
                 FromDate = item.FromDate,
-                ToDate = item.ToDate
+                ToDate = item.ToDate,
+                XAxisTickFrequency = item.XAxisTickFrequency
             }).ToList() ?? []
         };
     }

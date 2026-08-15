@@ -313,6 +313,9 @@ public partial class MainWindow
             showZeroAsBlank.Click += (_, _) => viewModel.SetSelectedForecastShowZeroAsBlank(showZeroAsBlank.IsChecked);
             menu.Items.Add(showZeroAsBlank);
 
+            menu.Items.Add(CreateShowActualCostMenuItem(viewModel));
+            menu.Items.Add(CreateBudgetColumnUnlockMenuItem(viewModel));
+
             var copyForecastWidths = new MenuItem { Header = "Copy forecast column widths" };
             copyForecastWidths.Click += (_, _) => CopyForecastColumnWidthsToClipboard();
             menu.Items.Add(copyForecastWidths);
@@ -396,6 +399,32 @@ public partial class MainWindow
         }
     }
 
+    private static MenuItem CreateShowActualCostMenuItem(MainWindowViewModel viewModel)
+    {
+        var item = new MenuItem
+        {
+            Header = "Show actual cost in month cells",
+            IsCheckable = true,
+            IsChecked = viewModel.ShowActualCostInMonthCells
+        };
+        item.Click += (_, _) => viewModel.ShowActualCostInMonthCells = item.IsChecked;
+        return item;
+    }
+
+    private static MenuItem CreateBudgetColumnUnlockMenuItem(MainWindowViewModel viewModel)
+    {
+        var item = new MenuItem
+        {
+            Header = "Unlock budget column",
+            IsCheckable = true,
+            IsChecked = viewModel.IsBudgetColumnUnlocked,
+            IsEnabled = !viewModel.IsViewingSavedMonth,
+            ToolTip = "Allow budget values to be entered in the Forecast grid"
+        };
+        item.Click += (_, _) => viewModel.IsBudgetColumnUnlocked = item.IsChecked;
+        return item;
+    }
+
     private void CopyForecastColumnWidthsToClipboard()
     {
         var columns = ForecastLinesGrid.Columns
@@ -421,10 +450,21 @@ public partial class MainWindow
         var report = string.Join(Environment.NewLine, lines);
         System.Diagnostics.Debug.WriteLine(report);
         Console.WriteLine(report);
-        ShowForecastColumnWidthsReport(report);
+        ShowForecastColumnWidthsReport(report, TryCopyReportToClipboard(report));
     }
 
-    private void ShowForecastColumnWidthsReport(string report)
+    private void ShowForecastColumnWidthsReport(string report, bool copiedOnOpen = false)
+        => ShowCopyableReportWindow(
+            "Non-month column widths",
+            "Current non-month forecast column widths. Forecast-month columns are excluded.",
+            report,
+            copiedOnOpen);
+
+    private void ShowCopyableReportWindow(
+        string title,
+        string description,
+        string report,
+        bool copiedOnOpen = false)
     {
         var textBox = new TextBox
         {
@@ -444,27 +484,39 @@ public partial class MainWindow
 
         var copyButton = new Button
         {
-            Content = "Copy to clipboard",
+            Content = copiedOnOpen ? "Copied" : "Copy to clipboard",
             MinWidth = 140,
+            Margin = new Thickness(4, 0, 4, 0),
             Background = BrushFactory.Frozen("#2563EB"),
             Foreground = Brushes.White,
             BorderBrush = BrushFactory.Frozen("#1D4ED8")
         };
         copyButton.Click += (_, _) =>
         {
-            Clipboard.SetText(report);
-            copyButton.Content = "Copied";
+            copyButton.Content = TryCopyReportToClipboard(report)
+                ? "Copied"
+                : "Copy failed";
         };
 
-        var closeButton = new Button { Content = "Close", MinWidth = 90 };
+        var closeButton = new Button
+        {
+            Content = "Close",
+            MinWidth = 90,
+            Margin = new Thickness(4, 0, 4, 0)
+        };
+        var workAreaWidth = Math.Max(320, SystemParameters.WorkArea.Width - 24);
+        var workAreaHeight = Math.Max(240, SystemParameters.WorkArea.Height - 24);
         var window = new Window
         {
             Owner = this,
-            Title = "Non-month column widths",
-            Width = 540,
-            Height = 500,
-            MinWidth = 420,
-            MinHeight = 300,
+            Title = title,
+            Width = Math.Min(640, workAreaWidth),
+            Height = Math.Min(390, workAreaHeight),
+            MinWidth = Math.Min(420, workAreaWidth),
+            MinHeight = Math.Min(280, workAreaHeight),
+            MaxWidth = workAreaWidth,
+            MaxHeight = workAreaHeight,
+            ResizeMode = ResizeMode.CanResizeWithGrip,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Background = BrushFactory.Frozen("#F8FAFC")
         };
@@ -472,30 +524,47 @@ public partial class MainWindow
 
         var root = new Grid { Margin = new Thickness(18) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(12) });
-        root.RowDefinitions.Add(new RowDefinition());
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(14) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(8) });
+        root.RowDefinitions.Add(new RowDefinition());
         root.Children.Add(new TextBlock
         {
-            Text = "Current non-month forecast column widths. Forecast-month columns are excluded.",
+            Text = description,
             Foreground = BrushFactory.Frozen("#475569"),
             TextWrapping = TextWrapping.Wrap
         });
-        Grid.SetRow(textBox, 2);
-        root.Children.Add(textBox);
 
         var actions = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 8, 0, 0)
         };
         actions.Children.Add(copyButton);
         actions.Children.Add(closeButton);
-        Grid.SetRow(actions, 4);
+        Grid.SetRow(actions, 1);
         root.Children.Add(actions);
+        Grid.SetRow(textBox, 3);
+        root.Children.Add(textBox);
         window.Content = root;
         window.ShowDialog();
+    }
+
+    private static bool TryCopyReportToClipboard(string report)
+    {
+        try
+        {
+            Clipboard.SetText(report);
+            return true;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+        catch (ExternalException)
+        {
+            return false;
+        }
     }
 
     private void CopyForecastColumnWidths_Click(object sender, RoutedEventArgs e)

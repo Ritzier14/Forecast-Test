@@ -433,8 +433,16 @@ public sealed class ReportCanvasObjectLayout
     public string StyleKey { get; set; } = "Default";
     public string ChartKind { get; set; } = string.Empty;
     public string Grouping { get; set; } = string.Empty;
+    public string DataSetKey { get; set; } = string.Empty;
+    public bool ReportChartCostCodeFilterEnabled { get; set; }
+    public string ReportChartCostCodeFilter { get; set; } = string.Empty;
+    public List<string> ReportChartCostCodeFilters { get; set; } = [];
+    public bool ReportChartHeadingFilterEnabled { get; set; }
+    public bool ReportChartSubHeadingFilterEnabled { get; set; }
+    public List<string> ReportChartValueKeys { get; set; } = [];
     public DateOnly? FromDate { get; set; }
     public DateOnly? ToDate { get; set; }
+    public int XAxisTickFrequency { get; set; } = 8;
 }
 
 public sealed class WorkspaceColumnLayout
