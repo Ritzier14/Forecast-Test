@@ -1815,8 +1815,9 @@
                                     </StackPanel>
                                 </Border>
                                 <local:ProjectDataGrid x:Name="ValidationGrid" local:ProjectDataGridProfiles.Profile="ReadOnlyLedger" ItemsSource="{Binding ValidationIssues}" Height="170" Margin="0,0,0,8" IsReadOnly="True">
-                                    <DataGrid.Columns>
+                                        <DataGrid.Columns>
                                         <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="82" />
+                                        <DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="220" />
                                         <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="150" />
                                         <DataGridTextColumn Header="Entity" Binding="{Binding EntityType}" Width="105" />
                                         <DataGridTextColumn Header="ID" Binding="{Binding EntityId}" Width="80" />

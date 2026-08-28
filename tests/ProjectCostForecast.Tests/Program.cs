@@ -303,12 +303,16 @@ try
 {
     var atomicDataset = new ProjectDataset
     {
-        Header = new ProjectHeader { ProjectTitle = "Atomic version 1" },
+        Header = new ProjectHeader { ProjectTitle = "Atomic version 1", CurrentPeriod = "26-09" },
+        ForecastPeriods =
+        [
+            new ForecastPeriod { Label = "26-09", StartDate = new DateOnly(2026, 3, 1) }
+        ],
         ForecastLines =
         [
-            new ForecastLine { TaskNumber = "SCOPED", TransactionProjectCode = "PROJECT-PERSISTED" },
-            new ForecastLine { TaskNumber = "UNASSIGNED", TransactionProjectCode = string.Empty },
-            new ForecastLine { TaskNumber = "LEGACY", TransactionProjectCode = null }
+            new ForecastLine { TaskNumber = "SCOPED", ResourceName = "Scoped resource", ProjectCode = "Scoped category", TransactionProjectCode = "PROJECT-PERSISTED" },
+            new ForecastLine { TaskNumber = "UNASSIGNED", ResourceName = "Unassigned resource", ProjectCode = "Unassigned category", TransactionProjectCode = string.Empty },
+            new ForecastLine { TaskNumber = "LEGACY", ResourceName = "Legacy resource", ProjectCode = "Legacy category", TransactionProjectCode = null }
         ]
     };
     projectFileService.Save(projectFileTestPath, atomicDataset);
@@ -509,7 +513,7 @@ AssertEqual(0m, contingencyViewModel.TotalContingencyRemaining, "Removing a cont
 
 var metadataDataset = new ProjectDataset
 {
-    Header = new ProjectHeader { CurrentPeriod = "26-11" },
+    Header = new ProjectHeader { ProjectTitle = "Metadata fixture", CurrentPeriod = "26-11" },
     ForecastPeriods = [new ForecastPeriod { Label = "26-11", StartDate = new DateOnly(2026, 6, 1) }],
     Transactions =
     [
@@ -518,7 +522,7 @@ var metadataDataset = new ProjectDataset
     ForecastLines =
     [
         new ForecastLine { TaskNumber = "RAW-001", ResourceName = "Imported", ProjectCode = "Legacy Category" },
-        new ForecastLine { TaskNumber = "MAN-001", ResourceName = "Manual", ProjectCode = string.Empty }
+        new ForecastLine { TaskNumber = "MAN-001", ResourceName = "Manual", ProjectCode = "Manual task" }
     ],
     ProjectTaskCodes =
     [
@@ -603,7 +607,18 @@ AssertEqual(1, viewModel.ManagementResources.Count, "Management resource cannot 
 var managementProjectPath = Path.Combine(Path.GetTempPath(), $"project-cost-management-{Guid.NewGuid():N}.json");
 try
 {
-    var managementDataset = new ProjectDataset { ManagementResources = [managementResource] };
+    var managementDataset = new ProjectDataset
+    {
+        Header = new ProjectHeader { ProjectTitle = "Management persistence fixture", CurrentPeriod = managementPeriod },
+        ForecastPeriods = managementResource.MonthlyAllocations
+            .Select(allocation => new ForecastPeriod
+            {
+                Label = allocation.PeriodLabel,
+                StartDate = allocation.PeriodStartDate
+            })
+            .ToList(),
+        ManagementResources = [managementResource]
+    };
     new ProjectFileService().Save(managementProjectPath, managementDataset);
     var reloadedManagementResource = new ProjectFileService().Load(managementProjectPath).ManagementResources.Single();
     AssertEqual(12.5m, reloadedManagementResource[managementPeriod], "Management allocations persist in the project file");
@@ -806,6 +821,7 @@ try
 {
     var unmatchedDataset = new ProjectDataset
     {
+        Header = new ProjectHeader { ProjectTitle = "Unmatched import fixture" },
         UnmatchedImportCombinations =
         [
             new UnmatchedImportCombination
@@ -858,7 +874,10 @@ AssertTrue(customResourceView.ColumnLayouts.Any(layout => layout.Key == "Tasks" 
 var headerColorPersistencePath = Path.Combine(Path.GetTempPath(), $"project-cost-header-colours-{Guid.NewGuid():N}.json");
 try
 {
-    var headerColorDataset = new ProjectDataset();
+    var headerColorDataset = new ProjectDataset
+    {
+        Header = new ProjectHeader { ProjectTitle = "Header colour fixture" }
+    };
     headerColorDataset.ForecastCalendarYearHeaderColorHexes["Calendar year 2026"] = "#CFE5FA";
     headerColorDataset.ForecastFiscalYearHeaderColorHexes["FY27"] = "#F0D37A";
     headerColorDataset.ForecastGroupHeaderColorHexes["Project Management"] = "#D7ECCF";

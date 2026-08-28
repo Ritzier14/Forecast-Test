@@ -200,6 +200,11 @@ public sealed class PersistenceAndCalculationTests
                 ProjectTitle = title,
                 CurrentPeriod = "26-09"
             },
+            ForecastPeriods =
+            [
+                new ForecastPeriod { Label = "26-09", StartDate = new DateOnly(2026, 3, 1) },
+                new ForecastPeriod { Label = "26-10", StartDate = new DateOnly(2026, 4, 1) }
+            ],
             ForecastLines =
             [
                 new ForecastLine

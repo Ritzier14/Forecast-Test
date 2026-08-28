@@ -17,10 +17,12 @@ public sealed partial class MainWindowViewModel
 {
     private void LoadDataset(ProjectDataset dataset, bool markDirty)
     {
+        ArgumentNullException.ThrowIfNull(dataset);
+        var normalization = _projectDatasetMigrationPipeline.Normalize(dataset);
+
         ResetSavedMonthViewStateForDatasetLoad();
         UnsubscribeMonthlyForecastEvents();
-        _dataset = dataset;
-        var normalization = _projectDatasetMigrationPipeline.Normalize(_dataset);
+        _dataset = normalization.Dataset;
         InitializeWorkspaceViews(_dataset.WorkspaceViews);
         RefreshCurrentWorkspaceViews();
         InitializeTaskCategoryMetadata();

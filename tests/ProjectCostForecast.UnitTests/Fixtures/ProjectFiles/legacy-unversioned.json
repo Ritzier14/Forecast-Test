@@ -41,6 +41,9 @@
       "forecastLines": [
         {
           "rowNumber": 1,
+          "taskNumber": "TASK-1",
+          "resourceName": "Resource A",
+          "projectCode": "Category A",
           "monthlyForecasts": null
         }
       ]

@@ -37,7 +37,18 @@ public sealed partial class MainWindowViewModel
 
         try
         {
-            LoadDataset(_projectFileService.Load(dialog.FileName), markDirty: false);
+            var loadedDataset = _projectFileService.Load(dialog.FileName);
+            var normalizedDataset = _projectDatasetMigrationPipeline.Normalize(loadedDataset).Dataset;
+            var validationReport = _validationService.ValidateForOperation(normalizedDataset);
+            if (validationReport.HasErrors)
+            {
+                ReplaceCollection(ValidationIssues, validationReport.Issues);
+                OnPropertyChanged(nameof(ValidationIssueCount));
+                OnPropertyChanged(nameof(ValidationSummaryText));
+                throw new ProjectValidationException(validationReport.BuildBlockingMessage("Open project"), validationReport);
+            }
+
+            LoadDataset(normalizedDataset, markDirty: false);
             ProjectFilePath = dialog.FileName;
             StatusText = $"Opened {dialog.FileName}";
         }
@@ -59,13 +70,18 @@ public sealed partial class MainWindowViewModel
         return SaveDatasetAs(_dataset, showError);
     }
 
-    private bool SaveDataset(ProjectDataset dataset, bool showError = true)
+    private bool SaveDataset(ProjectDataset dataset, bool showError = true, string operation = "Save project")
     {
         ArgumentNullException.ThrowIfNull(dataset);
 
+        if (!TryBlockOperation(operation, dataset, showError))
+        {
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(ProjectFilePath))
         {
-            return SaveDatasetAs(dataset, showError);
+            return SaveDatasetAs(dataset, showError, operation);
         }
 
         AuditEvent? saveAuditEvent = null;
@@ -113,9 +129,14 @@ public sealed partial class MainWindowViewModel
         }
     }
 
-    private bool SaveDatasetAs(ProjectDataset dataset, bool showError = true)
+    private bool SaveDatasetAs(ProjectDataset dataset, bool showError = true, string operation = "Save project")
     {
         ArgumentNullException.ThrowIfNull(dataset);
+
+        if (!TryBlockOperation(operation, dataset, showError))
+        {
+            return false;
+        }
 
         var dialog = new SaveFileDialog
         {
@@ -131,12 +152,34 @@ public sealed partial class MainWindowViewModel
 
         var previousPath = ProjectFilePath;
         ProjectFilePath = dialog.FileName;
-        if (SaveDataset(dataset, showError))
+        if (SaveDataset(dataset, showError, operation))
         {
             return true;
         }
 
         ProjectFilePath = previousPath;
+        return false;
+    }
+
+    private bool TryBlockOperation(string operation, ProjectDataset dataset, bool showError)
+    {
+        var report = _validationService.ValidateForOperation(dataset);
+        if (!report.HasErrors)
+        {
+            return true;
+        }
+
+        ReplaceCollection(ValidationIssues, report.Issues);
+        OnPropertyChanged(nameof(ValidationIssueCount));
+        OnPropertyChanged(nameof(ValidationSummaryText));
+        var message = report.BuildBlockingMessage(operation);
+        StatusText = message;
+
+        if (showError)
+        {
+            MessageBox.Show(message, $"{operation} blocked", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
         return false;
     }
 
@@ -198,7 +241,7 @@ public sealed partial class MainWindowViewModel
         ImportTransactionFile(dialog.FileName);
     }
 
-    public void ImportTransactionFile(string path)
+    public void ImportTransactionFile(string path, bool showError = true)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
@@ -207,7 +250,12 @@ public sealed partial class MainWindowViewModel
 
         if (!_csvTransactionService.SupportsFile(path))
         {
-            MessageBox.Show("Supported import files are .csv, .xlsx, and .xlsm.", "Import failed", MessageBoxButton.OK, MessageBoxImage.Information);
+            StatusText = "Import failed: supported import files are .csv, .xlsx, and .xlsm.";
+            if (showError)
+            {
+                MessageBox.Show("Supported import files are .csv, .xlsx, and .xlsm.", "Import failed", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+
             return;
         }
 
@@ -227,6 +275,16 @@ public sealed partial class MainWindowViewModel
                 return;
             }
 
+            SyncDatasetFromCollections();
+            var initialCandidate = _projectDatasetCloner.Clone(_dataset);
+            initialCandidate.Transactions = (initialCandidate.Transactions ?? [])
+                .Concat(newTransactions)
+                .ToList();
+            if (!TryBlockOperation("Import transactions", initialCandidate, showError))
+            {
+                return;
+            }
+
             if (!ApplyCostCenterNameMappings(newTransactions))
             {
                 StatusText = "Import cancelled before any transaction rows were added.";
@@ -243,6 +301,16 @@ public sealed partial class MainWindowViewModel
             foreach (var transaction in newTransactions)
             {
                 transaction.RowNumber = nextRow++;
+            }
+
+            SyncDatasetFromCollections();
+            var commitCandidate = _projectDatasetCloner.Clone(_dataset);
+            commitCandidate.Transactions = (commitCandidate.Transactions ?? [])
+                .Concat(newTransactions)
+                .ToList();
+            if (!TryBlockOperation("Import transactions", commitCandidate, showError))
+            {
+                return;
             }
 
             AddItems(Transactions, newTransactions);
@@ -270,7 +338,11 @@ public sealed partial class MainWindowViewModel
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Import failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            StatusText = $"Import failed: {ex.Message}";
+            if (showError)
+            {
+                MessageBox.Show(ex.Message, "Import failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 
@@ -1234,6 +1306,11 @@ public sealed partial class MainWindowViewModel
         try
         {
             SyncDatasetFromCollections();
+            if (!TryBlockOperation("New month", _dataset, showError))
+            {
+                return false;
+            }
+
             var preparation = _newMonthOperation.Prepare(_dataset);
             if (!preparation.IsReady)
             {
@@ -1246,7 +1323,7 @@ public sealed partial class MainWindowViewModel
                 return false;
             }
 
-            if (!SaveDataset(preparation.StagedDataset!, showError))
+            if (!SaveDataset(preparation.StagedDataset!, showError, "New month"))
             {
                 return false;
             }

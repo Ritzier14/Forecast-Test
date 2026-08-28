@@ -126,6 +126,25 @@ public sealed class NewMonthTests
             periods.Add(new ForecastPeriod { Label = "26-10", StartDate = new DateOnly(2026, 4, 1) });
         }
 
+        var monthlyForecasts = new List<MonthlyForecast>
+        {
+            new()
+            {
+                PeriodLabel = "26-09",
+                PeriodStartDate = new DateOnly(2026, 3, 1),
+                Amount = 10m
+            }
+        };
+        if (includeNextPeriod)
+        {
+            monthlyForecasts.Add(new MonthlyForecast
+            {
+                PeriodLabel = "26-10",
+                PeriodStartDate = new DateOnly(2026, 4, 1),
+                Amount = 20m
+            });
+        }
+
         return new ProjectDataset
         {
             Header = new ProjectHeader
@@ -144,21 +163,7 @@ public sealed class NewMonthTests
                     ProjectCode = "Category A",
                     ReportingCategoryOverride = "Category A",
                     Budget = 100m,
-                    MonthlyForecasts =
-                    [
-                        new MonthlyForecast
-                        {
-                            PeriodLabel = "26-09",
-                            PeriodStartDate = new DateOnly(2026, 3, 1),
-                            Amount = 10m
-                        },
-                        new MonthlyForecast
-                        {
-                            PeriodLabel = "26-10",
-                            PeriodStartDate = new DateOnly(2026, 4, 1),
-                            Amount = 20m
-                        }
-                    ]
+                    MonthlyForecasts = monthlyForecasts
                 }
             ],
             SavedMonthSnapshots =
