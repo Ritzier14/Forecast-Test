@@ -316,7 +316,7 @@ public sealed partial class MainWindowViewModel
 
     private void RefreshActivePeriodWarnings()
     {
-        var warnings = BuildActivePeriodWarnings(_dataset.ForecastPeriods, Header.CurrentPeriod, DateOnly.FromDateTime(DateTime.Today));
+        var warnings = BuildActivePeriodWarnings(_dataset.ForecastPeriods, Header.CurrentPeriod, _clock.TodayInNewZealand);
         ReplaceCollection(ActivePeriodWarnings, warnings);
         OnPropertyChanged(nameof(ActivePeriodWarnings));
     }

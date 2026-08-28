@@ -346,6 +346,11 @@ public sealed partial class MainWindowViewModel
 
     private void AddSaveAuditEvent(ProjectDataset dataset, AuditEvent auditEvent)
     {
+        if (auditEvent.ChangedAt == DateTimeOffset.UnixEpoch)
+        {
+            auditEvent.ChangedAt = _clock.UtcNow;
+        }
+
         if (ReferenceEquals(dataset, _dataset))
         {
             AddAuditEvent(auditEvent);
@@ -593,7 +598,7 @@ public sealed partial class MainWindowViewModel
                 snapshot.Period,
                 "InitialCostLoad",
                 string.Empty,
-                snapshot.SavedAt.ToString("s"),
+                DateTimeContract.FormatUtc(snapshot.SavedAt),
                 $"Created saved month from initial cost load through {snapshot.Period}");
         }
 
@@ -788,7 +793,7 @@ public sealed partial class MainWindowViewModel
                 if (mappingsByKey.TryGetValue(mappingKey, out var mapping))
                 {
                     mapping.ManualName = manualName;
-                    mapping.LastUsedAt = DateTime.Now;
+                    mapping.LastUsedAt = _clock.UtcNow;
                 }
             }
         }
@@ -796,7 +801,7 @@ public sealed partial class MainWindowViewModel
 
     private void RoutePreviewItemsToUnmatchedList(IEnumerable<ImportAutoCreatePreviewItem> previewItems)
     {
-        var recordedAt = DateTime.Now;
+        var recordedAt = _clock.UtcNow;
         var newItems = previewItems.Select(item => new UnmatchedImportCombination
         {
             RecordedAt = recordedAt,
@@ -1031,7 +1036,7 @@ public sealed partial class MainWindowViewModel
         IReadOnlyList<CostCenterNameOption> Candidates,
         CostCenterNameOption? SuggestedOption);
 
-    private static CostCenterNameMapping CreateCostCenterNameMapping(CostTransaction sample, string manualName)
+    private CostCenterNameMapping CreateCostCenterNameMapping(CostTransaction sample, string manualName)
     {
         return new CostCenterNameMapping
         {
@@ -1044,7 +1049,7 @@ public sealed partial class MainWindowViewModel
             Narrative3 = sample.Narrative3,
             Who = sample.Who,
             ManualName = CleanCostCenterName(manualName),
-            LastUsedAt = DateTime.Now
+            LastUsedAt = _clock.UtcNow
         };
     }
 
@@ -1058,7 +1063,7 @@ public sealed partial class MainWindowViewModel
 
         mapping.UseCount += rows.Count;
         mapping.ManualName = manualName;
-        mapping.LastUsedAt = DateTime.Now;
+        mapping.LastUsedAt = _clock.UtcNow;
     }
 
     private IReadOnlyList<AssociatedCostCenterMatch> GetAssociatedCostCenterMatches(CostTransaction transaction, IEnumerable<CostCenterNameMapping>? availableMappings = null)
@@ -1567,7 +1572,7 @@ public sealed partial class MainWindowViewModel
 
     private SavedMonthSnapshot BuildSavedMonthSnapshot(string period)
     {
-        return NewMonthOperation.BuildSavedMonthSnapshot(period, ForecastLines);
+        return _newMonthOperation.BuildSnapshot(period, ForecastLines);
     }
 
     private string GetNextForecastPeriod(string currentPeriod)

@@ -12,7 +12,7 @@ public partial class MainWindowViewModel
         IReadOnlyList<decimal> weights,
         UserForecastCurvePreset? overwrite = null)
     {
-        var now = DateTime.UtcNow;
+        var now = _clock.UtcNow;
         var cleanedName = string.IsNullOrWhiteSpace(name) ? "Custom curve" : name.Trim();
         var preset = overwrite ?? new UserForecastCurvePreset
         {
@@ -59,7 +59,7 @@ public partial class MainWindowViewModel
         {
             preset.Name = string.IsNullOrWhiteSpace(preset.Name) ? "Custom curve" : preset.Name.Trim();
             preset.Note = preset.Note.Trim();
-            preset.UpdatedUtc = DateTime.UtcNow;
+            preset.UpdatedUtc = _clock.UtcNow;
         }
 
         SaveUserPreferences();

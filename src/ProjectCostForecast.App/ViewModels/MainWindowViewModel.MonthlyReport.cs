@@ -243,7 +243,7 @@ public sealed partial class MainWindowViewModel
                         MonthLabel = line.ManualCommentMonthLabel,
                         ResourceName = line.ResourceName,
                         Text = line.ManualAllMonthComment,
-                        RecordedAt = line.ManualCommentRecordedAt ?? DateTime.MinValue
+                        RecordedAt = line.ManualCommentRecordedAt ?? DateTimeOffset.MinValue
                     }]
                     : line.MonthlyCommentHistory)
                 .Where(comment => !string.IsNullOrWhiteSpace(comment.Text))

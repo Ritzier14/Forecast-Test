@@ -23,14 +23,37 @@ public sealed class NewMonthOperation
 {
     private readonly CalculationService _calculationService;
     private readonly ProjectDatasetCloner _datasetCloner;
+    private readonly IClock _clock;
 
-    public NewMonthOperation(CalculationService calculationService, ProjectDatasetCloner datasetCloner)
+    public NewMonthOperation(
+        CalculationService calculationService,
+        ProjectDatasetCloner datasetCloner,
+        IClock? clock = null)
     {
         _calculationService = calculationService ?? throw new ArgumentNullException(nameof(calculationService));
         _datasetCloner = datasetCloner ?? throw new ArgumentNullException(nameof(datasetCloner));
+        _clock = clock ?? SystemClock.Instance;
     }
 
     public NewMonthPreparation Prepare(ProjectDataset source, DateTime? savedAt = null)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var timestamp = savedAt is { } legacyTimestamp
+            ? DateTimeContract.FromDateTime(legacyTimestamp)
+            : _clock.UtcNow;
+
+        return PrepareAt(source, timestamp);
+    }
+
+    public SavedMonthSnapshot BuildSnapshot(
+        string period,
+        IEnumerable<ForecastLine> forecastLines)
+    {
+        return BuildSavedMonthSnapshotAt(period, forecastLines, _clock.UtcNow);
+    }
+
+    private NewMonthPreparation PrepareAt(ProjectDataset source, DateTimeOffset timestamp)
     {
         ArgumentNullException.ThrowIfNull(source);
 
@@ -64,8 +87,7 @@ public sealed class NewMonthOperation
 
         _calculationService.Recalculate(staged);
         var nextPeriod = GetNextForecastPeriod(staged, currentPeriod);
-        var timestamp = savedAt ?? DateTime.Now;
-        var snapshot = BuildSavedMonthSnapshot(currentPeriod, staged.ForecastLines, timestamp);
+        var snapshot = BuildSavedMonthSnapshotAt(currentPeriod, staged.ForecastLines, timestamp);
         staged.SavedMonthSnapshots.Insert(0, snapshot);
 
         foreach (var line in staged.ForecastLines)
@@ -79,7 +101,7 @@ public sealed class NewMonthOperation
             staged.Header.CurrentPeriod = nextPeriod;
         }
 
-        var auditTimestamp = new DateTimeOffset(timestamp);
+        var auditTimestamp = DateTimeContract.NormalizeUtc(timestamp);
         AddAuditEvent(
             staged,
             new AuditEvent
@@ -87,7 +109,7 @@ public sealed class NewMonthOperation
                 EntityType = "SavedMonth",
                 EntityId = currentPeriod,
                 FieldName = "Baseline",
-                NewValue = snapshot.SavedAt.ToString("s"),
+                NewValue = DateTimeContract.FormatUtc(snapshot.SavedAt),
                 ChangedAt = auditTimestamp,
                 Reason = "Created new month baseline"
             });
@@ -122,6 +144,20 @@ public sealed class NewMonthOperation
         ArgumentException.ThrowIfNullOrWhiteSpace(period);
         ArgumentNullException.ThrowIfNull(forecastLines);
 
+        var timestamp = savedAt is { } legacyTimestamp
+            ? DateTimeContract.FromDateTime(legacyTimestamp)
+            : SystemClock.Instance.UtcNow;
+        return BuildSavedMonthSnapshotAt(period, forecastLines, timestamp);
+    }
+
+    public static SavedMonthSnapshot BuildSavedMonthSnapshotAt(
+        string period,
+        IEnumerable<ForecastLine> forecastLines,
+        DateTimeOffset savedAt)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(period);
+        ArgumentNullException.ThrowIfNull(forecastLines);
+
         var lines = forecastLines.Select(line => new SavedMonthForecastLine
         {
             RowNumber = line.RowNumber,
@@ -146,7 +182,7 @@ public sealed class NewMonthOperation
         return new SavedMonthSnapshot
         {
             Period = period,
-            SavedAt = savedAt ?? DateTime.Now,
+            SavedAt = DateTimeContract.NormalizeUtc(savedAt),
             CostToDate = lines.Sum(line => line.CostToDate),
             CostToComplete = lines.Sum(line => line.CostToComplete),
             FinalForecast = lines.Sum(line => line.FinalForecast),

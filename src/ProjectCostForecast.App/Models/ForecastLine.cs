@@ -111,7 +111,7 @@ public sealed class ForecastLine : ObservableModel
     public bool UseManualAllMonthComment { get => _useManualAllMonthComment; set => SetProperty(ref _useManualAllMonthComment, value); }
     public string ManualCommentPeriodLabel { get; set; } = string.Empty;
     public string ManualCommentMonthLabel { get; set; } = string.Empty;
-    public DateTime? ManualCommentRecordedAt { get; set; }
+    public DateTimeOffset? ManualCommentRecordedAt { get; set; }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public bool HasManualAllMonthComment => !string.IsNullOrWhiteSpace(ManualAllMonthComment);
@@ -344,7 +344,7 @@ public sealed class ForecastMonthlyComment
     public string MonthLabel { get; set; } = string.Empty;
     public string ResourceName { get; set; } = string.Empty;
     public string Text { get; set; } = string.Empty;
-    public DateTime RecordedAt { get; set; } = DateTime.Now;
+    public DateTimeOffset RecordedAt { get; set; } = DateTimeOffset.UnixEpoch;
 
     [System.Text.Json.Serialization.JsonIgnore]
     public int PeriodSortKey => Services.FiscalPeriod.SortKey(PeriodLabel) == int.MaxValue

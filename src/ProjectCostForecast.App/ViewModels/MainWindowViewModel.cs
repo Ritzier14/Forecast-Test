@@ -46,6 +46,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private const double LedgerChartBottomPadding = 34;
     private const double DefaultLedgerChartMonthSpacing = 36;
 
+    private readonly IClock _clock;
     private readonly CalculationService _calculationService;
     private readonly NewMonthOperation _newMonthOperation;
     private readonly ProjectDatasetCloner _projectDatasetCloner;
@@ -149,6 +150,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     {
         ArgumentNullException.ThrowIfNull(dependencies);
         dependencies.Validate();
+        _clock = dependencies.Clock;
         _calculationService = dependencies.CalculationService;
         _projectDatasetCloner = dependencies.ProjectDatasetCloner;
         _projectDatasetMigrationPipeline = dependencies.ProjectDatasetMigrationPipeline;
@@ -159,7 +161,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
         _userPreferencesService = dependencies.UserPreferencesService;
         _schedulingService = dependencies.SchedulingService;
         _forecastCurveService = dependencies.ForecastCurveService;
-        _newMonthOperation = new NewMonthOperation(_calculationService, _projectDatasetCloner);
+        _newMonthOperation = new NewMonthOperation(_calculationService, _projectDatasetCloner, _clock);
 
         _preferenceSaveTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
@@ -328,6 +330,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     }
 
     public ProjectHeader Header => _dataset.Header;
+    public IClock Clock => _clock;
     public ObservableCollection<ForecastLine> ForecastLines { get; }
     public ObservableCollection<ProjectTaskCode> ProjectTaskCodes { get; }
     public ObservableCollection<ProjectCategory> ProjectCategories { get; }

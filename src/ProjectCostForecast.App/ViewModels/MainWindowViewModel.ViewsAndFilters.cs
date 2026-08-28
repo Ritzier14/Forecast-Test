@@ -556,7 +556,7 @@ public sealed partial class MainWindowViewModel
 
         entry.ResourceName = line.ResourceName;
         entry.Text = newComment;
-        entry.RecordedAt = DateTime.Now;
+        entry.RecordedAt = _clock.UtcNow;
         line.NotifyAllMonthCommentsChanged();
     }
 
@@ -576,7 +576,7 @@ public sealed partial class MainWindowViewModel
         line.ManualCommentMonthLabel = _dataset.ForecastPeriods
             .FirstOrDefault(period => string.Equals(CalculationService.Normalise(period.Label), line.ManualCommentPeriodLabel, StringComparison.OrdinalIgnoreCase))
             ?.StartDate?.ToString("MMM yy") ?? string.Empty;
-        line.ManualCommentRecordedAt = DateTime.Now;
+        line.ManualCommentRecordedAt = _clock.UtcNow;
         line.NotifyAllMonthCommentsChanged();
         SyncDatasetFromCollections();
         RebuildMonthlyReport();

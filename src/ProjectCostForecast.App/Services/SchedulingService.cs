@@ -6,10 +6,16 @@ namespace ProjectCostForecast.App.Services;
 public sealed class SchedulingService
 {
     private const int MaxCalendarScanDays = 7320; // ~20 years; guards against empty calendars
+    private readonly IClock _clock;
 
     private static readonly Regex PredecessorTokenRegex = new(
         @"^(?<id>[A-Za-z0-9_.\-]+)\s*(?<type>FS|SS|FF|SF)?\s*(?<lag>[+-]\s*\d+)?$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    public SchedulingService(IClock? clock = null)
+    {
+        _clock = clock ?? SystemClock.Instance;
+    }
 
     public static List<ParsedPredecessor> ParsePredecessors(string? text, out List<string> errors)
     {
@@ -91,7 +97,7 @@ public sealed class SchedulingService
             activity.IsCritical = false;
         }
 
-        var projectStart = schedule.ProjectStart ?? DateOnly.FromDateTime(DateTime.Today);
+        var projectStart = schedule.ProjectStart ?? _clock.TodayInNewZealand;
         var incomingLinks = schedule.Links
             .GroupBy(link => link.SuccessorId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);

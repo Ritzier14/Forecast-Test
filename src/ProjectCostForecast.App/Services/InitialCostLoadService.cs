@@ -12,11 +12,13 @@ public sealed class InitialCostLoadService
 {
     private readonly CsvTransactionService _transactionService = new();
     private readonly CalculationService _calculationService = new();
+    private readonly IClock _clock;
     private readonly DateOnly _asOfDate;
 
-    public InitialCostLoadService(DateOnly? asOfDate = null)
+    public InitialCostLoadService(DateOnly? asOfDate = null, IClock? clock = null)
     {
-        _asOfDate = asOfDate ?? DateOnly.FromDateTime(DateTime.Today);
+        _clock = clock ?? SystemClock.Instance;
+        _asOfDate = asOfDate ?? _clock.TodayInNewZealand;
     }
 
     public ProjectDataset Load(string path)
@@ -100,6 +102,7 @@ public sealed class InitialCostLoadService
                     FieldName = "InitialCostLoad",
                     OldValue = "0",
                     NewValue = transactions.Count.ToString(),
+                    ChangedAt = _clock.UtcNow,
                     Reason = "Loaded packaged example accounting export"
                 }
             ]
@@ -251,8 +254,9 @@ public sealed class InitialCostLoadService
 
             var savedAt = month
                 .Where(transaction => transaction.DocDate.HasValue)
-                .Select(transaction => transaction.DocDate!.Value.ToDateTime(TimeOnly.MaxValue))
-                .DefaultIfEmpty(DateTime.Now)
+                .Select(transaction => DateTimeContract.FromNewZealandLocal(
+                    transaction.DocDate!.Value.ToDateTime(TimeOnly.MaxValue)))
+                .DefaultIfEmpty(_clock.UtcNow)
                 .Max();
             snapshots.Add(CreateSnapshot(dataset, period, savedAt));
         }
@@ -263,7 +267,7 @@ public sealed class InitialCostLoadService
         return snapshots.OrderByDescending(snapshot => FiscalPeriod.SortKey(snapshot.Period)).ToList();
     }
 
-    private static SavedMonthSnapshot CreateSnapshot(ProjectDataset dataset, string period, DateTime savedAt)
+    private static SavedMonthSnapshot CreateSnapshot(ProjectDataset dataset, string period, DateTimeOffset savedAt)
     {
         var lines = dataset.ForecastLines.Select(line => new SavedMonthForecastLine
         {
@@ -289,7 +293,7 @@ public sealed class InitialCostLoadService
         return new SavedMonthSnapshot
         {
             Period = period,
-            SavedAt = savedAt,
+            SavedAt = DateTimeContract.NormalizeUtc(savedAt),
             CostToDate = lines.Sum(line => line.CostToDate),
             CostToComplete = lines.Sum(line => line.CostToComplete),
             FinalForecast = lines.Sum(line => line.FinalForecast),

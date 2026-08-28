@@ -116,7 +116,7 @@ public sealed class ScheduleBaselineEntry
 public sealed class ScheduleBaseline
 {
     public string Name { get; set; } = "Baseline";
-    public DateTime CapturedAt { get; set; } = DateTime.Now;
+    public DateTimeOffset CapturedAt { get; set; } = DateTimeOffset.UnixEpoch;
     public List<ScheduleBaselineEntry> Entries { get; set; } = [];
 
     public ScheduleBaselineEntry? FindEntry(string activityId)

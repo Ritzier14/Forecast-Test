@@ -208,7 +208,7 @@ public partial class MainWindow
         menu.Items.Add(link);
 
         var constraints = new MenuItem { Header = "Imposed dates" };
-        var imposedDate = activity.EarlyStart ?? viewModel.ScheduleDataRef.ProjectStart ?? DateOnly.FromDateTime(DateTime.Today);
+        var imposedDate = activity.EarlyStart ?? viewModel.ScheduleDataRef.ProjectStart ?? viewModel.Clock.TodayInNewZealand;
         constraints.Items.Add(CreateScheduleMenuItem("Start on current date", () => viewModel.ImposeSelectedScheduleDate(ScheduleConstraintType.StartOn, imposedDate)));
         constraints.Items.Add(CreateScheduleMenuItem("Start on or after current date", () => viewModel.ImposeSelectedScheduleDate(ScheduleConstraintType.StartOnOrAfter, imposedDate)));
         var finishDate = activity.EarlyFinish ?? imposedDate;

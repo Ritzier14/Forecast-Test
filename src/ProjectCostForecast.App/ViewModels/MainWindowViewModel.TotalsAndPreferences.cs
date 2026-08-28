@@ -69,6 +69,11 @@ public sealed partial class MainWindowViewModel
 
     private void AddAuditEvent(AuditEvent auditEvent)
     {
+        if (auditEvent.ChangedAt == DateTimeOffset.UnixEpoch)
+        {
+            auditEvent.ChangedAt = _clock.UtcNow;
+        }
+
         AuditEvents.Insert(0, auditEvent);
         _dataset.AuditEvents.Insert(0, auditEvent);
         OnPropertyChanged(nameof(AuditEvents));

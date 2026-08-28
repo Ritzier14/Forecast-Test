@@ -303,7 +303,7 @@ public sealed partial class MainWindowViewModel
         var baseline = _dataset.Schedule.ActiveBaseline;
         if (baseline is null)
         {
-            baseline = new ScheduleBaseline { Name = "Baseline 1" };
+            baseline = new ScheduleBaseline { Name = "Baseline 1", CapturedAt = _clock.UtcNow };
             _dataset.Schedule.Baselines.Add(baseline);
             _dataset.Schedule.ActiveBaselineName = baseline.Name;
             RefreshScheduleBaselineNames();
@@ -789,7 +789,7 @@ public sealed partial class MainWindowViewModel
             _dataset.Schedule.Baselines.Add(baseline);
         }
 
-        baseline.CapturedAt = DateTime.Now;
+        baseline.CapturedAt = _clock.UtcNow;
         baseline.Entries.Clear();
         foreach (var activity in ScheduleActivities)
         {
@@ -877,7 +877,7 @@ public sealed partial class MainWindowViewModel
         var sevenDay = new ScheduleCalendar { Name = "7 Day Site" , WorkingDays = [true, true, true, true, true, true, true] };
         schedule.Calendars.Add(sevenDay);
 
-        var projectStart = DateOnly.FromDateTime(DateTime.Today.AddDays(-35));
+        var projectStart = _clock.TodayInNewZealand.AddDays(-35);
         schedule.ProjectStart = projectStart;
         schedule.Activities =
         [
@@ -900,7 +900,7 @@ public sealed partial class MainWindowViewModel
 
         // Capture the original plan as a baseline, then introduce a delay so slip tracking has something to show.
         _schedulingService.Recalculate(schedule);
-        var baseline = new ScheduleBaseline { Name = "Original plan" };
+        var baseline = new ScheduleBaseline { Name = "Original plan", CapturedAt = _clock.UtcNow };
         foreach (var activity in schedule.Activities)
         {
             if (activity.EarlyStart.HasValue || activity.EarlyFinish.HasValue)

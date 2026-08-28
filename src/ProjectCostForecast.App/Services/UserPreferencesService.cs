@@ -15,12 +15,18 @@ public sealed class UserPreferencesService : IUserPreferencesService
 
     private readonly string _preferencesPath;
     private readonly IDiagnosticsService _diagnostics;
-    private readonly Func<DateTime> _utcNow;
+    private readonly IClock _clock;
+
+    static UserPreferencesService()
+    {
+        DateTimeContract.AddJsonConverters(JsonOptions);
+    }
 
     public UserPreferencesService(
         string? preferencesPath = null,
         IDiagnosticsService? diagnostics = null,
-        Func<DateTime>? utcNow = null)
+        Func<DateTime>? utcNow = null,
+        IClock? clock = null)
     {
         _preferencesPath = string.IsNullOrWhiteSpace(preferencesPath)
             ? Path.Combine(
@@ -29,7 +35,9 @@ public sealed class UserPreferencesService : IUserPreferencesService
                 "user-preferences.json")
             : Path.GetFullPath(preferencesPath);
         _diagnostics = diagnostics ?? new DiagnosticsService();
-        _utcNow = utcNow ?? (() => DateTime.UtcNow);
+        _clock = clock ?? (utcNow is null
+            ? SystemClock.Instance
+            : DateTimeContract.FromLegacyUtcFactory(utcNow));
     }
 
     public string? LastLoadNotice { get; private set; }
@@ -105,7 +113,7 @@ public sealed class UserPreferencesService : IUserPreferencesService
             extension = ".json";
         }
 
-        var timestamp = _utcNow()
+        var timestamp = _clock.UtcNow
             .ToUniversalTime()
             .ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture);
 

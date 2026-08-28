@@ -53,7 +53,7 @@ public sealed class UnmatchedImportWindow : Window
             RowHeaderWidth = 0,
             ItemsSource = items.OrderByDescending(item => item.RecordedAt).ToList()
         };
-        grid.Columns.Add(new DataGridTextColumn { Header = "Recorded", Binding = new Binding(nameof(UnmatchedImportCombination.RecordedAt)) { StringFormat = "g" }, Width = 130 });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Recorded", Binding = new Binding(nameof(UnmatchedImportCombination.RecordedAtDisplay)), SortMemberPath = nameof(UnmatchedImportCombination.RecordedAt), Width = 130 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Task code", Binding = new Binding(nameof(UnmatchedImportCombination.TaskNumber)), Width = 110 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Manual Name", Binding = new Binding(nameof(UnmatchedImportCombination.ManualName)), Width = 220 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Project code", Binding = new Binding(nameof(UnmatchedImportCombination.ProjectCode)), Width = 110 });

@@ -42,6 +42,11 @@ public sealed class ProjectDatasetMigrationPipeline
         WriteIndented = true
     };
 
+    public ProjectDatasetMigrationPipeline()
+    {
+        DateTimeContract.AddJsonConverters(_jsonOptions);
+    }
+
     public ProjectDatasetMigrationResult Load(Stream stream)
     {
         ArgumentNullException.ThrowIfNull(stream);
@@ -270,8 +275,81 @@ public sealed class ProjectDatasetMigrationPipeline
             baseline.Entries = EnsureList(baseline.Entries, ref changed);
         }
 
+        changed |= NormalizeDurableTimestamps(dataset);
         changed |= NormaliseForecastPeriodDates(dataset);
         return changed;
+    }
+
+    private static bool NormalizeDurableTimestamps(ProjectDataset dataset)
+    {
+        var changed = false;
+
+        foreach (var auditEvent in dataset.AuditEvents)
+        {
+            changed |= NormalizeTimestamp(
+                auditEvent.ChangedAt,
+                value => auditEvent.ChangedAt = value);
+        }
+
+        foreach (var line in dataset.ForecastLines)
+        {
+            if (line.ManualCommentRecordedAt is { } manualCommentRecordedAt)
+            {
+                changed |= NormalizeTimestamp(
+                    manualCommentRecordedAt,
+                    value => line.ManualCommentRecordedAt = value);
+            }
+
+            foreach (var comment in line.MonthlyCommentHistory)
+            {
+                changed |= NormalizeTimestamp(
+                    comment.RecordedAt,
+                    value => comment.RecordedAt = value);
+            }
+        }
+
+        foreach (var mapping in dataset.CostCenterNameMappings)
+        {
+            changed |= NormalizeTimestamp(
+                mapping.LastUsedAt,
+                value => mapping.LastUsedAt = value);
+        }
+
+        foreach (var unmatchedImport in dataset.UnmatchedImportCombinations)
+        {
+            changed |= NormalizeTimestamp(
+                unmatchedImport.RecordedAt,
+                value => unmatchedImport.RecordedAt = value);
+        }
+
+        foreach (var snapshot in dataset.SavedMonthSnapshots)
+        {
+            changed |= NormalizeTimestamp(
+                snapshot.SavedAt,
+                value => snapshot.SavedAt = value);
+        }
+
+        foreach (var baseline in dataset.Schedule.Baselines)
+        {
+            changed |= NormalizeTimestamp(
+                baseline.CapturedAt,
+                value => baseline.CapturedAt = value);
+        }
+
+        return changed;
+    }
+
+    private static bool NormalizeTimestamp(
+        DateTimeOffset timestamp,
+        Action<DateTimeOffset> setTimestamp)
+    {
+        if (timestamp.Offset == TimeSpan.Zero)
+        {
+            return false;
+        }
+
+        setTimestamp(DateTimeContract.NormalizeUtc(timestamp));
+        return true;
     }
 
     private static List<T> EnsureList<T>(List<T>? values, ref bool changed)

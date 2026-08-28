@@ -218,7 +218,7 @@ public sealed class SavedMonthSnapshotWindow : Window
         grid.Columns.Add(new DataGridTextColumn { Header = "Cost to Complete", Binding = new Binding(nameof(SavedMonthSnapshot.CostToComplete)) { StringFormat = "{0:C0}" }, Width = 145 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Final Forecast", Binding = new Binding(nameof(SavedMonthSnapshot.FinalForecast)) { StringFormat = "{0:C0}" }, Width = 130 });
         grid.Columns.Add(new DataGridTextColumn { Header = "Total Budget Variance", Binding = new Binding(nameof(SavedMonthSnapshot.TotalBudgetVariance)) { StringFormat = "{0:C0}" }, Width = 165 });
-        grid.Columns.Add(new DataGridTextColumn { Header = "Date Saved", Binding = new Binding(nameof(SavedMonthSnapshot.SavedAt)) { StringFormat = "{0:g}" }, Width = 155 });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Date Saved", Binding = new Binding(nameof(SavedMonthSnapshotRow.SavedAtDisplay)), SortMemberPath = nameof(SavedMonthSnapshotRow.SavedAt), Width = 155 });
         AutoSizeColumns(grid);
         SpreadsheetReadOnlyGridBehavior.Attach(grid);
         grid.SelectionMode = DataGridSelectionMode.Single;
@@ -514,7 +514,8 @@ public sealed class SavedMonthSnapshotRow
     public int MonthNumber { get; }
     public SavedMonthSnapshot Snapshot { get; }
     public string Period => Snapshot.Period;
-    public DateTime SavedAt => Snapshot.SavedAt;
+    public DateTimeOffset SavedAt => Snapshot.SavedAt;
+    public string SavedAtDisplay => DateTimeContract.FormatNewZealand(SavedAt);
     public decimal CostToDate => Snapshot.CostToDate;
     public decimal CostToComplete => Snapshot.CostToComplete;
     public decimal FinalForecast => Snapshot.FinalForecast;

@@ -9,9 +9,12 @@ public sealed class AuditEvent
     public string OldValue { get; set; } = string.Empty;
     public string NewValue { get; set; } = string.Empty;
     public string ChangedBy { get; set; } = Environment.UserName;
-    public DateTimeOffset ChangedAt { get; set; } = DateTimeOffset.Now;
+    public DateTimeOffset ChangedAt { get; set; } = DateTimeOffset.UnixEpoch;
     public string Reason { get; set; } = string.Empty;
     public string Source { get; set; } = "Desktop";
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string ChangedAtDisplay => Services.DateTimeContract.FormatNewZealand(ChangedAt);
 }
 
 public sealed class ValidationIssue

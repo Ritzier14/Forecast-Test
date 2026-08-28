@@ -9,6 +9,7 @@ namespace ProjectCostForecast.App.ViewModels;
 /// </summary>
 public sealed class MainWindowViewModelDependencies
 {
+    public IClock Clock { get; init; } = SystemClock.Instance;
     public CalculationService CalculationService { get; init; } = new();
     public ProjectDatasetCloner ProjectDatasetCloner { get; init; } = new();
     public ProjectDatasetMigrationPipeline ProjectDatasetMigrationPipeline { get; init; } = new();
@@ -23,6 +24,7 @@ public sealed class MainWindowViewModelDependencies
 
     public void Validate()
     {
+        ArgumentNullException.ThrowIfNull(Clock);
         ArgumentNullException.ThrowIfNull(CalculationService);
         ArgumentNullException.ThrowIfNull(ProjectDatasetCloner);
         ArgumentNullException.ThrowIfNull(ProjectDatasetMigrationPipeline);

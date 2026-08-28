@@ -611,7 +611,7 @@ public partial class MainWindow
 
         if (dates.Count == 0)
         {
-            var today = DateOnly.FromDateTime(DateTime.Today);
+            var today = viewModel.Clock.TodayInNewZealand;
             return (today.AddDays(-7), today.AddDays(60));
         }
 
@@ -813,7 +813,7 @@ public partial class MainWindow
 
     private void DrawGanttMarkerLines(MainWindowViewModel viewModel, DateOnly rangeStart, double height)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = viewModel.Clock.TodayInNewZealand;
         AddGanttMarkerLine(GanttDateToX(today, rangeStart) + (_ganttDayWidth / 2), height, GanttSlipBrush, "Today");
         if (viewModel.ScheduleDataRef.ProjectStart is { } projectStart)
         {

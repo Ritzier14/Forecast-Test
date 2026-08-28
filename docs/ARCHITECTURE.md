@@ -26,6 +26,8 @@ Storage is accessed through `IProjectFileService` and `IUserPreferencesService`.
 
 CSV/XLSX/XLSM files are untrusted boundaries. `CsvTransactionService` applies explicit compressed-file, uncompressed-workbook, worksheet, row, column, cell, and cell-text limits before returning a complete import batch; cancellation or parse failure returns no partial batch. Re-import uses the existing transaction duplicate key and skips matching rows, so an all-duplicate import leaves project state unchanged. Formula-like text is neutralized only while writing CSV output; canonical model and JSON values are never rewritten for spreadsheet safety.
 
+Date/time behavior follows `docs/DATE_TIME_CONTRACT.md`: fiscal and schedule calendar values are `DateOnly` NZ business dates, durable audit/snapshot/preference instants are UTC `DateTimeOffset` values, and display conversion uses `Pacific/Auckland` with `en-NZ`. Current workflow time enters through `IClock`; model constructors use explicit sentinels rather than ambient time. JSON converters accept legacy offset-free NZ-local timestamps and normalize persisted output to invariant UTC without changing fiscal-period dates.
+
 The WPF composition root attaches `RuntimeExceptionPolicy` to the dispatcher,
 application-domain, and unobserved-task boundaries. An unexpected UI or
 application-domain failure is logged and follows a fail-fast shutdown policy;

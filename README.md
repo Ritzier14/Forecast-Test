@@ -15,6 +15,7 @@ The current build focuses on the highest-value spreadsheet workflow and the rele
 - Open/save project JSON files with backups.
 - Verify and restore project backups to a new file, with a pre-restore backup for explicit overwrites.
 - Sanitized, bounded local diagnostics with corrupt-preference quarantine and startup notices.
+- Explicit NZ business-date and UTC durable-instant handling with deterministic clock injection.
 - Hardened raw-transaction CSV/XLSX/XLSM import with bounded file/workbook limits, malformed-input rejection, and duplicate-row skipping.
 - Spreadsheet-safe CSV export that neutralizes formula-like text without changing project data.
 - Validation and audit tabs.
@@ -72,6 +73,7 @@ The checks verify the important workbook-derived drilldowns, including:
 - `tests/ProjectCostForecast.Tests` - no-dependency acceptance check harness.
 - `docs/RECOVERY_RUNBOOK.md` - user-facing backup, retention, and restore instructions.
 - `docs/DIAGNOSTICS_RUNBOOK.md` - user-facing diagnostics and corrupt-preference recovery instructions.
+- `docs/DATE_TIME_CONTRACT.md` - NZ business-date, UTC persistence, display-locale, and legacy timestamp rules.
 
 ## Stack
 

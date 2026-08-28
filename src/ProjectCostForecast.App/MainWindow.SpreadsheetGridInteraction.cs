@@ -2861,6 +2861,7 @@ public partial class MainWindow
             null => string.Empty,
             DateOnly date => date.ToString("d", CultureInfo.CurrentCulture),
             DateTime date => date.ToString("g", CultureInfo.CurrentCulture),
+            DateTimeOffset date => DateTimeContract.FormatNewZealand(date),
             decimal number => number.ToString("0.##", CultureInfo.CurrentCulture),
             double number => number.ToString("0.##", CultureInfo.CurrentCulture),
             _ => value.ToString() ?? string.Empty

@@ -50,7 +50,7 @@ public sealed class UserForecastCurvePreset
     public string ResourceName { get; set; } = string.Empty;
     public decimal ReferenceTotal { get; set; }
     public int MonthCount { get; set; }
-    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UnixEpoch;
+    public DateTimeOffset UpdatedUtc { get; set; } = DateTimeOffset.UnixEpoch;
     public List<decimal> Weights { get; set; } = [];
 }

@@ -15,6 +15,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using ProjectCostForecast.App.Models;
+using ProjectCostForecast.App.Services;
 using ProjectCostForecast.App.ViewModels;
 
 namespace ProjectCostForecast.App;
@@ -161,7 +162,10 @@ public partial class MainWindow
         };
         var report = new StringBuilder();
         report.AppendLine("Resource Drilldown column sizes");
-        report.AppendLine($"Captured {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        var capturedAt = (DataContext as MainWindowViewModel)?.Clock.NewZealandNow
+            ?? SystemClock.Instance.NewZealandNow;
+        var capturedAtText = DateTimeContract.FormatNewZealand(capturedAt, "yyyy-MM-dd HH:mm:ss");
+        report.AppendLine($"Captured {capturedAtText}");
 
         foreach (var (name, grid) in grids)
         {

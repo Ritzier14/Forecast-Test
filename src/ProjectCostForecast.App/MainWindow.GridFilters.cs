@@ -13,6 +13,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using ProjectCostForecast.App.Models;
+using ProjectCostForecast.App.Services;
 using ProjectCostForecast.App.ViewModels;
 
 namespace ProjectCostForecast.App;
@@ -812,7 +813,7 @@ public partial class MainWindow
         {
             DateOnly date => date.ToString("d", CultureInfo.CurrentCulture),
             DateTime date => date.ToString("d", CultureInfo.CurrentCulture),
-            DateTimeOffset date => date.ToString("g", CultureInfo.CurrentCulture),
+            DateTimeOffset date => DateTimeContract.FormatNewZealand(date),
             IFormattable formattable => formattable.ToString(null, CultureInfo.CurrentCulture) ?? BlanksFilterText,
             _ => value.ToString() ?? BlanksFilterText
         };

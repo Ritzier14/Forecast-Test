@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using ProjectCostForecast.App.Models;
+using ProjectCostForecast.App.Services;
 using ProjectCostForecast.App.ViewModels;
 
 namespace ProjectCostForecast.App;
@@ -49,9 +50,10 @@ public sealed class SaveForecastCurvePresetWindow : Window
             Foreground = BrushFactory.Frozen("#0F172A")
         });
 
+        var displayTimestamp = DateTimeContract.FormatNewZealand(_viewModel.Clock.UtcNow, "dd MMM HHmm");
         _nameBox = new TextBox
         {
-            Text = $"Curve {DateTime.Now:dd MMM HHmm}",
+            Text = $"Curve {displayTimestamp}",
             Margin = new Thickness(0, 18, 0, 8)
         };
         var nameField = WrapField("Name", _nameBox);

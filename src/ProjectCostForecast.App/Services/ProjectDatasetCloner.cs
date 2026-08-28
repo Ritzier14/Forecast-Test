@@ -12,6 +12,11 @@ public sealed class ProjectDatasetCloner
         NumberHandling = JsonNumberHandling.AllowReadingFromString
     };
 
+    public ProjectDatasetCloner()
+    {
+        DateTimeContract.AddJsonConverters(_jsonOptions);
+    }
+
     public ProjectDataset Clone(ProjectDataset source)
     {
         ArgumentNullException.ThrowIfNull(source);

@@ -20,6 +20,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - CSV export for raw transactions.
 - Bounded CSV/XLSX/XLSM import with typed malformed/oversized-file failures, cancellation safety, deterministic duplicate skipping, and closed file handles.
 - Spreadsheet-safe CSV text export that neutralizes formula-like values while preserving canonical project data.
+- Documented NZ business-date, NZ display-time, and UTC durable-instant rules, with injectable clocks and legacy local-timestamp migration.
 - Forecast line add, duplicate, and delete commands.
 - Release-candidate status/header information and Save / Discard / Cancel handling for unsaved changes on close.
 - No-dependency command-line acceptance checks in `tests/ProjectCostForecast.Tests`.

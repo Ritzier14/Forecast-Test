@@ -12,7 +12,7 @@ public sealed partial class MainWindowViewModel
             .Where(period => period.StartDate.HasValue)
             .Select(period => period.StartDate!.Value.Year)
             .ToList();
-        var nextYear = (existingYears.Count == 0 ? DateTime.Today.Year : existingYears.Max()) + 1;
+        var nextYear = (existingYears.Count == 0 ? _clock.TodayInNewZealand.Year : existingYears.Max()) + 1;
 
         for (var month = 1; month <= 12; month++)
         {

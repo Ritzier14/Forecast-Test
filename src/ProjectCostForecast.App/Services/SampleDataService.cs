@@ -6,13 +6,19 @@ namespace ProjectCostForecast.App.Services;
 public sealed class SampleDataService
 {
     private readonly ProjectDatasetMigrationPipeline _migrationPipeline = new();
+    private readonly IClock _clock;
+
+    public SampleDataService(IClock? clock = null)
+    {
+        _clock = clock ?? SystemClock.Instance;
+    }
 
     public ProjectDataset Load()
     {
         var initialCostLoadPath = Path.Combine(AppContext.BaseDirectory, "Data", "data_anonymised.xlsx");
         if (File.Exists(initialCostLoadPath))
         {
-            return new InitialCostLoadService().Load(initialCostLoadPath);
+            return new InitialCostLoadService(clock: _clock).Load(initialCostLoadPath);
         }
 
         // Retain the JSON fallback so existing project builds remain usable if

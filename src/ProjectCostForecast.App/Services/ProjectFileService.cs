@@ -10,7 +10,7 @@ public sealed class ProjectFileService : IProjectFileService
     private readonly ProjectDatasetMigrationPipeline _migrationPipeline;
     private readonly ValidationService _validationService;
     private readonly ProjectBackupPolicy _backupPolicy;
-    private readonly Func<DateTime> _utcNow;
+    private readonly IClock _clock;
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -22,12 +22,16 @@ public sealed class ProjectFileService : IProjectFileService
         ProjectDatasetMigrationPipeline? migrationPipeline = null,
         ValidationService? validationService = null,
         ProjectBackupPolicy? backupPolicy = null,
-        Func<DateTime>? utcNow = null)
+        Func<DateTime>? utcNow = null,
+        IClock? clock = null)
     {
         _migrationPipeline = migrationPipeline ?? new ProjectDatasetMigrationPipeline();
         _validationService = validationService ?? new ValidationService();
         _backupPolicy = backupPolicy ?? new ProjectBackupPolicy();
-        _utcNow = utcNow ?? (() => DateTime.UtcNow);
+        _clock = clock ?? (utcNow is null
+            ? SystemClock.Instance
+            : DateTimeContract.FromLegacyUtcFactory(utcNow));
+        DateTimeContract.AddJsonConverters(_jsonOptions);
     }
 
     public ProjectDataset Load(string path)
@@ -95,7 +99,7 @@ public sealed class ProjectFileService : IProjectFileService
         var backupDirectory = Path.Combine(Path.GetDirectoryName(fullPath) ?? string.Empty, "backups");
         Directory.CreateDirectory(backupDirectory);
         var fileName = Path.GetFileNameWithoutExtension(fullPath);
-        var timestamp = _utcNow().ToString("yyyyMMdd-HHmmss-fff", System.Globalization.CultureInfo.InvariantCulture);
+        var timestamp = _clock.UtcNow.ToString("yyyyMMdd-HHmmss-fff", System.Globalization.CultureInfo.InvariantCulture);
 
         for (var suffix = 0; ; suffix++)
         {
@@ -269,7 +273,7 @@ public sealed class ProjectFileService : IProjectFileService
             extension = ".json";
         }
 
-        var timestamp = _utcNow().ToString("yyyyMMdd-HHmmss-fff", System.Globalization.CultureInfo.InvariantCulture);
+        var timestamp = _clock.UtcNow.ToString("yyyyMMdd-HHmmss-fff", System.Globalization.CultureInfo.InvariantCulture);
         for (var suffix = 0; ; suffix++)
         {
             var suffixText = suffix == 0 ? string.Empty : $"-{suffix}";

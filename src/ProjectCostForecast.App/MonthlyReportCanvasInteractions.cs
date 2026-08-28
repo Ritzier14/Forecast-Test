@@ -5,6 +5,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using ProjectCostForecast.App.Models;
+using ProjectCostForecast.App.Services;
 using ProjectCostForecast.App.ViewModels;
 
 namespace ProjectCostForecast.App;
@@ -925,7 +926,7 @@ public partial class MainWindow
         };
     }
 
-    private static FrameworkElement CreateStyledDate(ReportCanvasObjectLayout layout)
+    private FrameworkElement CreateStyledDate(ReportCanvasObjectLayout layout)
     {
         var format = layout.StyleKey switch
         {
@@ -933,9 +934,11 @@ public partial class MainWindow
             "Numeric" => "dd/MM/yyyy",
             _ => "dddd, dd MMMM yyyy"
         };
+        var today = (DataContext as MainWindowViewModel)?.Clock.TodayInNewZealand
+            ?? SystemClock.Instance.TodayInNewZealand;
         return new TextBlock
         {
-            Text = DateTime.Today.ToString(format),
+            Text = DateTimeContract.FormatBusinessDate(today, format),
             FontSize = 14,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(10)

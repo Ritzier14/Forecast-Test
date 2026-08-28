@@ -60,11 +60,13 @@ public sealed class DiagnosticsService : IDiagnosticsService
     private readonly string _logPath;
     private readonly int _maxFileBytes;
     private readonly int _maxFileCount;
+    private readonly IClock _clock;
 
     public DiagnosticsService(
         string? logDirectory = null,
         int maxFileBytes = DefaultMaxFileBytes,
-        int maxFileCount = DefaultMaxFileCount)
+        int maxFileCount = DefaultMaxFileCount,
+        IClock? clock = null)
     {
         if (maxFileBytes < 128)
         {
@@ -83,6 +85,7 @@ public sealed class DiagnosticsService : IDiagnosticsService
         _logPath = Path.Combine(directory, "diagnostics.log");
         _maxFileBytes = maxFileBytes;
         _maxFileCount = maxFileCount;
+        _clock = clock ?? SystemClock.Instance;
     }
 
     public string LogPath => _logPath;
@@ -105,7 +108,7 @@ public sealed class DiagnosticsService : IDiagnosticsService
             }
 
             Record(new DiagnosticEvent(
-                DateTimeOffset.UtcNow,
+                _clock.UtcNow,
                 severity,
                 operation,
                 exception.GetType().Name,

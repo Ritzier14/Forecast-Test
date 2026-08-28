@@ -310,7 +310,7 @@ public sealed class CostCenterNameMapping
     public string Who { get; set; } = string.Empty;
     public string ManualName { get; set; } = string.Empty;
     public int UseCount { get; set; }
-    public DateTime LastUsedAt { get; set; } = DateTime.Now;
+    public DateTimeOffset LastUsedAt { get; set; } = DateTimeOffset.UnixEpoch;
 }
 
 public sealed class CostCenterNameOption
@@ -365,7 +365,7 @@ public sealed class ImportAutoCreatePreviewTransactionDetail
 
 public sealed class UnmatchedImportCombination
 {
-    public DateTime RecordedAt { get; set; } = DateTime.Now;
+    public DateTimeOffset RecordedAt { get; set; } = DateTimeOffset.UnixEpoch;
     public string TaskNumber { get; set; } = string.Empty;
     public string ManualName { get; set; } = string.Empty;
     public string ProjectCode { get; set; } = string.Empty;
@@ -373,12 +373,15 @@ public sealed class UnmatchedImportCombination
     public string Source { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public int TransactionCount { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string RecordedAtDisplay => Services.DateTimeContract.FormatNewZealand(RecordedAt);
 }
 
 public sealed class SavedMonthSnapshot
 {
     public string Period { get; set; } = string.Empty;
-    public DateTime SavedAt { get; set; } = DateTime.Now;
+    public DateTimeOffset SavedAt { get; set; } = DateTimeOffset.UnixEpoch;
     public decimal CostToDate { get; set; }
     public decimal CostToComplete { get; set; }
     public decimal FinalForecast { get; set; }

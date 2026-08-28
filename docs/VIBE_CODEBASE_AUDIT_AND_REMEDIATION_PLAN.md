@@ -861,7 +861,7 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | LUNA-07 | Complete | Verified backup creation, two-copy minimum / ten-copy default retention, safe new-path or pre-restore overwrite recovery, corruption protection, and a user recovery runbook; Release verification passes with 35 discovered tests plus the legacy harness |
 | LUNA-08 | Complete | `DiagnosticsService`, `RuntimeExceptionPolicy`, preference quarantine, and 6 focused diagnostics tests; Release verification passes with 41 discovered tests plus the legacy harness |
 | LUNA-09 | Complete | Export-only formula neutralization, bounded CSV/workbook preflight, typed failures, cancellation/no-partial-state behavior, duplicate skipping, and 12 focused tests; Release verifier passes with 86 discovered tests plus the retained smoke harness |
-| LUNA-10 | Not started | |
+| LUNA-10 | Complete | `DateOnly` NZ business dates, UTC `DateTimeOffset` durable instants, `IClock`, legacy NZ-local migration, invariant persistence/filenames, en-NZ display, and 7 focused DST/rollover/culture/round-trip tests |
 | LUNA-11 | Not started | |
 | LUNA-12 | Not started | |
 | LUNA-13 | Not started | |

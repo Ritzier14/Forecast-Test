@@ -31,8 +31,9 @@ public partial class MainWindow
             .Where(item => item.DocDate.HasValue)
             .Select(item => item.DocDate!.Value)
             .ToList();
-        var earliest = dates.Count > 0 ? dates.Min() : DateOnly.FromDateTime(DateTime.Today.AddMonths(-11));
-        var latest = dates.Count > 0 ? dates.Max() : DateOnly.FromDateTime(DateTime.Today);
+        var today = viewModel.Clock.TodayInNewZealand;
+        var earliest = dates.Count > 0 ? dates.Min() : today.AddMonths(-11);
+        var latest = dates.Count > 0 ? dates.Max() : today;
 
         var dialog = new ReportChartBuilderWindow(chartKind, earliest, latest) { Owner = this };
         if (dialog.ShowDialog() != true)
