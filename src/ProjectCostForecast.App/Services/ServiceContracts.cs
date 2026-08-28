@@ -55,4 +55,8 @@ public interface IUserPreferencesService
     AppUserPreferences Load();
 
     void Save(AppUserPreferences preferences);
+
+    string? LastLoadNotice => null;
+
+    string? LastQuarantinedPath => null;
 }

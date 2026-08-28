@@ -859,7 +859,7 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | LUNA-06A | Complete | Validation severity/codes, blocking save/load/month/import boundaries, post-migration session guard, and 8 focused boundary tests; Release verification passes with 28 discovered tests plus the legacy harness |
 | LUNA-06B | Complete | Content-hash revision tokens, atomic stale-write rejection, injectable Reload / Save As / Cancel decisions, and 3 focused conflict tests; Release verification passes with 31 discovered tests plus the legacy harness |
 | LUNA-07 | Complete | Verified backup creation, two-copy minimum / ten-copy default retention, safe new-path or pre-restore overwrite recovery, corruption protection, and a user recovery runbook; Release verification passes with 35 discovered tests plus the legacy harness |
-| LUNA-08 | Not started | |
+| LUNA-08 | Complete | `DiagnosticsService`, `RuntimeExceptionPolicy`, preference quarantine, and 6 focused diagnostics tests; Release verification passes with 41 discovered tests plus the legacy harness |
 | LUNA-09 | Not started | |
 | LUNA-10 | Not started | |
 | LUNA-11 | Not started | |

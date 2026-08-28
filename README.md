@@ -14,6 +14,7 @@ The current build focuses on the highest-value spreadsheet workflow and the rele
 - Editable monthly forecasts with audit entries.
 - Open/save project JSON files with backups.
 - Verify and restore project backups to a new file, with a pre-restore backup for explicit overwrites.
+- Sanitized, bounded local diagnostics with corrupt-preference quarantine and startup notices.
 - Raw transaction CSV import/export.
 - Validation and audit tabs.
 - Add, duplicate, and delete forecast lines.
@@ -69,6 +70,7 @@ The checks verify the important workbook-derived drilldowns, including:
 - `source_workbook/1.Mar 26.xlsm` - archived source workbook copy.
 - `tests/ProjectCostForecast.Tests` - no-dependency acceptance check harness.
 - `docs/RECOVERY_RUNBOOK.md` - user-facing backup, retention, and restore instructions.
+- `docs/DIAGNOSTICS_RUNBOOK.md` - user-facing diagnostics and corrupt-preference recovery instructions.
 
 ## Stack
 

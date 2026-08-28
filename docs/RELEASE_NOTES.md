@@ -15,6 +15,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - Actuals Pivot tab matching the workbook pivot's task/resource/FY-period grouping.
 - Open, save, and save-as project JSON files, with timestamped backups when overwriting.
 - Verified backup restore to a new project path, safe overwrite restore with a pre-restore backup, and bounded backup retention.
+- Bounded sanitized diagnostics, top-level exception handling, and timestamped quarantine for malformed user preferences.
 - CSV import for raw transactions with common header aliases.
 - CSV export for raw transactions.
 - Forecast line add, duplicate, and delete commands.

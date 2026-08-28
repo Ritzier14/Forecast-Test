@@ -183,6 +183,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
         _dataset = dependencies.InitialDatasetFactory()
             ?? throw new InvalidOperationException("The initial dataset factory returned null.");
         _userPreferences = _userPreferencesService.Load();
+        var preferenceLoadNotice = _userPreferencesService.LastLoadNotice;
         _userPreferences.KpiIconKeys ??= new(StringComparer.OrdinalIgnoreCase);
         _userPreferences.KpiIconColorHexes ??= new(StringComparer.OrdinalIgnoreCase);
         _userPreferences.WorkspaceTabIconKeys ??= new(StringComparer.OrdinalIgnoreCase);
@@ -321,7 +322,9 @@ public sealed partial class MainWindowViewModel : NotifyObject
         SelectedCategorySortOption = CategorySortOptions.FirstOrDefault();
 
         LoadDataset(_dataset, markDirty: false);
-        StatusText = "Loaded workbook seed data. Totals recalculated from transactions.";
+        StatusText = string.IsNullOrWhiteSpace(preferenceLoadNotice)
+            ? "Loaded workbook seed data. Totals recalculated from transactions."
+            : $"Loaded workbook seed data. Totals recalculated from transactions. {preferenceLoadNotice}";
     }
 
     public ProjectHeader Header => _dataset.Header;

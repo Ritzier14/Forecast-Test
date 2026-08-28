@@ -22,7 +22,14 @@ Domain and calculation code must not acquire new dependencies on `Window`, `Data
 
 `MainWindowViewModelDependencies` owns construction of calculation, scheduling, import, storage, validation, and preferences services. The parameterless view-model constructor is retained for XAML/startup compatibility and delegates to that boundary. Tests and future startup code should pass explicit dependencies and an initial-dataset factory.
 
-Storage is accessed through `IProjectFileService` and `IUserPreferencesService`. JSON writes go to a unique temporary file in the destination directory, are flushed, and then replace the destination. Project backups use collision-safe names, are verified through the project migration/validation boundary, and follow a bounded retention policy.
+Storage is accessed through `IProjectFileService` and `IUserPreferencesService`. JSON writes go to a unique temporary file in the destination directory, are flushed, and then replace the destination. Project backups use collision-safe names, are verified through the project migration/validation boundary, and follow a bounded retention policy. `DiagnosticsService` is a best-effort local rolling log; it records operation and exception type with sanitized context, and its write failures never mask the original failure. Malformed preferences are quarantined before defaults are loaded.
+
+The WPF composition root attaches `RuntimeExceptionPolicy` to the dispatcher,
+application-domain, and unobserved-task boundaries. An unexpected UI or
+application-domain failure is logged and follows a fail-fast shutdown policy;
+an isolated unobserved task is logged and marked observed so the shell can
+continue. The dispatcher policy presents a generic user message without
+displaying exception details, project values, imported rows, names, or paths.
 
 ## State and refresh rules
 
