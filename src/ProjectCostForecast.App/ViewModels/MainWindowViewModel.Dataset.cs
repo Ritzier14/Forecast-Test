@@ -44,6 +44,7 @@ public sealed partial class MainWindowViewModel
         _calculationService.Recalculate(_dataset);
 
         ReplaceCollection(ForecastLines, _dataset.ForecastLines);
+        RebuildTaskCodeReviewRows();
         LoadManagementResources(_dataset.ManagementResources);
         ReplaceCollection(Transactions, _dataset.Transactions);
         LoadBudgetLinesFromDataset();
@@ -283,6 +284,7 @@ public sealed partial class MainWindowViewModel
             SelectedCtcMonthForecastYear = calendarYear;
             OnPropertyChanged(nameof(SelectedCtcMonthForecastYears));
             RebuildCtcMonthForecastColumns();
+            RebuildMonthlyForecastPresentationRows();
         }
     }
 
@@ -312,6 +314,7 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(SelectedCtcMonthForecastYear));
         OnPropertyChanged(nameof(SelectedCtcMonthForecastYears));
         RebuildCtcMonthForecastColumns();
+        RebuildMonthlyForecastPresentationRows();
         IsDirty = true;
         SaveUserPreferences();
     }
@@ -581,7 +584,15 @@ public sealed partial class MainWindowViewModel
 
         SelectedDetailWorkspaceView.ContentKey = contentKey;
         IsDirty = true;
+        // Rebuild the transposed rows before notifying the view that the
+        // orientation changed. Otherwise the DataGrid column builder runs in
+        // response to IsMonthlyForecastMonthsAcross while the rows still
+        // contain the old (empty) presentation, leaving only Resource/Task/
+        // Metric visible until another refresh occurs.
+        RebuildMonthlyForecastPresentationRows();
         OnPropertyChanged(nameof(ShowLedgerCostsPivotByMonth));
+        OnPropertyChanged(nameof(IsMonthlyForecastMonthsAcross));
+        OnPropertyChanged(nameof(MonthlyForecastAcrossRows));
         ApplyLedgerTransactionGrouping();
     }
 }

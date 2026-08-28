@@ -29,6 +29,7 @@ public sealed partial class MainWindowViewModel
     private void RebuildCalculatedViews(bool rebuildFilterLists)
     {
         RebuildForecastLineLookups();
+        RebuildTaskCodeReviewRows();
         InvalidatePivotFilterValues();
         ReplaceCollection(CategorySummaries, _dataset.CategorySummaries);
         ReplaceCollection(ResourceSummaries, BuildResourceSummaries(_dataset.Transactions, _dataset.ForecastLines));

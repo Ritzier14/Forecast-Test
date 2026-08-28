@@ -423,7 +423,9 @@ public partial class MainWindow
             };
 
             Canvas.SetLeft(label, Math.Max(0, Math.Round(boundaryX, MidpointRounding.AwayFromZero) + 6));
-            Canvas.SetTop(label, -5);
+            label.Measure(new Size(double.PositiveInfinity, ForecastYearBandHeight));
+            var labelTop = Math.Max(0, (ForecastYearBandHeight - label.DesiredSize.Height) / 2d);
+            Canvas.SetTop(label, Math.Round(labelTop, MidpointRounding.AwayFromZero));
             Panel.SetZIndex(label, 60);
             ForecastFreezeBoundaryCanvas.Children.Add(label);
         }
@@ -676,6 +678,72 @@ public partial class MainWindow
     private void ConfigureSelectedMonthlyForecastGrid()
     {
         SelectedMonthlyForecastsGrid.Columns.Clear();
+
+        if (DataContext is MainWindowViewModel viewModel && viewModel.IsMonthlyForecastMonthsAcross)
+        {
+            SelectedMonthlyForecastsGrid.ItemsSource = viewModel.MonthlyForecastAcrossRows;
+            SelectedMonthlyForecastsGrid.IsReadOnly = false;
+            SelectedMonthlyForecastsGrid.CanUserAddRows = false;
+            SelectedMonthlyForecastsGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Resource",
+                Binding = new Binding(nameof(MonthlyForecastAcrossRow.ResourceName)),
+                Width = 190,
+                IsReadOnly = true
+            });
+            SelectedMonthlyForecastsGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Task",
+                Binding = new Binding(nameof(MonthlyForecastAcrossRow.TaskNumber)),
+                Width = 105,
+                IsReadOnly = true
+            });
+            SelectedMonthlyForecastsGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Metric",
+                Binding = new Binding(nameof(MonthlyForecastAcrossRow.Metric)),
+                Width = 105,
+                IsReadOnly = true
+            });
+
+            // The month columns belong to the selected calendar-year range,
+            // not to the currently selected resource rows. Building them from
+            // the rows made the header disappear whenever the drill-down had
+            // no realized rows yet (or a selected resource had no values).
+            // Keep the grid's column definition in lock-step with the CTC
+            // month header definition and let each row supply zero values.
+            var periods = viewModel.CtcMonthForecastColumns
+                .Where(column => !column.IsTotal && !string.IsNullOrWhiteSpace(column.Key))
+                .Select(column => column.Key)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            foreach (var period in periods)
+            {
+                SelectedMonthlyForecastsGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = period,
+                    Binding = new Binding($"[{period}]")
+                    {
+                        Mode = BindingMode.TwoWay,
+                        UpdateSourceTrigger = UpdateSourceTrigger.LostFocus,
+                        Converter = ForecastAmountTextConverter.Instance,
+                        StringFormat = "{0:F2}"
+                    },
+                    Width = MonthlyForecastAmountColumnDefaultWidth,
+                    IsReadOnly = false
+                });
+            }
+
+            ApplyDefaultColumnPresentation(SelectedMonthlyForecastsGrid);
+            return;
+        }
+
+        if (DataContext is MainWindowViewModel downViewModel)
+        {
+            SelectedMonthlyForecastsGrid.ItemsSource = downViewModel.SelectedMonthlyForecasts;
+        }
+        SelectedMonthlyForecastsGrid.IsReadOnly = false;
+        SelectedMonthlyForecastsGrid.CanUserAddRows = false;
         SelectedMonthlyForecastsGrid.Columns.Add(CreateSelectableReadOnlyTextColumn("Period", nameof(MonthlyForecast.PeriodLabel), MonthlyForecastPeriodColumnDefaultWidth));
         SelectedMonthlyForecastsGrid.Columns.Add(CreateSelectableReadOnlyTextColumn("Start", nameof(MonthlyForecast.PeriodStartDate), MonthlyForecastStartColumnDefaultWidth));
 
@@ -694,6 +762,44 @@ public partial class MainWindow
 
         SelectedMonthlyForecastsGrid.Columns.Add(forecastColumn);
         ApplyDefaultColumnPresentation(SelectedMonthlyForecastsGrid);
+    }
+
+    private void ConfigureTaskCodeReviewGrid()
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        TaskCodeReviewGrid.Columns.Clear();
+        TaskCodeReviewGrid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "Task code",
+            Binding = new Binding(nameof(TaskCodeReviewRow.TaskCode)),
+            Width = 125
+        });
+
+        if (!string.Equals(viewModel.TaskCodeReviewDisplayMode, "Category", StringComparison.OrdinalIgnoreCase))
+        {
+            TaskCodeReviewGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Assigned name",
+                Binding = new Binding(nameof(TaskCodeReviewRow.AssignedName)),
+                Width = 220
+            });
+        }
+
+        if (!string.Equals(viewModel.TaskCodeReviewDisplayMode, "Assigned Name", StringComparison.OrdinalIgnoreCase))
+        {
+            TaskCodeReviewGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Category",
+                Binding = new Binding(nameof(TaskCodeReviewRow.Category)),
+                Width = 220
+            });
+        }
+
+        ApplyDefaultColumnPresentation(TaskCodeReviewGrid);
     }
 
     private static void ConfigureCustomPivotGrid(DataGrid grid, IEnumerable<PivotResultColumn> columns)
@@ -1596,16 +1702,6 @@ public partial class MainWindow
         style.Setters.Add(new Setter(Control.ForegroundProperty, columnDefinition.ValueForeground));
         style.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Stretch));
         style.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Stretch));
-
-        var customHeightTrigger = new DataTrigger
-        {
-            Binding = new Binding(nameof(ForecastLine.HasCustomRowHeight)),
-            Value = true
-        };
-        customHeightTrigger.Setters.Add(new Setter(
-            FrameworkElement.HeightProperty,
-            new Binding(nameof(ForecastLine.RowDisplayHeight))));
-        style.Triggers.Add(customHeightTrigger);
 
         var selectedTrigger = new Trigger { Property = DataGridCell.IsSelectedProperty, Value = true };
         selectedTrigger.Setters.Add(new Setter(Control.BackgroundProperty, BrushFactory.Frozen(0xDB, 0xEA, 0xFE)));

@@ -27,6 +27,8 @@ public sealed partial class MainWindowViewModel
                 WorkspaceKey = NormaliseWorkspaceKey(view.WorkspaceKey),
                 ContentKey = view.ContentKey,
                 Name = view.Name,
+                IconKey = view.IconKey,
+                IconColorHex = view.IconColorHex,
                 HiddenColumnKeys = view.HiddenColumnKeys ?? [],
                 ColumnLayouts = view.ColumnLayouts ?? [],
                 ShowZeroAsBlank = view.ShowZeroAsBlank,
@@ -60,7 +62,40 @@ public sealed partial class MainWindowViewModel
         {
             if (persistedLookup.TryGetValue(group.Key, out var savedViews) && savedViews.Count > 0)
             {
-                _detailWorkspaceViews[group.Key] = CreateCollection(savedViews.Select(CreateWorkspaceViewTab));
+                var detailLayouts = savedViews.ToList();
+                if (string.Equals(group.Key, "Ledger Monthly Forecast", StringComparison.OrdinalIgnoreCase))
+                {
+                    var legacyDefault = detailLayouts.Count == 1
+                        && string.Equals(detailLayouts[0].Name, "Default", StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(detailLayouts[0].ContentKey, "Default", StringComparison.OrdinalIgnoreCase);
+                    if (legacyDefault)
+                    {
+                        detailLayouts[0].Name = "Months Down";
+                        detailLayouts[0].ContentKey = "MonthsDown";
+                    }
+
+                    if (!detailLayouts.Any(view => string.Equals(view.ContentKey, "MonthsDown", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        detailLayouts.Insert(0, new WorkspaceViewLayout
+                        {
+                            WorkspaceKey = group.Key,
+                            ContentKey = "MonthsDown",
+                            Name = "Months Down"
+                        });
+                    }
+
+                    if (!detailLayouts.Any(view => string.Equals(view.ContentKey, "MonthsAcross", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        detailLayouts.Add(new WorkspaceViewLayout
+                        {
+                            WorkspaceKey = group.Key,
+                            ContentKey = "MonthsAcross",
+                            Name = "Months Across"
+                        });
+                    }
+                }
+
+                _detailWorkspaceViews[group.Key] = CreateCollection(detailLayouts.Select(CreateWorkspaceViewTab));
                 continue;
             }
 
@@ -160,6 +195,8 @@ public sealed partial class MainWindowViewModel
             WorkspaceKey = ActiveWorkspaceKey,
             ContentKey = sourceView?.ContentKey ?? "Default",
             Name = defaultName,
+            IconKey = sourceView?.IconKey ?? string.Empty,
+            IconColorHex = sourceView?.IconColorHex ?? string.Empty,
             EditName = defaultName,
             DefaultName = defaultName,
             RenameRestoreName = defaultName,
@@ -205,6 +242,8 @@ public sealed partial class MainWindowViewModel
             WorkspaceKey = ActiveDetailWorkspaceKey,
             ContentKey = sourceView?.ContentKey ?? "Default",
             Name = defaultName,
+            IconKey = sourceView?.IconKey ?? string.Empty,
+            IconColorHex = sourceView?.IconColorHex ?? string.Empty,
             EditName = defaultName,
             DefaultName = defaultName,
             RenameRestoreName = defaultName,

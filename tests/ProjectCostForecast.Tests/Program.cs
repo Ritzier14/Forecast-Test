@@ -5,8 +5,14 @@ using ProjectCostForecast.App.ViewModels;
 using ClosedXML.Excel;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Reflection;
+using System.Text.RegularExpressions;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media;
 
 var root = FindRepositoryRoot();
 var dataPath = Path.Combine(root, "src", "ProjectCostForecast.App", "Data", "SampleData.json");
@@ -154,7 +160,12 @@ AssertTrue(resourceGroups.ContainsKey("Flex Projects L"), "Resource grouping use
 AssertTrue(!resourceGroups.ContainsKey("Contractors Payments"), "AP contractor payments are not grouped under the generic description");
 
 AssertTrue(dataset.CategorySummaries.Count > 0, "Category summaries are recalculated");
-AssertTrue(new ValidationService().Validate(dataset).All(issue => issue.Severity != "Error"), "Seed data has no validation errors");
+var seedValidationIssues = new ValidationService().Validate(dataset);
+AssertEqual(0, seedValidationIssues.Count, "Seed data has no validation issues");
+AssertTrue(seedValidationIssues.All(issue => issue.Severity != "Error"), "Seed data has no validation errors");
+AssertTrue(
+    dataset.ForecastLines.All(line => line.TotalBudgetVariance == line.Budget - line.PlannedCostFcc),
+    "Budget variance uses budget minus planned cost consistently");
 
 var fiscalReport = calculationService.BuildFiscalYearReport(dataset);
 var fy26 = fiscalReport.Single(line => line.FiscalYear == "FY26");
@@ -416,6 +427,47 @@ AssertTrue(viewModel.BudgetActualChartGeometry != System.Windows.Media.Geometry.
 AssertTrue(viewModel.BudgetForecastChartGeometry != System.Windows.Media.Geometry.Empty, "Budget chart plots spend plus forecast");
 AssertTrue(viewModel.BudgetPlanChartGeometry != System.Windows.Media.Geometry.Empty, "Budget chart plots the active budget");
 AssertTrue(!string.IsNullOrWhiteSpace(viewModel.ForecastFreezeColumnKey), "Forecast grid freeze key is initialized");
+
+var chartViewModel = CreateViewModel();
+chartViewModel.SelectedForecastLine = chartViewModel.ForecastLines.First();
+var monthlyChartTickCount = chartViewModel.LedgerChartXAxisLabels.Count;
+chartViewModel.ZoomLedgerChart(zoomIn: false);
+AssertEqual(LedgerChartTimeScale.Quarter, chartViewModel.LedgerChartTimeScale, "Spend curve zoom moves from months to quarters");
+AssertTrue(chartViewModel.LedgerChartXAxisLabels.Count <= monthlyChartTickCount, "Spend curve aggregation reduces physical time buckets");
+chartViewModel.ShowLedgerActualSeries = false;
+chartViewModel.ShowLedgerForecastSeries = false;
+chartViewModel.ShowLedgerBudgetSeries = true;
+AssertTrue(!chartViewModel.ShowLedgerActualSeries && !chartViewModel.ShowLedgerForecastSeries && chartViewModel.ShowLedgerBudgetSeries, "Spend curve series visibility toggles independently");
+
+var presentationViewModel = CreateViewModel();
+presentationViewModel.ActiveDetailWorkspaceKey = "Ledger Monthly Forecast";
+AssertTrue(presentationViewModel.CurrentDetailWorkspaceViews.Any(view => view.ContentKey == "MonthsDown"), "Monthly Forecast has a Months Down default view");
+AssertTrue(presentationViewModel.CurrentDetailWorkspaceViews.Any(view => view.ContentKey == "MonthsAcross"), "Monthly Forecast has a Months Across default view");
+presentationViewModel.SelectedForecastLine = presentationViewModel.ForecastLines.First();
+presentationViewModel.ToggleMonthlyForecastOrientation();
+AssertTrue(presentationViewModel.IsMonthlyForecastMonthsAcross, "Monthly Forecast Flip Table switches to months across");
+AssertTrue(presentationViewModel.MonthlyForecastAcrossRows.Count > 0, "Months Across exposes presentation rows without duplicating forecast data");
+AssertTrue(presentationViewModel.MonthlyForecastAcrossRows.All(row => row.Values.Count > 0), "Months Across exposes month columns for each presentation row");
+var acrossForecastRow = presentationViewModel.MonthlyForecastAcrossRows.First(row => row.Metric == "Forecast");
+var acrossPeriod = acrossForecastRow.Values.Keys.First();
+AssertEqual(
+    presentationViewModel.SelectedForecastLine.MonthlyForecasts.Single(forecast => forecast.PeriodLabel == acrossPeriod).Amount,
+    acrossForecastRow[acrossPeriod],
+    "Months Across reads the same underlying forecast amount");
+presentationViewModel.ToggleMonthlyForecastOrientation();
+AssertTrue(!presentationViewModel.IsMonthlyForecastMonthsAcross, "Monthly Forecast Flip Table returns to months down");
+presentationViewModel.TaskCodeReviewDisplayMode = "Both";
+AssertTrue(presentationViewModel.TaskCodeReviewRows.Count > 0, "Task Code Review exposes task-code relationship rows");
+
+var calendarYearViewModel = CreateViewModel();
+var nextCalendarYear = calendarYearViewModel.AvailableCtcMonthForecastYears.Max() + 1;
+var selectedCalendarYearsBeforeAdd = calendarYearViewModel.SelectedCtcMonthForecastYears.ToHashSet();
+calendarYearViewModel.AddNewCalendarYear();
+AssertTrue(calendarYearViewModel.AvailableCtcMonthForecastYears.Contains(nextCalendarYear), "Calendar year context action adds a new forecast year");
+AssertEqual(nextCalendarYear, calendarYearViewModel.SelectedCtcMonthForecastYear, "New calendar year becomes the selected forecast year");
+AssertTrue(selectedCalendarYearsBeforeAdd.All(calendarYearViewModel.IsCtcMonthForecastYearSelected), "Adding a calendar year preserves the years already shown");
+AssertTrue(calendarYearViewModel.SelectedCtcMonthForecastYears.Contains(nextCalendarYear), "Adding a calendar year also shows the new year");
+
 viewModel.ResetForecastFreezeColumn();
 AssertEqual(MainWindowViewModel.DefaultForecastFreezeColumnKey, viewModel.ForecastFreezeColumnKey, "Forecast grid freeze reset returns to the forecast start boundary");
 viewModel.SetForecastFreezeColumn("MONTH:26-11");
@@ -839,11 +891,17 @@ AssertTrue(forecastVirtualization.Columns, "Forecast grid keeps column virtualiz
 AssertTrue(forecastVirtualization.Panel, "Forecast grid uses a virtualizing items panel");
 AssertTrue(forecastVirtualization.Grouping, "Grouped forecast rows remain virtualized");
 
+RunSharedGridControlRegressionTests(root);
+
 var resizableForecastLine = new ForecastLine();
 AssertTrue(!resizableForecastLine.HasCustomRowHeight, "Forecast rows use the grid default height until resized");
 resizableForecastLine.SetRowDisplayHeight(96);
 AssertTrue(resizableForecastLine.HasCustomRowHeight, "Resizing records a row-specific height");
 AssertNearlyEqual(96d, resizableForecastLine.RowDisplayHeight, 0.01, "Row-specific height is stored on the row data");
+resizableForecastLine.SetRowDisplayHeight(1);
+AssertNearlyEqual(30d, resizableForecastLine.RowDisplayHeight, 0.01, "Row resize clamps to the usable minimum height");
+resizableForecastLine.SetRowDisplayHeight(999);
+AssertNearlyEqual(600d, resizableForecastLine.RowDisplayHeight, 0.01, "Row resize clamps to the usable maximum height");
 
 viewModel.ActiveWorkspaceKey = "CTC Forecast";
 var defaultForecastView = viewModel.SelectedWorkspaceView!;
@@ -1510,6 +1568,248 @@ static (bool Rows, bool Columns, bool Panel, bool Grouping) GetForecastGridVirtu
     return result;
 }
 
+static void RunSharedGridControlRegressionTests(string repositoryRoot)
+{
+    var appSourceRoot = Path.Combine(repositoryRoot, "src", "ProjectCostForecast.App");
+    var sourceFiles = Directory.GetFiles(appSourceRoot, "*.*", SearchOption.AllDirectories)
+        .Where(path => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase))
+        .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}artifacts{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+        .ToList();
+    var rawGridDeclarations = sourceFiles
+        .SelectMany(path => Regex.Matches(
+                File.ReadAllText(path),
+                path.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase)
+                    ? @"<DataGrid(?=[\s>])"
+                    : @"\bnew\s+DataGrid\s*(?=\{)")
+            .Select(_ => path))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+    AssertEqual(0, rawGridDeclarations.Count, "Every application table is constructed as ProjectDataGrid");
+
+    var forecastInteractionSource = File.ReadAllText(Path.Combine(appSourceRoot, "MainWindow.ForecastGridInteraction.cs"));
+    var ganttSource = File.ReadAllText(Path.Combine(appSourceRoot, "MainWindow.Gantt.cs"));
+    var mainWindowXaml = File.ReadAllText(Path.Combine(appSourceRoot, "MainWindow.xaml"));
+    var gridBuilderSource = File.ReadAllText(Path.Combine(appSourceRoot, "MainWindow.GridBuilders.cs"));
+    AssertTrue(!forecastInteractionSource.Contains("ApplyLiveForecastRowHeight", StringComparison.Ordinal), "Forecast no longer owns a separate row resize implementation");
+    AssertTrue(!mainWindowXaml.Contains("<Setter Property=\"Height\" Value=\"{Binding RowDisplayHeight}\"", StringComparison.Ordinal), "Forecast XAML never binds cell or row container height independently");
+    AssertTrue(!gridBuilderSource.Contains("FrameworkElement.HeightProperty,\r\n            new Binding(nameof(ForecastLine.RowDisplayHeight))", StringComparison.Ordinal), "Generated forecast columns never own cell height");
+    AssertTrue(
+        ganttSource.Contains("ScheduleGrid.EnableRowVirtualization = false;", StringComparison.Ordinal)
+        && ganttSource.Contains("VirtualizingPanel.SetIsVirtualizing(ScheduleGrid, false);", StringComparison.Ordinal)
+        && ganttSource.Contains("ScrollViewer.SetCanContentScroll(ScheduleGrid, false);", StringComparison.Ordinal),
+        "Schedule keeps exact non-virtualized pixel offsets for its variable-height Gantt rows");
+
+    Exception? failure = null;
+    var thread = new Thread(() =>
+    {
+        try
+        {
+            var profiles = Enum.GetValues<ProjectDataGridProfile>();
+            foreach (var profile in profiles)
+            {
+                var profileGrid = new ProjectDataGrid { Profile = profile };
+                ProjectDataGridProfiles.Apply(profileGrid, profile);
+                AssertEqual(profile, ProjectDataGridProfiles.GetProfile(profileGrid), $"{profile} uses one shared profile dependency property");
+                AssertEqual(DataGridSelectionMode.Extended, profileGrid.SelectionMode, $"{profile} supports Shift/Ctrl extended selection");
+                AssertTrue(profileGrid.CanUserResizeRows, $"{profile} exposes shared row resizing");
+                AssertTrue(profileGrid.ModifierClickSelectsWholeRows, $"{profile} uses shared whole-row Shift/Ctrl selection");
+                if (profile == ProjectDataGridProfile.Schedule)
+                {
+                    AssertEqual(DataGridSelectionUnit.FullRow, profileGrid.SelectionUnit, "Schedule keeps whole-row range selection");
+                }
+            }
+
+            var pixelScrollGrid = new ProjectDataGrid();
+            pixelScrollGrid.EnableRowVirtualization = false;
+            VirtualizingPanel.SetIsVirtualizing(pixelScrollGrid, false);
+            ScrollViewer.SetCanContentScroll(pixelScrollGrid, false);
+            ProjectDataGridProfiles.Apply(pixelScrollGrid, ProjectDataGridProfile.Schedule);
+            AssertTrue(!ScrollViewer.GetCanContentScroll(pixelScrollGrid), "Schedule preserves its explicit pixel scrolling contract");
+            AssertTrue(!pixelScrollGrid.EnableRowVirtualization && !VirtualizingPanel.GetIsVirtualizing(pixelScrollGrid), "Schedule preserves its exact row layout contract");
+
+            var rows = Enumerable.Range(1, 8)
+                .Select(index => new SharedGridTestRow($"Row {index}", index * 10, index <= 4 ? "A" : "B"))
+                .ToList();
+            var centeredTextStyle = new Style(typeof(TextBlock));
+            centeredTextStyle.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center));
+            centeredTextStyle.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(6, 2, 6, 2)));
+            var grid = new ProjectDataGrid
+            {
+                Profile = ProjectDataGridProfile.Forecast,
+                ItemsSource = rows,
+                AutoGenerateColumns = false,
+                Width = 420,
+                Height = 250,
+                RowHeight = 30,
+                HeadersVisibility = DataGridHeadersVisibility.Column,
+                EnableRowVirtualization = true,
+                EnableColumnVirtualization = true
+            };
+            grid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Name",
+                Binding = new System.Windows.Data.Binding(nameof(SharedGridTestRow.Name)),
+                ElementStyle = centeredTextStyle,
+                Width = 220
+            });
+            grid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Value",
+                Binding = new System.Windows.Data.Binding(nameof(SharedGridTestRow.Value)),
+                ElementStyle = centeredTextStyle,
+                Width = 120
+            });
+            var constrainedRowStyle = new Style(typeof(DataGridRow));
+            var constrainedRowTrigger = new DataTrigger
+            {
+                Binding = new System.Windows.Data.Binding(nameof(SharedGridTestRow.Name)),
+                Value = rows[^1].Name
+            };
+            constrainedRowTrigger.Setters.Add(new Setter(FrameworkElement.MinHeightProperty, 72d));
+            constrainedRowStyle.Triggers.Add(constrainedRowTrigger);
+            grid.RowStyle = constrainedRowStyle;
+
+            // Store this while no row containers exist. On realization the
+            // control must normalize it against the row style's MinHeight.
+            grid.SetRowHeight(rows[^1], 30d);
+            using var presentationSource = new HwndSource(new HwndSourceParameters("SharedGridRegressionHost")
+            {
+                Width = 420,
+                Height = 250,
+                WindowStyle = unchecked((int)0x80000000)
+            });
+            presentationSource.RootVisual = grid;
+            ArrangeSharedGrid(grid);
+            grid.ScrollIntoView(rows[0]);
+            ArrangeSharedGrid(grid);
+
+            var row = grid.ItemContainerGenerator.ContainerFromItem(rows[0]) as DataGridRow
+                ?? throw new InvalidOperationException("Shared grid did not realize its first row.");
+            foreach (var targetHeight in new[] { 30d, 31d, 42d, 63d, 96d, 137d, 300d, 600d })
+            {
+                grid.SetRowHeight(rows[0], targetHeight);
+                ArrangeSharedGrid(grid);
+                AssertNearlyEqual(targetHeight, row.ActualHeight, 0.75, $"Shared row reaches {targetHeight:0}px");
+
+                var cells = FindVisualDescendantsForTest<DataGridCell>(row).ToList();
+                AssertTrue(cells.Count >= 2, $"Shared row realizes its cells at {targetHeight:0}px");
+                AssertTrue(
+                    cells.All(cell => cell.ReadLocalValue(FrameworkElement.HeightProperty) == DependencyProperty.UnsetValue),
+                    $"Cells have no independent Height owner at {targetHeight:0}px");
+                AssertTrue(
+                    cells.All(cell => Math.Abs(cell.ActualHeight - row.ActualHeight) <= 1d),
+                    $"Every cell and border spans the complete {targetHeight:0}px row " +
+                    $"(row={row.ActualHeight:0.##}, cells={string.Join(",", cells.Select(cell => cell.ActualHeight.ToString("0.##", CultureInfo.InvariantCulture)))})");
+
+                var text = FindVisualDescendantsForTest<TextBlock>(cells[0]).FirstOrDefault()
+                    ?? throw new InvalidOperationException("Shared grid cell did not create its text content.");
+                var textTop = text.TranslatePoint(new Point(0, 0), row).Y;
+                var textCenter = textTop + (text.ActualHeight / 2d);
+                AssertNearlyEqual(row.ActualHeight / 2d, textCenter, 1d, $"Cell text stays vertically centered at {targetHeight:0}px");
+            }
+
+            grid.ResetRowHeight(rows[0]);
+            ArrangeSharedGrid(grid);
+            AssertNearlyEqual(30d, row.ActualHeight, 0.75, "Double-click/reset returns a row to the grid's current default height");
+            AssertTrue(grid.GetRowHeight(rows[0]) is null, "Reset removes the per-item row-height override");
+
+            grid.ScrollIntoView(rows[^1]);
+            ArrangeSharedGrid(grid);
+            var constrainedRow = grid.ItemContainerGenerator.ContainerFromItem(rows[^1]) as DataGridRow
+                ?? throw new InvalidOperationException("Shared grid did not realize its constrained row.");
+            AssertNearlyEqual(72d, constrainedRow.ActualHeight, 0.75, "A virtualized override is normalized to the realized row style minimum");
+            AssertNearlyEqual(72d, grid.GetRowHeight(rows[^1]) ?? 0d, 0.01, "The normalized row height is retained for aligned dependent views");
+            AssertTrue(
+                FindVisualDescendantsForTest<DataGridCell>(constrainedRow)
+                    .All(cell => Math.Abs(cell.ActualHeight - constrainedRow.ActualHeight) <= 1d),
+                "A constrained realized row keeps every cell and border at the normalized height");
+
+            var groupedRowsView = new System.Windows.Data.ListCollectionView(rows);
+            groupedRowsView.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(SharedGridTestRow.Group)));
+            grid.ItemsSource = groupedRowsView;
+            ArrangeSharedGrid(grid);
+            AssertTrue(groupedRowsView.Groups is { Count: > 0 }, "Shared selection test exercises grouped rows");
+
+            var selectRowsMethod = typeof(ProjectDataGrid).GetMethod(
+                "SelectWholeRowsFromModifierClick",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new MissingMethodException(typeof(ProjectDataGrid).FullName, "SelectWholeRowsFromModifierClick");
+            var selectionAnchorField = typeof(ProjectDataGrid).GetField(
+                "_rowSelectionAnchor",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new MissingFieldException(typeof(ProjectDataGrid).FullName, "_rowSelectionAnchor");
+            object? modifierCurrentItem = null;
+            grid.ModifierRowSelectionCompleted += (_, eventArgs) => modifierCurrentItem = eventArgs.CurrentItem;
+            selectionAnchorField.SetValue(grid, rows[1]);
+            selectRowsMethod.Invoke(grid, [rows[4], ModifierKeys.Shift]);
+            var selectedRangeItems = grid.SelectedCells.Select(cell => cell.Item).Distinct(ReferenceEqualityComparer.Instance).ToList();
+            AssertTrue(selectedRangeItems.SequenceEqual(rows.Skip(1).Take(4)), "Shared Shift selection includes the forward row range in view order");
+            AssertTrue(ReferenceEquals(grid.CurrentCell.Item, rows[4]) && ReferenceEquals(modifierCurrentItem, rows[4]), "Forward Shift selection keeps the clicked end row current");
+
+            selectionAnchorField.SetValue(grid, rows[5]);
+            selectRowsMethod.Invoke(grid, [rows[3], ModifierKeys.Shift]);
+            selectedRangeItems = grid.SelectedCells.Select(cell => cell.Item).Distinct(ReferenceEqualityComparer.Instance).ToList();
+            AssertTrue(selectedRangeItems.SequenceEqual(rows.Skip(3).Take(3)), "Shared Shift selection supports reverse row ranges");
+            AssertTrue(ReferenceEquals(grid.CurrentCell.Item, rows[3]) && ReferenceEquals(modifierCurrentItem, rows[3]), "Reverse Shift selection keeps the clicked end row current");
+
+            selectRowsMethod.Invoke(grid, [rows[4], ModifierKeys.Control]);
+            selectedRangeItems = grid.SelectedCells.Select(cell => cell.Item).Distinct(ReferenceEqualityComparer.Instance).ToList();
+            AssertTrue(!selectedRangeItems.Contains(rows[4]) && selectedRangeItems.Contains(rows[3]) && selectedRangeItems.Contains(rows[5]), "Shared Ctrl selection toggles a complete row");
+            AssertTrue(ReferenceEquals(grid.CurrentCell.Item, rows[3]) && ReferenceEquals(modifierCurrentItem, rows[3]), "Ctrl deselection moves current context to the first remaining selected row");
+
+            grid.SelectedCells.Clear();
+            grid.SelectionUnit = DataGridSelectionUnit.FullRow;
+            selectionAnchorField.SetValue(grid, rows[1]);
+            selectRowsMethod.Invoke(grid, [rows[4], ModifierKeys.Shift]);
+            var selectedFullRows = grid.SelectedItems.Cast<object>().ToList();
+            AssertTrue(selectedFullRows.SequenceEqual(rows.Skip(1).Take(4)), "Shared Shift selection supports full-row tables");
+            AssertTrue(ReferenceEquals(grid.CurrentCell.Item, rows[4]) && ReferenceEquals(modifierCurrentItem, rows[4]), "Full-row Shift selection keeps the clicked end row current");
+            selectRowsMethod.Invoke(grid, [rows[3], ModifierKeys.Control]);
+            selectedFullRows = grid.SelectedItems.Cast<object>().ToList();
+            AssertTrue(!selectedFullRows.Contains(rows[3]) && selectedFullRows.Contains(rows[1]) && selectedFullRows.Contains(rows[4]), "Shared Ctrl selection toggles full-row tables");
+            AssertTrue(ReferenceEquals(grid.CurrentCell.Item, rows[1]) && ReferenceEquals(modifierCurrentItem, rows[1]), "Full-row Ctrl deselection keeps a remaining selected row current");
+        }
+        catch (Exception exception)
+        {
+            failure = exception;
+        }
+    });
+    thread.SetApartmentState(ApartmentState.STA);
+    thread.Start();
+    thread.Join();
+    if (failure is not null)
+    {
+        throw new InvalidOperationException("Shared grid regression checks failed.", failure);
+    }
+}
+
+static void ArrangeSharedGrid(ProjectDataGrid grid)
+{
+    var size = new Size(grid.Width, grid.Height);
+    grid.ApplyTemplate();
+    grid.Measure(size);
+    grid.Arrange(new Rect(size));
+    grid.UpdateLayout();
+}
+
+static IEnumerable<T> FindVisualDescendantsForTest<T>(DependencyObject root) where T : DependencyObject
+{
+    for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+    {
+        var child = VisualTreeHelper.GetChild(root, index);
+        if (child is T match)
+        {
+            yield return match;
+        }
+
+        foreach (var descendant in FindVisualDescendantsForTest<T>(child))
+        {
+            yield return descendant;
+        }
+    }
+}
+
 static void InvokeLoadDataset(MainWindowViewModel viewModel, ProjectDataset dataset)
 {
     var method = typeof(MainWindowViewModel).GetMethod("LoadDataset", BindingFlags.NonPublic | BindingFlags.Instance)
@@ -1540,3 +1840,5 @@ sealed class InMemoryUserPreferencesService : IUserPreferencesService
         _preferences = preferences;
     }
 }
+
+sealed record SharedGridTestRow(string Name, int Value, string Group);

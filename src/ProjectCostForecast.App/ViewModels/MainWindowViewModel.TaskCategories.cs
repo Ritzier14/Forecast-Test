@@ -110,6 +110,7 @@ public sealed partial class MainWindowViewModel
         ReplaceCollection(ProjectTaskCodes, _dataset.ProjectTaskCodes);
         ReplaceCollection(ProjectCategories, _dataset.ProjectCategories);
         RefreshForecastLineTaskCategoryResolution();
+        RebuildTaskCodeReviewRows();
     }
 
     public void RefreshTaskCategoryMetadata(bool markDirty = true)
@@ -126,6 +127,7 @@ public sealed partial class MainWindowViewModel
         _calculationService.Recalculate(_dataset);
         ReplaceCollection(CategorySummaries, _dataset.CategorySummaries);
         RebuildCalculatedViews(rebuildFilterLists: true);
+        RebuildTaskCodeReviewRows();
         ApplyForecastGrouping();
         if (markDirty)
         {

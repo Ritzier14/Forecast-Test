@@ -23,6 +23,19 @@ public partial class MainWindow
     {
         if (root is DataGrid grid)
         {
+            if (ReferenceEquals(grid, ForecastLinesGrid))
+            {
+                grid.CanUserReorderColumns = false;
+                if (!_forecastColumnReorderHandlersAttached)
+                {
+                    grid.PreviewMouseLeftButtonDown += ForecastLinesGrid_ColumnReorderMouseDown;
+                    grid.PreviewMouseMove += ForecastLinesGrid_ColumnReorderMouseMove;
+                    grid.PreviewMouseLeftButtonUp += ForecastLinesGrid_ColumnReorderMouseUp;
+                    grid.LostMouseCapture += ForecastLinesGrid_ColumnReorderLostMouseCapture;
+                    _forecastColumnReorderHandlersAttached = true;
+                }
+            }
+
             foreach (var column in grid.Columns)
             {
                 EnsureColumnPresentation(column);

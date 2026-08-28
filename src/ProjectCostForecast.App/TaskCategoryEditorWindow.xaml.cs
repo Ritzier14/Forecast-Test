@@ -258,6 +258,13 @@ public partial class TaskCategoryEditorWindow : Window
             return;
         }
 
+        if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != ModifierKeys.None)
+        {
+            // ProjectDataGrid owns modifier range/toggle selection. Do not
+            // replace that range by entering the clicked editor cell.
+            return;
+        }
+
         if (FindParent<Button>(source) is not null
             || FindParent<TextBox>(source) is not null
             || IsScrollBarInteractionSource(source))

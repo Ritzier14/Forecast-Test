@@ -6,6 +6,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using ProjectCostForecast.App.Models;
@@ -51,6 +52,11 @@ public sealed class ForecastTaskPlanningWindow : Window
     private const double MinimumTimelineZoom = 0.45;
     private const double MaximumTimelineZoom = 2.5;
 
+    private sealed record TimelineBucket(int StartIndex, int EndIndex, string PrimaryLabel, string SecondaryLabel)
+    {
+        public int PeriodCount => EndIndex - StartIndex + 1;
+    }
+
     private readonly MainWindowViewModel _viewModel;
     private readonly ForecastLine _line;
     private readonly List<MonthlyForecast> _periods;
@@ -70,6 +76,7 @@ public sealed class ForecastTaskPlanningWindow : Window
     private readonly Dictionary<ForecastTaskCostLine, Border> _costBars = [];
     private readonly Dictionary<ForecastLine, Border> _resourceBars = [];
     private readonly List<FrozenTimelineElement> _frozenTimelineElements = [];
+    private readonly List<TimelineBucket> _timelineBuckets = [];
 
     private ForecastTaskPhase? _selectedPhase;
     private ForecastTaskCostLine? _selectedCostLine;
@@ -171,6 +178,10 @@ public sealed class ForecastTaskPlanningWindow : Window
         root.Children.Add(timelineBorder);
 
         var costLinesPanel = BuildCostLinesPanel(_costLinesGrid);
+        // The cost tables are content blocks below the curve. Keep them
+        // pinned to the top of their grid row so extra window height cannot
+        // make the tables appear vertically centred.
+        costLinesPanel.VerticalAlignment = VerticalAlignment.Top;
         Grid.SetRow(costLinesPanel, 3);
         root.Children.Add(costLinesPanel);
 
@@ -220,6 +231,17 @@ public sealed class ForecastTaskPlanningWindow : Window
         return panel;
     }
 
+    private static void ApplyPlannerControlTheme(Control control, bool accent = false)
+    {
+        control.Background = BrushFactory.Frozen(accent ? "#2563EB" : "#FFFFFF");
+        control.Foreground = BrushFactory.Frozen(accent ? "#FFFFFF" : "#0F172A");
+        control.BorderBrush = BrushFactory.Frozen(accent ? "#1D4ED8" : "#CBD5E1");
+        control.BorderThickness = new Thickness(1);
+        control.FontSize = 12;
+        control.FontWeight = FontWeights.SemiBold;
+        control.MinHeight = 30;
+    }
+
     private FrameworkElement BuildPhaseControls()
     {
         var border = new Border
@@ -249,6 +271,7 @@ public sealed class ForecastTaskPlanningWindow : Window
             Padding = new Thickness(8, 4, 8, 4),
             ToolTip = "Enter an activity name, then add it to the mini-Gantt"
         };
+        ApplyPlannerControlTheme(newPhaseName);
         row.Children.Add(newPhaseName);
         var add = new Button
         {
@@ -257,6 +280,7 @@ public sealed class ForecastTaskPlanningWindow : Window
             Padding = new Thickness(10, 2, 10, 2),
             Margin = new Thickness(6, 0, 6, 0)
         };
+        ApplyPlannerControlTheme(add, accent: true);
         add.Click += (_, _) => AddPhase(newPhaseName);
         row.Children.Add(add);
 
@@ -268,6 +292,7 @@ public sealed class ForecastTaskPlanningWindow : Window
             IsEnabled = false,
             Tag = "Remove phase"
         };
+        ApplyPlannerControlTheme(remove);
         _removePhaseButton = remove;
         remove.Click += (_, _) => RemoveSelectedPhase(remove);
         row.Children.Add(remove);
@@ -280,6 +305,7 @@ public sealed class ForecastTaskPlanningWindow : Window
             Margin = new Thickness(0, 0, 6, 0),
             ToolTip = "Show the other resource forecast bars for this task"
         };
+        ApplyPlannerControlTheme(showAllResources);
         _showAllResourcesButton = showAllResources;
         showAllResources.Click += (_, _) => ToggleAllResources();
         row.Children.Add(showAllResources);
@@ -331,6 +357,7 @@ public sealed class ForecastTaskPlanningWindow : Window
             Margin = new Thickness(0, 0, 6, 0),
             ToolTip = "Add a future variation or other planned cost line"
         };
+        ApplyPlannerControlTheme(add, accent: true);
         add.Click += (_, _) => AddCostLine();
         toolbar.Children.Add(add);
 
@@ -343,6 +370,7 @@ public sealed class ForecastTaskPlanningWindow : Window
             Tag = "Remove cost line",
             ToolTip = "Remove the selected variation"
         };
+        ApplyPlannerControlTheme(remove);
         remove.Click += (_, _) => RemoveSelectedCostLine(remove);
         toolbar.Children.Add(remove);
         toolbar.Children.Add(new TextBlock
@@ -364,7 +392,7 @@ public sealed class ForecastTaskPlanningWindow : Window
 
     private DataGrid BuildCostLinesGrid()
     {
-        var grid = new DataGrid
+        var grid = new ProjectDataGrid
         {
             ItemsSource = _costLineView,
             AutoGenerateColumns = false,
@@ -450,7 +478,31 @@ public sealed class ForecastTaskPlanningWindow : Window
         grid.BeginningEdit += CostLinesGrid_BeginningEdit;
         grid.CellEditEnding += CostLinesGrid_CellEditEnding;
         grid.SelectionChanged += CostLinesGrid_SelectionChanged;
+        grid.PreviewMouseRightButtonUp += CostLinesGrid_PreviewMouseRightButtonUp;
         return grid;
+    }
+
+    private void CostLinesGrid_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source
+            || FindPlannerParent<DataGridRow>(source)?.Item is not ForecastTaskCostLine costLine
+            || !ReferenceEquals(costLine, _baseCostLine))
+        {
+            return;
+        }
+
+        var menu = new ContextMenu();
+        var editCurve = new MenuItem { Header = "Edit Forecast Curve" };
+        editCurve.Click += (_, _) =>
+        {
+            OpenFullCurveEditor();
+            menu.IsOpen = false;
+        };
+        menu.Items.Add(editCurve);
+        menu.PlacementTarget = FindPlannerParent<UIElement>(source) ?? _costLinesGrid;
+        menu.Placement = PlacementMode.MousePoint;
+        menu.IsOpen = true;
+        e.Handled = true;
     }
 
     private static Style CreateCostLinesColumnHeaderStyle()
@@ -509,6 +561,7 @@ public sealed class ForecastTaskPlanningWindow : Window
             Tag = "Curve profile",
             ToolTip = "Choose an existing curve profile"
         };
+        ApplyPlannerControlTheme(profile);
         foreach (var curve in ForecastCurveService.Profiles)
         {
             profile.Items.Add(new ComboBoxItem
@@ -528,6 +581,7 @@ public sealed class ForecastTaskPlanningWindow : Window
             Padding = new Thickness(8, 4, 8, 4),
             ToolTip = "Total to distribute over the selected periods"
         };
+        ApplyPlannerControlTheme(total);
         row.Children.Add(total);
 
         row.Children.Add(CreateLabeledCombo("From period", out var from));
@@ -540,6 +594,7 @@ public sealed class ForecastTaskPlanningWindow : Window
             Padding = new Thickness(10, 2, 10, 2),
             Margin = new Thickness(8, 0, 6, 0)
         };
+        ApplyPlannerControlTheme(apply, accent: true);
         apply.Click += (_, _) => ApplyCurve();
         row.Children.Add(apply);
 
@@ -549,6 +604,7 @@ public sealed class ForecastTaskPlanningWindow : Window
             Height = 30,
             Padding = new Thickness(10, 2, 10, 2)
         };
+        ApplyPlannerControlTheme(fullEditor);
         fullEditor.Click += (_, _) => OpenFullCurveEditor();
         row.Children.Add(fullEditor);
 
@@ -572,6 +628,7 @@ public sealed class ForecastTaskPlanningWindow : Window
             Height = 30,
             Tag = label
         };
+        ApplyPlannerControlTheme(combo);
         panel.Children.Add(combo);
         return panel;
     }
@@ -830,7 +887,8 @@ public sealed class ForecastTaskPlanningWindow : Window
             var costHeaderY = costSectionY + SectionHeaderHeight;
             var costRowsY = costHeaderY + HeaderHeight;
             var totalCostRows = _costLineView.Count + resourceRows;
-            _timelineCanvas.Width = TimelineLabelWidth + (_periods.Count * PeriodWidth);
+            RebuildTimelineBuckets();
+            _timelineCanvas.Width = TimelineLabelWidth + GetTimelinePeriodsWidth();
 
             _timelineCanvas.Height = costRowsY + (totalCostRows * RowHeight) + 8;
             RenderTimelineSectionHeader(0, "Activity periods", "Shared timing replicated across tasks");
@@ -864,7 +922,7 @@ public sealed class ForecastTaskPlanningWindow : Window
             }
 
             var currentPeriodIndex = GetPeriodIndex(_viewModel.Header.CurrentPeriod, 0);
-            var currentPeriodX = TimelineLabelWidth + currentPeriodIndex * PeriodWidth;
+            var currentPeriodX = GetTimelineLeftForPeriod(currentPeriodIndex);
             var currentPeriodLine = new Line
             {
                 X1 = currentPeriodX,
@@ -889,12 +947,13 @@ public sealed class ForecastTaskPlanningWindow : Window
     private void RenderTimelineSectionHeader(double y, string title, string hint)
     {
         AddTimelineCell(0, y, TimelineLabelWidth, SectionHeaderHeight, "#DBEAFE", title, FontWeights.SemiBold, "#075985");
-        for (var index = 0; index < _periods.Count; index++)
+        for (var index = 0; index < _timelineBuckets.Count; index++)
         {
+            var bucket = _timelineBuckets[index];
             AddTimelineCell(
-                TimelineLabelWidth + index * PeriodWidth,
+                GetTimelineLeftForBucket(index),
                 y,
-                PeriodWidth,
+                GetTimelineBucketWidth(bucket),
                 SectionHeaderHeight,
                 index % 2 == 0 ? "#EFF6FF" : "#E0F2FE",
                 string.Empty,
@@ -916,21 +975,20 @@ public sealed class ForecastTaskPlanningWindow : Window
             hintBlock,
             TimelineLabelWidth + 4,
             y + 5,
-            Math.Max(20, (_periods.Count * PeriodWidth) - 8),
+            Math.Max(20, GetTimelinePeriodsWidth() - 8),
             SectionHeaderHeight - 10);
     }
 
     private void RenderTimelineHeader(double y, string label)
     {
         AddTimelineCell(0, y, TimelineLabelWidth, HeaderHeight, "#E2E8F0", label, FontWeights.SemiBold, "#334155");
-        for (var index = 0; index < _periods.Count; index++)
+        for (var index = 0; index < _timelineBuckets.Count; index++)
         {
-            var period = _periods[index];
-            var (primary, secondary) = GetTimelineHeaderText(index);
+            var bucket = _timelineBuckets[index];
             var panel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             panel.Children.Add(new TextBlock
             {
-                Text = primary,
+                Text = bucket.PrimaryLabel,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 FontStyle = FontStyles.Italic,
                 FontWeight = FontWeights.SemiBold,
@@ -938,47 +996,21 @@ public sealed class ForecastTaskPlanningWindow : Window
             });
             panel.Children.Add(new TextBlock
             {
-                Text = secondary,
+                Text = bucket.SecondaryLabel,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 FontSize = 11,
                 Foreground = BrushFactory.Frozen("#64748B")
             });
-            AddTimelineElement(panel, TimelineLabelWidth + index * PeriodWidth, y, PeriodWidth, HeaderHeight,
+            AddTimelineElement(panel, GetTimelineLeftForBucket(index), y, GetTimelineBucketWidth(bucket), HeaderHeight,
                 index % 2 == 0 ? "#F8FAFC" : "#EEF4FF", "#D8E2EE");
             if (_timelineCanvas.Children[^1] is FrameworkElement headerCell)
             {
-                headerCell.ToolTip = period.PeriodLabel;
+                headerCell.ToolTip = string.Join(" – ", _periods
+                    .Skip(bucket.StartIndex)
+                    .Take(bucket.PeriodCount)
+                    .Select(period => period.PeriodLabel));
             }
         }
-    }
-
-    private (string Primary, string Secondary) GetTimelineHeaderText(int index)
-    {
-        var period = _periods[index];
-        if (period.PeriodStartDate is not DateOnly date)
-        {
-            return (period.PeriodLabel, string.Empty);
-        }
-
-        if (_timelineZoom <= 0.58)
-        {
-            var yearKey = date.Year;
-            var previousYear = index > 0 ? _periods[index - 1].PeriodStartDate?.Year : null;
-            return (previousYear == yearKey ? string.Empty : yearKey.ToString(CultureInfo.CurrentCulture), string.Empty);
-        }
-
-        if (_timelineZoom <= 0.82)
-        {
-            var quarterKey = (date.Year, (date.Month - 1) / 3);
-            var previousQuarter = index > 0 && _periods[index - 1].PeriodStartDate is DateOnly previousDate
-                ? (previousDate.Year, (previousDate.Month - 1) / 3)
-                : ((int Year, int Quarter)?)null;
-            return (previousQuarter == quarterKey ? string.Empty : $"Q{quarterKey.Item2 + 1}", previousQuarter == quarterKey ? string.Empty : date.Year.ToString(CultureInfo.CurrentCulture));
-        }
-
-        return (
-            date.ToString("MMM", CultureInfo.CurrentCulture),
-            period.PeriodLabel);
     }
 
     private void TimelineScrollViewer_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
@@ -1026,7 +1058,8 @@ public sealed class ForecastTaskPlanningWindow : Window
             return;
         }
 
-        var currentPeriodCenter = TimelineLabelWidth + ((GetCurrentPeriodIndex() + 0.5) * PeriodWidth);
+        var currentPeriodIndex = GetCurrentPeriodIndex();
+        var currentPeriodCenter = (GetTimelineLeftForPeriod(currentPeriodIndex) + GetTimelineRightForPeriod(currentPeriodIndex)) / 2d;
         var targetViewportX = Math.Max(
             TimelineLabelWidth + (PeriodWidth / 2d),
             viewportWidth / 3d);
@@ -1095,11 +1128,9 @@ public sealed class ForecastTaskPlanningWindow : Window
             return;
         }
 
-        var oldPeriodWidth = PeriodWidth;
         var pointer = e.GetPosition(viewer);
-        var timelineContentX = Math.Max(
-            0,
-            viewer.HorizontalOffset + pointer.X - TimelineLabelWidth);
+        var anchorCanvasX = Math.Max(0, viewer.HorizontalOffset + pointer.X);
+        var anchorPeriodIndex = GetPeriodIndexAtCanvasX(anchorCanvasX);
         var nextZoom = Math.Clamp(
             _timelineZoom + (e.Delta > 0 ? 0.1 : -0.1),
             MinimumTimelineZoom,
@@ -1113,10 +1144,10 @@ public sealed class ForecastTaskPlanningWindow : Window
         _timelineZoom = nextZoom;
         RenderTimeline();
         viewer.UpdateLayout();
-        var scale = PeriodWidth / oldPeriodWidth;
+        var anchorX = GetTimelineLeftForPeriod(anchorPeriodIndex);
         viewer.ScrollToHorizontalOffset(Math.Max(
             0,
-            TimelineLabelWidth + (timelineContentX * scale) - pointer.X));
+            anchorX - pointer.X));
         UpdateFrozenTimelineElements();
         e.Handled = true;
     }
@@ -1128,10 +1159,12 @@ public sealed class ForecastTaskPlanningWindow : Window
         {
             Text = phase.Name,
             Width = TimelineLabelWidth - 12,
-            Height = 30,
+            Height = RowHeight - 8,
             Padding = new Thickness(7, 4, 7, 4),
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
+            TextWrapping = TextWrapping.Wrap,
+            VerticalContentAlignment = VerticalAlignment.Center,
             Tag = phase,
             ToolTip = "Edit activity name"
         };
@@ -1145,22 +1178,11 @@ public sealed class ForecastTaskPlanningWindow : Window
             }
         };
         Canvas.SetLeft(nameBox, 6);
-        Canvas.SetTop(nameBox, y + 11);
+        Canvas.SetTop(nameBox, y + 4);
         _timelineCanvas.Children.Add(nameBox);
         TrackFrozenTimelineElement(nameBox, 6);
 
-        for (var periodIndex = 0; periodIndex < _periods.Count; periodIndex++)
-        {
-            AddTimelineCell(
-                TimelineLabelWidth + periodIndex * PeriodWidth,
-                y,
-                PeriodWidth,
-                RowHeight,
-                periodIndex % 2 == 0 ? "#FFFFFF" : "#F8FAFC",
-                "",
-                FontWeights.Normal,
-                "#D8E2EE");
-        }
+        AddTimelinePeriodCells(y, index % 2 == 0 ? "#FFFFFF" : "#F8FAFC", "#D8E2EE");
 
         var start = GetPeriodIndex(phase.StartPeriodLabel, 0);
         var end = GetPeriodIndex(phase.EndPeriodLabel, start);
@@ -1225,7 +1247,8 @@ public sealed class ForecastTaskPlanningWindow : Window
             y + 17,
             12,
             FontWeights.SemiBold,
-            "#334155");
+            "#334155",
+            TimelineLabelWidth - 16);
 
         var start = GetPeriodIndex(costLine.StartPeriodLabel, GetCurrentPeriodIndex());
         var end = GetPeriodIndex(costLine.EndPeriodLabel, start);
@@ -1272,7 +1295,7 @@ public sealed class ForecastTaskPlanningWindow : Window
     {
         AddTimelineCell(0, y, TimelineLabelWidth, RowHeight, "#F1F5F9", string.Empty, FontWeights.SemiBold, "#475569");
         AddTimelinePeriodCells(y, "#F8FAFC", "#CBD5E1");
-        AddCanvasText("Actual cost to date", 8, y + 17, 12, FontWeights.SemiBold, "#475569");
+        AddCanvasText("Actual cost to date", 8, y + 17, 12, FontWeights.SemiBold, "#475569", TimelineLabelWidth - 16);
 
         var (start, end) = GetActualCostRange();
         if (start is null || end is null)
@@ -1308,9 +1331,9 @@ public sealed class ForecastTaskPlanningWindow : Window
                 Margin = new Thickness(5, 0, 5, 0)
             }
         };
-        Canvas.SetLeft(bar, TimelineLabelWidth + startIndex * PeriodWidth + 4);
+        Canvas.SetLeft(bar, GetTimelineLeftForPeriod(startIndex) + 4);
         Canvas.SetTop(bar, y + 11);
-        bar.Width = Math.Max(PeriodWidth - 8, (endIndex - startIndex + 1) * PeriodWidth - 8);
+        bar.Width = GetTimelineBarWidth(startIndex, endIndex);
         _timelineCanvas.Children.Add(bar);
     }
 
@@ -1325,7 +1348,8 @@ public sealed class ForecastTaskPlanningWindow : Window
             y + 17,
             11,
             FontWeights.Normal,
-            "#64748B");
+            "#64748B",
+            TimelineLabelWidth - 16);
 
         var (start, end) = GetForecastRange(resourceLine);
         var bar = new Border
@@ -1347,20 +1371,21 @@ public sealed class ForecastTaskPlanningWindow : Window
             }
         };
         _resourceBars[resourceLine] = bar;
-        Canvas.SetLeft(bar, TimelineLabelWidth + start * PeriodWidth + 4);
+        Canvas.SetLeft(bar, GetTimelineLeftForPeriod(start) + 4);
         Canvas.SetTop(bar, y + 15);
-        bar.Width = Math.Max(PeriodWidth - 8, (end - start + 1) * PeriodWidth - 8);
+        bar.Width = GetTimelineBarWidth(start, end);
         _timelineCanvas.Children.Add(bar);
     }
 
     private void AddTimelinePeriodCells(double y, string background, string border)
     {
-        for (var periodIndex = 0; periodIndex < _periods.Count; periodIndex++)
+        for (var bucketIndex = 0; bucketIndex < _timelineBuckets.Count; bucketIndex++)
         {
+            var bucket = _timelineBuckets[bucketIndex];
             AddTimelineCell(
-                TimelineLabelWidth + periodIndex * PeriodWidth,
+                GetTimelineLeftForBucket(bucketIndex),
                 y,
-                PeriodWidth,
+                GetTimelineBucketWidth(bucket),
                 RowHeight,
                 background,
                 string.Empty,
@@ -1372,18 +1397,7 @@ public sealed class ForecastTaskPlanningWindow : Window
     private void RenderCurrentTaskRow(double y)
     {
         AddTimelineCell(0, y, TimelineLabelWidth, RowHeight, "#E0F2FE", "Forecast costs", FontWeights.SemiBold, "#075985");
-        for (var periodIndex = 0; periodIndex < _periods.Count; periodIndex++)
-        {
-            AddTimelineCell(
-                TimelineLabelWidth + periodIndex * PeriodWidth,
-                y,
-                PeriodWidth,
-                RowHeight,
-                periodIndex % 2 == 0 ? "#F0F9FF" : "#E0F2FE",
-                "",
-                FontWeights.Normal,
-                "#BAE6FD");
-        }
+        AddTimelinePeriodCells(y, "#F0F9FF", "#BAE6FD");
 
         (_currentTaskStart, _currentTaskEnd) = GetCurrentTaskRange();
         _currentTaskBar = new Border
@@ -1409,7 +1423,24 @@ public sealed class ForecastTaskPlanningWindow : Window
         _currentTaskBar.MouseLeftButtonDown += CurrentTaskBar_MouseLeftButtonDown;
         _currentTaskBar.MouseMove += CurrentTaskBar_MouseMove;
         _currentTaskBar.MouseLeftButtonUp += CurrentTaskBar_MouseLeftButtonUp;
+        _currentTaskBar.MouseRightButtonUp += CurrentTaskBar_MouseRightButtonUp;
         _timelineCanvas.Children.Add(_currentTaskBar);
+    }
+
+    private void CurrentTaskBar_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var menu = new ContextMenu();
+        var editCurve = new MenuItem { Header = "Edit Forecast Curve" };
+        editCurve.Click += (_, _) =>
+        {
+            OpenFullCurveEditor();
+            menu.IsOpen = false;
+        };
+        menu.Items.Add(editCurve);
+        menu.PlacementTarget = _currentTaskBar;
+        menu.Placement = PlacementMode.MousePoint;
+        menu.IsOpen = true;
+        e.Handled = true;
     }
 
     private void AddPhase(TextBox input)
@@ -1914,9 +1945,9 @@ public sealed class ForecastTaskPlanningWindow : Window
 
     private void UpdatePhaseBarVisual(ForecastTaskPhase phase, Border bar, int start, int end, double barTop)
     {
-        Canvas.SetLeft(bar, TimelineLabelWidth + start * PeriodWidth + 4);
+        Canvas.SetLeft(bar, GetTimelineLeftForPeriod(start) + 4);
         Canvas.SetTop(bar, barTop);
-        bar.Width = Math.Max(PeriodWidth - 8, (end - start + 1) * PeriodWidth - 8);
+        bar.Width = GetTimelineBarWidth(start, end);
         if (bar.Child is TextBlock label)
         {
             label.Text = string.IsNullOrWhiteSpace(phase.Name) ? "Activity" : phase.Name;
@@ -1930,9 +1961,9 @@ public sealed class ForecastTaskPlanningWindow : Window
         int end,
         double barTop)
     {
-        Canvas.SetLeft(bar, TimelineLabelWidth + start * PeriodWidth + 4);
+        Canvas.SetLeft(bar, GetTimelineLeftForPeriod(start) + 4);
         Canvas.SetTop(bar, barTop);
-        bar.Width = Math.Max(PeriodWidth - 8, (end - start + 1) * PeriodWidth - 8);
+        bar.Width = GetTimelineBarWidth(start, end);
         if (bar.Child is TextBlock label)
         {
             label.Text = GetCostBarLabel(costLine);
@@ -1963,9 +1994,9 @@ public sealed class ForecastTaskPlanningWindow : Window
             return;
         }
 
-        Canvas.SetLeft(_currentTaskBar, TimelineLabelWidth + _currentTaskStart * PeriodWidth + 4);
+        Canvas.SetLeft(_currentTaskBar, GetTimelineLeftForPeriod(_currentTaskStart) + 4);
         Canvas.SetTop(_currentTaskBar, barTop);
-        _currentTaskBar.Width = Math.Max(PeriodWidth - 8, (_currentTaskEnd - _currentTaskStart + 1) * PeriodWidth - 8);
+        _currentTaskBar.Width = GetTimelineBarWidth(_currentTaskStart, _currentTaskEnd);
     }
 
     private (int Start, int End) GetCurrentTaskRange()
@@ -2050,7 +2081,226 @@ public sealed class ForecastTaskPlanningWindow : Window
     }
 
     private int GetPeriodDelta(Point start, Point current)
-        => (int)Math.Round((current.X - start.X) / PeriodWidth, MidpointRounding.AwayFromZero);
+    {
+        var startBucket = GetTimelineBucketIndexAtCanvasX(start.X);
+        var currentBucket = GetTimelineBucketIndexAtCanvasX(current.X);
+        return currentBucket - startBucket;
+    }
+
+    private void RebuildTimelineBuckets()
+    {
+        _timelineBuckets.Clear();
+        if (_periods.Count == 0)
+        {
+            return;
+        }
+
+        var scale = GetTimelineAggregationScale();
+        var start = 0;
+        string? key = null;
+        for (var index = 0; index < _periods.Count; index++)
+        {
+            var period = _periods[index];
+            var nextKey = GetTimelineBucketKey(period, index, scale);
+            if (key is not null && !string.Equals(key, nextKey, StringComparison.Ordinal))
+            {
+                _timelineBuckets.Add(CreateTimelineBucket(start, index - 1, scale));
+                start = index;
+            }
+
+            key = nextKey;
+        }
+
+        _timelineBuckets.Add(CreateTimelineBucket(start, _periods.Count - 1, scale));
+    }
+
+    private TimelineAggregationScale GetTimelineAggregationScale()
+    {
+        if (_timelineZoom >= 0.95)
+        {
+            return TimelineAggregationScale.Month;
+        }
+
+        if (_timelineZoom >= 0.72)
+        {
+            return TimelineAggregationScale.Quarter;
+        }
+
+        if (_timelineZoom >= 0.56)
+        {
+            return TimelineAggregationScale.HalfYear;
+        }
+
+        return TimelineAggregationScale.Year;
+    }
+
+    private static string GetTimelineBucketKey(MonthlyForecast period, int index, TimelineAggregationScale scale)
+    {
+        if (period.PeriodStartDate is not DateOnly date)
+        {
+            var span = scale switch
+            {
+                TimelineAggregationScale.Quarter => 3,
+                TimelineAggregationScale.HalfYear => 6,
+                TimelineAggregationScale.Year => 12,
+                _ => 1
+            };
+            return (index / span).ToString(CultureInfo.InvariantCulture);
+        }
+
+        return scale switch
+        {
+            TimelineAggregationScale.Quarter => $"{date.Year}-Q{((date.Month - 1) / 3) + 1}",
+            TimelineAggregationScale.HalfYear => $"{date.Year}-H{(date.Month <= 6 ? 1 : 2)}",
+            TimelineAggregationScale.Year => date.Year.ToString(CultureInfo.InvariantCulture),
+            _ => $"{date.Year}-{date.Month:00}"
+        };
+    }
+
+    private TimelineBucket CreateTimelineBucket(int start, int end, TimelineAggregationScale scale)
+    {
+        var first = _periods[start];
+        if (first.PeriodStartDate is not DateOnly date)
+        {
+            return new TimelineBucket(start, end, first.PeriodLabel, end > start ? $"{end - start + 1} months" : string.Empty);
+        }
+
+        return scale switch
+        {
+            TimelineAggregationScale.Quarter => new TimelineBucket(start, end, $"Q{((date.Month - 1) / 3) + 1}", date.Year.ToString(CultureInfo.CurrentCulture)),
+            TimelineAggregationScale.HalfYear => new TimelineBucket(start, end, $"H{(date.Month <= 6 ? 1 : 2)}", date.Year.ToString(CultureInfo.CurrentCulture)),
+            TimelineAggregationScale.Year => new TimelineBucket(start, end, date.Year.ToString(CultureInfo.CurrentCulture), string.Empty),
+            _ => new TimelineBucket(start, end, date.ToString("MMM", CultureInfo.CurrentCulture), first.PeriodLabel)
+        };
+    }
+
+    private double GetTimelinePeriodsWidth()
+        => _timelineBuckets.Sum(GetTimelineBucketWidth);
+
+    private double GetTimelineBucketWidth(TimelineBucket bucket)
+        => Math.Max(PeriodWidth, bucket.PeriodCount * PeriodWidth);
+
+    private double GetTimelineBarWidth(int startIndex, int endIndex)
+    {
+        var left = GetTimelineLeftForPeriod(startIndex);
+        var right = GetTimelineRightForPeriod(endIndex);
+        return Math.Max(8d, right - left - 8d);
+    }
+
+    private double GetTimelineLeftForBucket(int bucketIndex)
+    {
+        var left = TimelineLabelWidth;
+        for (var index = 0; index < bucketIndex && index < _timelineBuckets.Count; index++)
+        {
+            left += GetTimelineBucketWidth(_timelineBuckets[index]);
+        }
+
+        return left;
+    }
+
+    private double GetTimelineLeftForPeriod(int periodIndex)
+    {
+        return GetTimelineBoundaryForPeriod(periodIndex);
+    }
+
+    private double GetTimelineRightForPeriod(int periodIndex)
+    {
+        return GetTimelineBoundaryForPeriod(periodIndex + 1);
+    }
+
+    private double GetTimelineBoundaryForPeriod(int boundaryIndex)
+    {
+        if (_timelineBuckets.Count == 0)
+        {
+            return TimelineLabelWidth;
+        }
+
+        var clampedBoundary = Math.Clamp(boundaryIndex, 0, _periods.Count);
+        if (clampedBoundary >= _periods.Count)
+        {
+            return TimelineLabelWidth + GetTimelinePeriodsWidth();
+        }
+
+        // A boundary at the end of one bucket is also the start of the next
+        // bucket. Resolving it against the earlier bucket keeps the two
+        // coordinates identical and preserves the raw month offset inside a
+        // zoomed-out quarter/half-year/year bucket.
+        var bucketIndex = _timelineBuckets.FindIndex(bucket =>
+            clampedBoundary >= bucket.StartIndex
+            && clampedBoundary <= bucket.EndIndex + 1);
+        if (bucketIndex < 0)
+        {
+            return TimelineLabelWidth;
+        }
+
+        var bucket = _timelineBuckets[bucketIndex];
+        var offset = Math.Clamp(clampedBoundary - bucket.StartIndex, 0, bucket.PeriodCount);
+        return GetTimelineLeftForBucket(bucketIndex) + (offset * PeriodWidth);
+    }
+
+    private int GetTimelineBucketIndexAtCanvasX(double canvasX)
+    {
+        if (_timelineBuckets.Count == 0)
+        {
+            return 0;
+        }
+
+        var relative = canvasX - TimelineLabelWidth;
+        if (relative <= 0)
+        {
+            return 0;
+        }
+
+        var left = 0d;
+        for (var index = 0; index < _timelineBuckets.Count; index++)
+        {
+            var bucket = _timelineBuckets[index];
+            var width = GetTimelineBucketWidth(bucket);
+            if (relative < left + width || index == _timelineBuckets.Count - 1)
+            {
+                var offset = Math.Clamp(relative - left, 0, width);
+                var periodOffset = Math.Clamp(
+                    (int)Math.Floor(offset / PeriodWidth),
+                    0,
+                    bucket.PeriodCount - 1);
+                return bucket.StartIndex + periodOffset;
+            }
+
+            left += width;
+        }
+
+        return _timelineBuckets[^1].EndIndex;
+    }
+
+    private int GetPeriodIndexAtCanvasX(double canvasX)
+        => GetTimelineBucketIndexAtCanvasX(canvasX);
+
+    private static T? FindPlannerParent<T>(DependencyObject? source)
+        where T : DependencyObject
+    {
+        var current = source;
+        while (current is not null)
+        {
+            if (current is T match)
+            {
+                return match;
+            }
+
+            current = current is Visual || current is Visual3D
+                ? VisualTreeHelper.GetParent(current)
+                : LogicalTreeHelper.GetParent(current);
+        }
+
+        return null;
+    }
+
+    private enum TimelineAggregationScale
+    {
+        Month,
+        Quarter,
+        HalfYear,
+        Year
+    }
 
     private void AddTimelineCell(
         double x,
@@ -2077,6 +2327,7 @@ public sealed class ForecastTaskPlanningWindow : Window
                     FontWeight = weight,
                     Foreground = BrushFactory.Frozen(foreground),
                     VerticalAlignment = VerticalAlignment.Center,
+                    TextWrapping = TextWrapping.Wrap,
                     Margin = new Thickness(9, 0, 6, 0)
                 }
         };
@@ -2112,7 +2363,14 @@ public sealed class ForecastTaskPlanningWindow : Window
         }
     }
 
-    private void AddCanvasText(string text, double x, double y, double fontSize, FontWeight weight, string foreground)
+    private void AddCanvasText(
+        string text,
+        double x,
+        double y,
+        double fontSize,
+        FontWeight weight,
+        string foreground,
+        double? wrapWidth = null)
     {
         var block = new TextBlock
         {
@@ -2121,6 +2379,11 @@ public sealed class ForecastTaskPlanningWindow : Window
             FontWeight = weight,
             Foreground = BrushFactory.Frozen(foreground)
         };
+        if (wrapWidth is double width)
+        {
+            block.Width = width;
+            block.TextWrapping = TextWrapping.Wrap;
+        }
         Canvas.SetLeft(block, x);
         Canvas.SetTop(block, y);
         _timelineCanvas.Children.Add(block);

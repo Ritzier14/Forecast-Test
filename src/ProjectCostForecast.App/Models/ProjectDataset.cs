@@ -410,6 +410,8 @@ public sealed class WorkspaceViewLayout
     public string WorkspaceKey { get; set; } = string.Empty;
     public string ContentKey { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string IconKey { get; set; } = string.Empty;
+    public string IconColorHex { get; set; } = string.Empty;
     public List<string> HiddenColumnKeys { get; set; } = [];
     public List<WorkspaceColumnLayout> ColumnLayouts { get; set; } = [];
     public bool ShowZeroAsBlank { get; set; } = true;

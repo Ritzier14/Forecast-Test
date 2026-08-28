@@ -41,7 +41,7 @@ public sealed class UnmatchedImportWindow : Window
         DockPanel.SetDock(intro, Dock.Top);
         root.Children.Add(intro);
 
-        var grid = new DataGrid
+        var grid = new ProjectDataGrid
         {
             AutoGenerateColumns = false,
             CanUserAddRows = false,

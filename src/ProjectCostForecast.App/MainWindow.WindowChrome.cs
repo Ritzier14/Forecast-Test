@@ -335,6 +335,32 @@ public partial class MainWindow
         Dispatcher.BeginInvoke(() => _ledgerChartRightDragging = false);
     }
 
+    private void LedgerChartScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control
+            || sender is not ScrollViewer scrollViewer
+            || DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var pointer = e.GetPosition(scrollViewer);
+        var oldWidth = Math.Max(1d, viewModel.LedgerChartCanvasWidth);
+        var oldContentX = scrollViewer.HorizontalOffset + pointer.X;
+        var oldRatio = Math.Clamp(oldContentX / oldWidth, 0d, 1d);
+        _ledgerChartZooming = true;
+        viewModel.ZoomLedgerChart(e.Delta > 0);
+        e.Handled = true;
+
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            scrollViewer.UpdateLayout();
+            var newX = oldRatio * Math.Max(1d, viewModel.LedgerChartCanvasWidth);
+            scrollViewer.ScrollToHorizontalOffset(Math.Max(0, newX - pointer.X));
+            _ledgerChartZooming = false;
+        }));
+    }
+
     private void Grid_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is DataGrid sourceGrid

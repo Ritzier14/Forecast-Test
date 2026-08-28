@@ -49,7 +49,7 @@ public partial class MainWindow
             });
         }
 
-        var grid = new DataGrid
+        var grid = new ProjectDataGrid
         {
             AutoGenerateColumns = false,
             IsReadOnly = true,

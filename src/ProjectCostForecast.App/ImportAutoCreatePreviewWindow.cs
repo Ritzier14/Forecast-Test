@@ -97,7 +97,7 @@ public sealed class ImportAutoCreatePreviewWindow : Window
         DockPanel.SetDock(intro, Dock.Top);
         root.Children.Add(intro);
 
-        var grid = new DataGrid
+        var grid = new ProjectDataGrid
         {
             AutoGenerateColumns = false,
             CanUserAddRows = false,

@@ -10,15 +10,16 @@ public sealed class ValidationService
 
         foreach (var line in dataset.ForecastLines)
         {
-            AddRequired(issues, "ForecastLine", line.RowNumber.ToString(), nameof(line.TaskNumber), line.TaskNumber, "Task number is required.");
-            AddRequired(issues, "ForecastLine", line.RowNumber.ToString(), nameof(line.ResourceName), line.ResourceName, "Resource name is required.");
-            AddRequired(issues, "ForecastLine", line.RowNumber.ToString(), nameof(line.ProjectCode), line.ProjectCode, "Project category is required.");
+            AddRequired(issues, "ForecastLine", line.RowNumber.ToString(), nameof(line.TaskNumber), line.TaskNumber, "Task number is required.", "Forecast line data");
+            AddRequired(issues, "ForecastLine", line.RowNumber.ToString(), nameof(line.ResourceName), line.ResourceName, "Resource name is required.", "Forecast line data");
+            AddRequired(issues, "ForecastLine", line.RowNumber.ToString(), nameof(line.ProjectCode), line.ProjectCode, "Project category is required.", "Forecast line data");
 
             if (line.Budget == 0 && line.PlannedCostFcc != 0)
             {
                 issues.Add(new ValidationIssue
                 {
                     Severity = "Warning",
+                    Category = "Budget variance",
                     EntityType = "ForecastLine",
                     EntityId = line.RowNumber.ToString(),
                     FieldName = nameof(line.Budget),
@@ -29,14 +30,15 @@ public sealed class ValidationService
 
         foreach (var transaction in dataset.Transactions)
         {
-            AddRequired(issues, "Transaction", transaction.RowNumber.ToString(), nameof(transaction.FyPeriod), transaction.FyPeriod, "FY period is required.");
-            AddRequired(issues, "Transaction", transaction.RowNumber.ToString(), nameof(transaction.TaskNumber), transaction.TaskNumber, "Task number is required.");
+            AddRequired(issues, "Transaction", transaction.RowNumber.ToString(), nameof(transaction.FyPeriod), transaction.FyPeriod, "FY period is required.", "Imported transaction");
+            AddRequired(issues, "Transaction", transaction.RowNumber.ToString(), nameof(transaction.TaskNumber), transaction.TaskNumber, "Task number is required.", "Imported transaction");
 
             if (string.IsNullOrWhiteSpace(transaction.ManualName) && string.IsNullOrWhiteSpace(transaction.ResourceDescription))
             {
                 issues.Add(new ValidationIssue
                 {
                     Severity = "Warning",
+                    Category = "Imported Name mapping",
                     EntityType = "Transaction",
                     EntityId = transaction.RowNumber.ToString(),
                     FieldName = nameof(transaction.ManualName),
@@ -49,6 +51,7 @@ public sealed class ValidationService
                 issues.Add(new ValidationIssue
                 {
                     Severity = "Warning",
+                    Category = "Imported transaction",
                     EntityType = "Transaction",
                     EntityId = transaction.RowNumber.ToString(),
                     FieldName = nameof(transaction.Units),
@@ -67,6 +70,7 @@ public sealed class ValidationService
             issues.Add(new ValidationIssue
             {
                 Severity = "Warning",
+                Category = "Resource mapping",
                 EntityType = "Resource",
                 EntityId = duplicate.Key,
                 FieldName = nameof(CostTransaction.ResourceCode),
@@ -83,7 +87,8 @@ public sealed class ValidationService
         string entityId,
         string fieldName,
         string value,
-        string message)
+        string message,
+        string category)
     {
         if (!string.IsNullOrWhiteSpace(value))
         {
@@ -93,6 +98,7 @@ public sealed class ValidationService
         issues.Add(new ValidationIssue
         {
             Severity = "Error",
+            Category = category,
             EntityType = entityType,
             EntityId = entityId,
             FieldName = fieldName,

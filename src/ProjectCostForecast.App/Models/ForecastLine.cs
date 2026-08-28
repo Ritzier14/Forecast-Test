@@ -57,7 +57,11 @@ public sealed class ForecastLine : ObservableModel
             return;
         }
 
-        SetProperty(ref _rowDisplayHeight, height, nameof(RowDisplayHeight));
+        // Keep the persisted value inside the same bounds used by the live
+        // grid resize interaction. This prevents malformed project files or a
+        // very small drag from collapsing a row and hiding its controls.
+        var clampedHeight = Math.Clamp(height, 30d, 600d);
+        SetProperty(ref _rowDisplayHeight, clampedHeight, nameof(RowDisplayHeight));
         SetProperty(ref _hasCustomRowHeight, true, nameof(HasCustomRowHeight));
     }
 

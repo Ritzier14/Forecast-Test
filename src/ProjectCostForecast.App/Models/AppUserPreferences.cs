@@ -29,6 +29,10 @@ public sealed class AppUserPreferences
     public bool ShowVarianceIndicators { get; set; }
     public string SelectedCategorySortOptionKey { get; set; } = "Alphabetical";
     public string SelectedLedgerChartRangeKey { get; set; } = "Last24";
+    public string SelectedLedgerChartTimeScaleKey { get; set; } = "Month";
+    public bool ShowLedgerActualSeries { get; set; } = true;
+    public bool ShowLedgerForecastSeries { get; set; } = true;
+    public bool ShowLedgerBudgetSeries { get; set; } = true;
     public List<string> KpiPillKeys { get; set; } = [];
     public Dictionary<string, string> KpiIconKeys { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> KpiIconColorHexes { get; set; } = new(StringComparer.OrdinalIgnoreCase);

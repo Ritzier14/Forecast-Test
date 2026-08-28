@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:ProjectCostForecast.App.Models"
+        xmlns:local="clr-namespace:ProjectCostForecast.App"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="Task and Category Editor"
         Width="860"
@@ -377,7 +378,7 @@
                         CornerRadius="18"
                         SizeChanged="RoundedGridHost_SizeChanged"
                         Padding="0">
-                    <DataGrid x:Name="TaskCodesGrid"
+                    <local:ProjectDataGrid x:Name="TaskCodesGrid"
                               Style="{StaticResource EditorDataGridStyle}"
                               ItemsSource="{Binding ProjectTaskCodes}"
                               AutoGenerateColumns="False"
@@ -500,7 +501,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                         </DataGrid.Columns>
-                    </DataGrid>
+                    </local:ProjectDataGrid>
                 </Border>
 
                 <Border x:Name="CategoriesPanel"
@@ -511,7 +512,7 @@
                         SizeChanged="RoundedGridHost_SizeChanged"
                         Padding="0"
                         Visibility="Collapsed">
-                    <DataGrid x:Name="CategoriesGrid"
+                    <local:ProjectDataGrid x:Name="CategoriesGrid"
                               Style="{StaticResource EditorDataGridStyle}"
                               ItemsSource="{Binding ProjectCategories}"
                               AutoGenerateColumns="False"
@@ -598,7 +599,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                         </DataGrid.Columns>
-                    </DataGrid>
+                    </local:ProjectDataGrid>
                 </Border>
             </Grid>
 

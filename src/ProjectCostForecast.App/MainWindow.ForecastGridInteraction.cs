@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
@@ -7,7 +7,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
@@ -20,16 +19,6 @@ namespace ProjectCostForecast.App;
 
 public partial class MainWindow
 {
-    private const double ForecastRowResizeHitThickness = 10;
-    private const double ForecastRowMinimumHeight = 30;
-    private const double ForecastRowMaximumHeight = 600;
-
-    private sealed record ForecastRowResizeSession(
-        DataGridRow AnchorRow,
-        ForecastLine Line,
-        Point StartPoint,
-        double StartHeight);
-
     private void AddForecastRowButton_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel)
@@ -59,48 +48,29 @@ public partial class MainWindow
             return;
         }
 
-        if (e.ClickCount >= 2 && TryAutoFitForecastRowsAtBoundary(ForecastLinesGrid, source))
+        if (sender is ProjectDataGrid { IsHandlingRowResizeInput: true })
         {
-            if (_forecastRowResize is not null)
-            {
-                CompleteForecastRowResize();
-            }
-
             _forecastLeftDragStart = null;
             _forecastDragLine = null;
-            e.Handled = true;
             return;
         }
 
-        // DataGrid's built-in Extended selection can consume modifier clicks
-        // before the shared spreadsheet handler gets a chance to turn them
-        // into complete row selections. Handle the gesture at the forecast
-        // grid's own preview boundary so Shift/Control works from any cell.
+        if (e.Handled
+            && sender is ProjectDataGrid { ModifierClickSelectsWholeRows: true }
+            && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != ModifierKeys.None)
+        {
+            _forecastLeftDragStart = null;
+            _forecastDragLine = null;
+            return;
+        }
+
         var rowSelectionModifiers = Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift);
-        if (rowSelectionModifiers != ModifierKeys.None
-            && FindParent<DataGridRow>(source)?.Item is ForecastLine modifierLine)
-        {
-            SelectForecastRowsFromSelectorClick(ForecastLinesGrid, modifierLine);
-            _forecastLeftDragStart = null;
-            _forecastDragLine = null;
-            e.Handled = true;
-            return;
-        }
-
         if (rowSelectionModifiers == ModifierKeys.None
             && FindParent<DataGridRow>(source)?.Item is ForecastLine clickedLine)
         {
             // Record the anchor before DataGrid's own cell-selection handling
             // can replace the current cell with a different input target.
             _forecastRowSelectionAnchor = clickedLine;
-        }
-
-        if (TryBeginForecastRowResize(source, e.GetPosition(ForecastLinesGrid)))
-        {
-            _forecastLeftDragStart = null;
-            _forecastDragLine = null;
-            e.Handled = true;
-            return;
         }
 
         _forecastLeftDragStart = e.GetPosition(ForecastLinesGrid);
@@ -117,10 +87,10 @@ public partial class MainWindow
 
     private void ForecastLinesGrid_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (_forecastRowResize is not null)
+        if (sender is ProjectDataGrid { IsHandlingRowResizeInput: true })
         {
-            CompleteForecastRowResize();
-            e.Handled = true;
+            _forecastLeftDragStart = null;
+            _forecastDragLine = null;
             return;
         }
 
@@ -162,24 +132,10 @@ public partial class MainWindow
 
     private void ForecastLinesGrid_PreviewMouseMove(object sender, MouseEventArgs e)
     {
-        if (_forecastRowResize is not null)
+        if (sender is ProjectDataGrid { IsRowResizeInProgress: true })
         {
-            if (e.LeftButton != MouseButtonState.Pressed)
-            {
-                CompleteForecastRowResize();
-            }
-            else
-            {
-                UpdateForecastRowResize(e.GetPosition(ForecastLinesGrid));
-            }
-
             e.Handled = true;
             return;
-        }
-
-        if (e.OriginalSource is DependencyObject resizeSource)
-        {
-            UpdateForecastRowResizeCursor(resizeSource);
         }
 
         if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
@@ -218,313 +174,6 @@ public partial class MainWindow
     private void ForecastLinesGrid_MouseLeave(object sender, MouseEventArgs e)
     {
         ClearHoveredForecastLine();
-        if (_forecastRowResize is null)
-        {
-            ClearForecastRowResizeCursor();
-        }
-    }
-
-    private bool TryBeginForecastRowResize(DependencyObject source, Point gridPoint)
-    {
-        if (_forecastRowResize is not null)
-        {
-            return true;
-        }
-
-        if (!TryGetForecastRowResizeTarget(source, out var row, out var line, gridPoint))
-        {
-            return false;
-        }
-
-        var resize = new ForecastRowResizeSession(
-            row,
-            line,
-            gridPoint,
-            GetForecastRowHeight(row, line));
-
-        // Keep the live drag on the realized row container. Updating the data
-        // binding on every mouse move can leave the cells at an earlier
-        // measured height while the grouped items panel has already accepted
-        // the newer row height, which is the large blank gap seen after a
-        // resize. The model is committed once when the gesture finishes.
-        ApplyLiveForecastRowHeight(row, resize.StartHeight);
-        if (!ForecastLinesGrid.CaptureMouse())
-        {
-            row.ClearValue(FrameworkElement.HeightProperty);
-            foreach (var cell in FindChildren<DataGridCell>(row))
-            {
-                cell.ClearValue(FrameworkElement.HeightProperty);
-            }
-
-            return false;
-        }
-
-        _forecastRowResize = resize;
-        SetForecastRowResizeCursor();
-        return true;
-    }
-
-    private bool TryGetForecastRowResizeTarget(
-        DependencyObject source,
-        out DataGridRow row,
-        out ForecastLine line,
-        Point? gridPoint = null)
-    {
-        row = null!;
-        line = null!;
-        var pointer = gridPoint ?? Mouse.GetPosition(ForecastLinesGrid);
-
-        // Keep the resize zone inside the routed row. The previous upward
-        // probing performed repeated InputHitTest calls for every mouse move,
-        // which made an already wide grid noticeably less responsive.
-        var sourceRow = FindParent<DataGridRow>(source);
-        if (sourceRow is not null
-            && IsForecastRowBottomBoundary(sourceRow, pointer, out line))
-        {
-            row = sourceRow;
-            return true;
-        }
-
-        // On the one-pixel seam WPF may report the row below as the routed
-        // source. Resolve the row immediately above that seam so the bottom
-        // edge always belongs to the row the user can see above the pointer.
-        if (sourceRow is not null)
-        {
-            try
-            {
-                var sourcePoint = ForecastLinesGrid.TranslatePoint(pointer, sourceRow);
-                if (sourcePoint.Y <= ForecastRowResizeHitThickness
-                    && ForecastLinesGrid.InputHitTest(new Point(
-                        pointer.X,
-                        Math.Max(0, pointer.Y - ForecastRowResizeHitThickness))) is DependencyObject upperSource)
-                {
-                    var upperRow = FindParent<DataGridRow>(upperSource);
-                    if (upperRow is not null
-                        && !ReferenceEquals(upperRow, sourceRow)
-                        && IsForecastRowBottomBoundary(upperRow, pointer, out line))
-                    {
-                        row = upperRow;
-                        return true;
-                    }
-                }
-            }
-            catch (InvalidOperationException)
-            {
-                // A recycling row can detach while resolving the seam.
-            }
-        }
-
-        return false;
-    }
-
-    private bool IsForecastRowBottomBoundary(
-        DataGridRow row,
-        Point gridPoint,
-        out ForecastLine line)
-    {
-        line = null!;
-        if (row.Item is not ForecastLine candidateLine
-            || !row.IsVisible
-            || row.ActualHeight <= 0
-            || !row.IsDescendantOf(ForecastLinesGrid))
-        {
-            return false;
-        }
-
-        try
-        {
-            var rowPoint = ForecastLinesGrid.TranslatePoint(gridPoint, row);
-            var distanceFromBottom = row.ActualHeight - rowPoint.Y;
-            if (distanceFromBottom < -1 || distanceFromBottom > ForecastRowResizeHitThickness)
-            {
-                return false;
-            }
-
-            line = candidateLine;
-            return true;
-        }
-        catch (InvalidOperationException)
-        {
-            // A virtualized row can detach between hit testing and coordinate
-            // translation. Treat it as a miss and let the next input event
-            // resolve the newly realized container.
-            return false;
-        }
-    }
-
-    private double GetForecastRowHeight(DataGridRow row, ForecastLine line)
-    {
-        if (line.HasCustomRowHeight
-            && line.RowDisplayHeight > 0
-            && double.IsFinite(line.RowDisplayHeight))
-        {
-            return line.RowDisplayHeight;
-        }
-
-        if (row.ActualHeight > 0 && double.IsFinite(row.ActualHeight))
-        {
-            return row.ActualHeight;
-        }
-
-        return GetForecastDefaultRowHeight();
-    }
-
-    private double GetForecastDefaultRowHeight()
-    {
-        var configuredHeight = ForecastLinesGrid.RowHeight;
-        return double.IsFinite(configuredHeight) && configuredHeight > 0
-            ? Math.Max(ForecastRowMinimumHeight, configuredHeight)
-            : 30;
-    }
-
-    private void UpdateForecastRowResize(Point currentPoint)
-    {
-        if (_forecastRowResize is not { } resize)
-        {
-            return;
-        }
-
-        var boundaryDelta = currentPoint.Y - resize.StartPoint.Y;
-        var targetHeight = ClampForecastRowHeight(resize.StartHeight + boundaryDelta);
-        if (Math.Abs(resize.AnchorRow.Height - targetHeight) < 0.1)
-        {
-            return;
-        }
-
-        ApplyLiveForecastRowHeight(resize.AnchorRow, targetHeight);
-    }
-
-    private static void ApplyLiveForecastRowHeight(DataGridRow row, double height)
-    {
-        row.Height = height;
-        foreach (var cell in FindChildren<DataGridCell>(row))
-        {
-            cell.Height = height;
-        }
-
-        row.InvalidateMeasure();
-    }
-
-    private static void SetForecastRowHeight(ForecastLine line, double height)
-    {
-        var clampedHeight = ClampForecastRowHeight(height);
-        line.SetRowDisplayHeight(clampedHeight);
-    }
-
-    private static double ClampForecastRowHeight(double height)
-    {
-        return Math.Clamp(height, ForecastRowMinimumHeight, ForecastRowMaximumHeight);
-    }
-
-    private void CompleteForecastRowResize()
-    {
-        var resize = _forecastRowResize;
-        _forecastRowResize = null;
-        if (ForecastLinesGrid.IsMouseCaptured)
-        {
-            ForecastLinesGrid.ReleaseMouseCapture();
-        }
-
-        if (resize is not null)
-        {
-            var finalHeight = double.IsFinite(resize.AnchorRow.Height)
-                ? ClampForecastRowHeight(resize.AnchorRow.Height)
-                : resize.StartHeight;
-            SetForecastRowHeight(resize.Line, finalHeight);
-            resize.AnchorRow.ClearValue(FrameworkElement.HeightProperty);
-            foreach (var cell in FindChildren<DataGridCell>(resize.AnchorRow))
-            {
-                cell.ClearValue(FrameworkElement.HeightProperty);
-            }
-
-            resize.AnchorRow.InvalidateMeasure();
-        }
-
-        // The grouped virtualizing panel must receive the final desired-size
-        // change after the row's temporary local height is handed back to its
-        // model binding.
-        ForecastLinesGrid.InvalidateMeasure();
-        ClearForecastRowResizeCursor();
-    }
-
-    private void ForecastLinesGrid_LostMouseCapture(object sender, MouseEventArgs e)
-    {
-        if (_forecastRowResize is not null && !ReferenceEquals(Mouse.Captured, ForecastLinesGrid))
-        {
-            CompleteForecastRowResize();
-        }
-    }
-
-    private void SetForecastRowResizeCursor()
-    {
-        if (_forecastRowResizeCursorActive)
-        {
-            return;
-        }
-
-        Mouse.OverrideCursor = Cursors.SizeNS;
-        _forecastRowResizeCursorActive = true;
-    }
-
-    private void ClearForecastRowResizeCursor()
-    {
-        if (!_forecastRowResizeCursorActive)
-        {
-            return;
-        }
-
-        Mouse.OverrideCursor = null;
-        _forecastRowResizeCursorActive = false;
-    }
-
-    private void UpdateForecastRowResizeCursor(DependencyObject source)
-    {
-        if (_forecastRowResize is not null)
-        {
-            SetForecastRowResizeCursor();
-            return;
-        }
-
-        if (TryGetForecastRowResizeTarget(source, out _, out _))
-        {
-            SetForecastRowResizeCursor();
-        }
-        else
-        {
-            ClearForecastRowResizeCursor();
-        }
-    }
-
-    private bool TryAutoFitForecastRowsAtBoundary(DataGrid grid, DependencyObject source)
-    {
-        if (!ReferenceEquals(grid, ForecastLinesGrid))
-        {
-            return false;
-        }
-
-        ForecastLine line;
-        if (_forecastRowResize is { } capturedResize)
-        {
-            // The first click on a row boundary starts a resize session and
-            // captures the mouse. WPF can then report the second click as
-            // coming from the grid rather than the row, so retain the anchor
-            // row as the double-click target.
-            line = capturedResize.Line;
-        }
-        else if (!TryGetForecastRowResizeTarget(source, out _, out line))
-        {
-            return false;
-        }
-
-        SetForecastRowHeight(line, ForecastRowMinimumHeight);
-
-        if (_forecastRowResize is { } resize)
-        {
-            ApplyLiveForecastRowHeight(resize.AnchorRow, ForecastRowMinimumHeight);
-            CompleteForecastRowResize();
-        }
-
-        return true;
     }
 
     private void ForecastLinesGrid_Sorting(object sender, DataGridSortingEventArgs e)
@@ -630,12 +279,50 @@ public partial class MainWindow
         {
             e.Cancel = true;
         }
+
+        if (e.Row.Item is MonthlyForecastAcrossRow acrossRow
+            && (!string.Equals(acrossRow.Metric, "Forecast", StringComparison.OrdinalIgnoreCase)
+                || DataContext is not MainWindowViewModel viewModel
+                || viewModel.IsViewingSavedMonth))
+        {
+            e.Cancel = true;
+        }
     }
 
     private void SelectedMonthlyForecastsGrid_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (_gridRightDragging || e.OriginalSource is not DependencyObject source)
         {
+            return;
+        }
+
+        var grid = sender as DataGrid;
+        var isHeader = FindParent<DataGridColumnHeader>(source) is not null;
+        var isForecastRow = FindParent<DataGridRow>(source)?.Item is MonthlyForecast
+            || FindParent<DataGridRow>(source)?.Item is MonthlyForecastAcrossRow;
+        if (DataContext is MainWindowViewModel viewModel
+            && grid is not null
+            && (isHeader || isForecastRow))
+        {
+            var menu = new ContextMenu();
+            var flip = new MenuItem
+            {
+                Header = "Flip Table",
+                ToolTip = viewModel.IsMonthlyForecastMonthsAcross
+                    ? "Show months down the table"
+                    : "Show months across the table"
+            };
+            flip.Click += (_, _) =>
+            {
+                viewModel.ToggleMonthlyForecastOrientation();
+                menu.IsOpen = false;
+            };
+            menu.Items.Add(flip);
+            ApplyMenuIcons(menu);
+            menu.PlacementTarget = source as UIElement ?? grid;
+            menu.Placement = PlacementMode.MousePoint;
+            menu.IsOpen = true;
+            e.Handled = true;
             return;
         }
 
@@ -831,12 +518,6 @@ public partial class MainWindow
     {
         if (e.ChangedButton != MouseButton.Left || e.OriginalSource is not DependencyObject source)
         {
-            return;
-        }
-
-        if (TryAutoFitForecastRowsAtBoundary(ForecastLinesGrid, source))
-        {
-            e.Handled = true;
             return;
         }
 

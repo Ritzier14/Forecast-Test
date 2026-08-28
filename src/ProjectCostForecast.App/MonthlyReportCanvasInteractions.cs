@@ -944,7 +944,7 @@ public partial class MainWindow
 
     private static FrameworkElement CreateStyledTable(ReportCanvasObjectLayout layout)
     {
-        var table = new DataGrid
+        var table = new ProjectDataGrid
         {
             AutoGenerateColumns = true,
             IsReadOnly = true,

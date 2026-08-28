@@ -83,6 +83,7 @@ public sealed partial class MainWindowViewModel
 
         ReplaceCollection(ValidationIssues, _validationService.Validate(_dataset));
         OnPropertyChanged(nameof(ValidationIssueCount));
+        OnPropertyChanged(nameof(ValidationSummaryText));
     }
 
     private void RefreshViewsAndTotals()
@@ -317,7 +318,9 @@ public sealed partial class MainWindowViewModel
     {
         RefreshLedgerSelectionSnapshots();
         RebuildLedgerTransactionViews();
+        RebuildMonthlyForecastPresentationRows();
         OnPropertyChanged(nameof(SelectedMonthlyForecasts));
+        OnPropertyChanged(nameof(MonthlyForecastAcrossRows));
         OnPropertyChanged(nameof(LedgerTransactions));
         OnPropertyChanged(nameof(LedgerTitle));
         OnPropertyChanged(nameof(LedgerTransactionCount));
@@ -326,6 +329,7 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(LedgerAverageRate));
         OnPropertyChanged(nameof(LedgerForecastTotal));
         OnPropertyChanged(nameof(LedgerProjectedTotal));
+        OnPropertyChanged(nameof(LedgerBudgetTotal));
         RebuildLedgerChart();
     }
 
@@ -462,6 +466,19 @@ public sealed partial class MainWindowViewModel
                 SelectedLedgerChartRangeOption = ledgerRange;
             }
 
+            LedgerChartTimeScale = Enum.TryParse<LedgerChartTimeScale>(
+                _userPreferences.SelectedLedgerChartTimeScaleKey,
+                ignoreCase: true,
+                out var savedTimeScale)
+                ? savedTimeScale
+                : LedgerChartTimeScale.Month;
+            _showLedgerActualSeries = _userPreferences.ShowLedgerActualSeries;
+            _showLedgerForecastSeries = _userPreferences.ShowLedgerForecastSeries;
+            _showLedgerBudgetSeries = _userPreferences.ShowLedgerBudgetSeries;
+            OnPropertyChanged(nameof(ShowLedgerActualSeries));
+            OnPropertyChanged(nameof(ShowLedgerForecastSeries));
+            OnPropertyChanged(nameof(ShowLedgerBudgetSeries));
+
             var preferredYears = (_userPreferences.SelectedCtcMonthForecastYears ?? [])
                 .Where(AvailableCtcMonthForecastYears.Contains)
                 .Distinct()
@@ -515,6 +532,10 @@ public sealed partial class MainWindowViewModel
         _userPreferences.ShowVarianceIndicators = ShowVarianceIndicators;
         _userPreferences.SelectedCategorySortOptionKey = SelectedCategorySortOption?.Key ?? "Alphabetical";
         _userPreferences.SelectedLedgerChartRangeKey = SelectedLedgerChartRangeOption?.Key ?? "Last24";
+        _userPreferences.SelectedLedgerChartTimeScaleKey = LedgerChartTimeScale.ToString();
+        _userPreferences.ShowLedgerActualSeries = ShowLedgerActualSeries;
+        _userPreferences.ShowLedgerForecastSeries = ShowLedgerForecastSeries;
+        _userPreferences.ShowLedgerBudgetSeries = ShowLedgerBudgetSeries;
         _userPreferences.KpiPillKeys = KpiPills.Select(pill => pill.Key).ToList();
         _userPreferences.ForecastCurvePresets = UserForecastCurvePresets
             .Select(CloneForecastCurvePreset)
@@ -556,6 +577,8 @@ public sealed partial class MainWindowViewModel
                 WorkspaceKey = NormaliseWorkspaceKey(view.WorkspaceKey),
                 ContentKey = view.ContentKey,
                 Name = view.Name,
+                IconKey = view.IconKey,
+                IconColorHex = view.IconColorHex,
                 GroupForecastLinesByTask = view.GroupForecastLinesByTask,
                 ForecastGroupByKey = NormalizeForecastGroupByKey(view.ForecastGroupByKey),
                 ShowZeroAsBlank = view.ShowZeroAsBlank,
@@ -626,6 +649,8 @@ public sealed partial class MainWindowViewModel
             WorkspaceKey = NormaliseWorkspaceKey(layout.WorkspaceKey),
             ContentKey = layout.ContentKey,
             Name = string.IsNullOrWhiteSpace(layout.Name) ? "View" : layout.Name,
+            IconKey = layout.IconKey,
+            IconColorHex = layout.IconColorHex,
             EditName = string.IsNullOrWhiteSpace(layout.Name) ? "View" : layout.Name,
             DefaultName = string.IsNullOrWhiteSpace(layout.Name) ? "View" : layout.Name,
             RenameRestoreName = string.IsNullOrWhiteSpace(layout.Name) ? "View" : layout.Name,
@@ -685,7 +710,8 @@ public sealed partial class MainWindowViewModel
             new WorkspaceViewLayout { WorkspaceKey = "Audit", ContentKey = "Default", Name = "Default" },
             new WorkspaceViewLayout { WorkspaceKey = "Budget", ContentKey = "Default", Name = "Default" },
             new WorkspaceViewLayout { WorkspaceKey = "Ledger Costs", ContentKey = "Default", Name = "Default" },
-            new WorkspaceViewLayout { WorkspaceKey = "Ledger Monthly Forecast", ContentKey = "Default", Name = "Default" },
+            new WorkspaceViewLayout { WorkspaceKey = "Ledger Monthly Forecast", ContentKey = "MonthsDown", Name = "Months Down" },
+            new WorkspaceViewLayout { WorkspaceKey = "Ledger Monthly Forecast", ContentKey = "MonthsAcross", Name = "Months Across" },
             new WorkspaceViewLayout { WorkspaceKey = "Ledger Spend Curve", ContentKey = "Default", Name = "Default" }
         ];
     }

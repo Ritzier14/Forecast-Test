@@ -17,6 +17,7 @@ public sealed class AuditEvent
 public sealed class ValidationIssue
 {
     public string Severity { get; set; } = "Warning";
+    public string Category { get; set; } = "Data quality";
     public string EntityType { get; set; } = string.Empty;
     public string EntityId { get; set; } = string.Empty;
     public string FieldName { get; set; } = string.Empty;

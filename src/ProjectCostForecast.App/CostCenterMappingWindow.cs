@@ -301,7 +301,7 @@ public sealed class CostCenterMappingWindow : Window
 
     private DataGrid BuildCandidateGrid()
     {
-        var grid = new DataGrid
+        var grid = new ProjectDataGrid
         {
             AutoGenerateColumns = false,
             CanUserAddRows = false,
@@ -556,7 +556,7 @@ public sealed class CostCenterMappingWindow : Window
                 Amount = transaction.Amount.ToString("C0")
             }));
 
-        var grid = new DataGrid
+        var grid = new ProjectDataGrid
         {
             AutoGenerateColumns = false,
             CanUserAddRows = false,

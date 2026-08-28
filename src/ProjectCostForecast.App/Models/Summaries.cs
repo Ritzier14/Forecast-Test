@@ -150,6 +150,63 @@ public sealed class LedgerChartRangeOption
     public double MonthSpacing { get; init; } = 36;
 }
 
+public enum LedgerChartTimeScale
+{
+    Month,
+    Quarter,
+    HalfYear,
+    Year
+}
+
+public sealed class MonthlyForecastAcrossRow : ObservableModel
+{
+    private readonly Dictionary<string, decimal> _values;
+    private readonly Action<string, decimal>? _valueChanged;
+
+    public MonthlyForecastAcrossRow(
+        string resourceName,
+        string taskNumber,
+        string metric,
+        IEnumerable<KeyValuePair<string, decimal>> values,
+        Action<string, decimal>? valueChanged = null)
+    {
+        ResourceName = resourceName;
+        TaskNumber = taskNumber;
+        Metric = metric;
+        _values = values.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+        _valueChanged = valueChanged;
+    }
+
+    public string ResourceName { get; }
+    public string TaskNumber { get; }
+    public string Metric { get; }
+
+    public decimal this[string period]
+    {
+        get => _values.GetValueOrDefault(period);
+        set
+        {
+            if (string.IsNullOrWhiteSpace(period) || _values.GetValueOrDefault(period) == value)
+            {
+                return;
+            }
+
+            _values[period] = value;
+            _valueChanged?.Invoke(period, value);
+            OnPropertyChanged("Item[]");
+        }
+    }
+
+    public IReadOnlyDictionary<string, decimal> Values => _values;
+}
+
+public sealed class TaskCodeReviewRow
+{
+    public string TaskCode { get; init; } = string.Empty;
+    public string AssignedName { get; init; } = string.Empty;
+    public string Category { get; init; } = string.Empty;
+}
+
 public sealed class KpiPill : ObservableModel
 {
     private string _key = string.Empty;
@@ -225,6 +282,8 @@ public sealed class WorkspaceViewTab : ObservableModel
     private string _editName = string.Empty;
     private bool _isEditing;
     private string _contentKey = string.Empty;
+    private string _iconKey = string.Empty;
+    private string _iconColorHex = string.Empty;
 
     public string WorkspaceKey { get; init; } = string.Empty;
     public string ContentKey
@@ -232,6 +291,34 @@ public sealed class WorkspaceViewTab : ObservableModel
         get => _contentKey;
         set => SetProperty(ref _contentKey, value);
     }
+    public string IconKey
+    {
+        get => _iconKey;
+        set
+        {
+            if (SetProperty(ref _iconKey, value?.Trim() ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(IconPreview));
+            }
+        }
+    }
+
+    public string IconColorHex
+    {
+        get => _iconColorHex;
+        set
+        {
+            if (SetProperty(ref _iconColorHex, value?.Trim() ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(IconPreview));
+            }
+        }
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ImageSource IconPreview => ProjectCostForecast.App.MainWindow.GetBuiltInImageSourceByPath(
+        $"/Assets/Icons/png/{(string.IsNullOrWhiteSpace(IconKey) ? "ic_tab_forecast_16.png" : IconKey)}",
+        IconColorHex);
     public List<string> HiddenColumnKeys { get; set; } = [];
     public List<WorkspaceColumnLayout> ColumnLayouts { get; set; } = [];
     public bool ShowZeroAsBlank { get; set; } = true;

@@ -30,7 +30,15 @@ public partial class MainWindow
         }
 
         var tabItem = FindParent<TabItem>(source);
-        if (tabItem is null || !tabControl.Items.Contains(tabItem))
+        // The drill-down tabs are the headings above the detail grids. Do
+        // not start a tab reorder when the pointer began inside a grid or
+        // another tab's content; that made normal cell selection feel like a
+        // tab drag. Tab headers are hosted by the TabPanel in the shared tab
+        // template, so this also keeps the gesture consistent with the view
+        // pills, which start only from their item surface.
+        if (FindParent<TabPanel>(source) is null
+            || tabItem is null
+            || !tabControl.Items.Contains(tabItem))
         {
             return;
         }
@@ -66,7 +74,19 @@ public partial class MainWindow
             if (MoveTabItem(tabControl, _workspaceDraggedTabItem, targetIndex) && DataContext is MainWindowViewModel viewModel)
             {
                 PersistWorkspaceTabOrder(tabControl, viewModel);
+
+                var insertionX = GetTabInsertionLineX(tabControl, targetTab, targetPosition);
+                EnsureWorkspaceTabReorderAdorner(tabControl);
+                _workspaceTabReorderAdorner?.SetPosition(insertionX, GetTabHeaderHeight(tabControl, targetTab));
             }
+            else
+            {
+                RemoveWorkspaceTabReorderAdorner();
+            }
+        }
+        else
+        {
+            RemoveWorkspaceTabReorderAdorner();
         }
 
         _workspaceTabDragStart = current;
@@ -179,6 +199,7 @@ public partial class MainWindow
         RestoreDimmedDragElement();
         _workspaceTabDragStart = null;
         _workspaceDraggedTabItem = null;
+        RemoveWorkspaceTabReorderAdorner();
     }
 
     private void WorkspaceViewTabs_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -251,6 +272,63 @@ public partial class MainWindow
 
         var targetIndex = tabControl.Items.IndexOf(targetTab);
         return position.X > targetTab.ActualWidth / 2 ? targetIndex + 1 : targetIndex;
+    }
+
+    private static double GetTabInsertionLineX(TabControl tabControl, TabItem? targetTab, Point targetPosition)
+    {
+        if (targetTab is not null && tabControl.Items.Contains(targetTab))
+        {
+            var insertAfter = targetPosition.X > targetTab.ActualWidth / 2;
+            var edge = targetTab.TranslatePoint(
+                new Point(insertAfter ? targetTab.ActualWidth : 0, 0),
+                tabControl);
+            return edge.X;
+        }
+
+        var lastTab = tabControl.Items.OfType<TabItem>().LastOrDefault();
+        if (lastTab is null)
+        {
+            return 0;
+        }
+
+        return lastTab.TranslatePoint(new Point(lastTab.ActualWidth, 0), tabControl).X;
+    }
+
+    private static double GetTabHeaderHeight(TabControl tabControl, TabItem? targetTab)
+    {
+        var tabPanel = targetTab is not null
+            ? FindParent<TabPanel>(targetTab)
+            : FindChildren<TabPanel>(tabControl).FirstOrDefault();
+        return Math.Max(1, tabPanel?.ActualHeight ?? targetTab?.ActualHeight ?? 34);
+    }
+
+    private void EnsureWorkspaceTabReorderAdorner(TabControl tabControl)
+    {
+        if (_workspaceTabReorderAdorner is not null)
+        {
+            return;
+        }
+
+        if (AdornerLayer.GetAdornerLayer(tabControl) is { } layer)
+        {
+            _workspaceTabReorderAdorner = new TabReorderAdorner(tabControl);
+            layer.Add(_workspaceTabReorderAdorner);
+        }
+    }
+
+    private void RemoveWorkspaceTabReorderAdorner()
+    {
+        if (_workspaceTabReorderAdorner is null)
+        {
+            return;
+        }
+
+        if (AdornerLayer.GetAdornerLayer(_workspaceTabReorderAdorner.AdornedElement) is { } layer)
+        {
+            layer.Remove(_workspaceTabReorderAdorner);
+        }
+
+        _workspaceTabReorderAdorner = null;
     }
 
     private static int GetWorkspaceViewDropIndex(ListBox listBox, DependencyObject source, DragEventArgs e)
@@ -410,5 +488,34 @@ public partial class MainWindow
             "Spend curve" or "Spend Curve" => "Ledger Spend Curve",
             _ => "Ledger Costs"
         };
+    }
+
+    private sealed class TabReorderAdorner : Adorner
+    {
+        private double _x;
+        private double _height;
+
+        public TabReorderAdorner(UIElement adornedElement)
+            : base(adornedElement)
+        {
+            IsHitTestVisible = false;
+        }
+
+        public void SetPosition(double x, double height)
+        {
+            _x = Math.Max(0, x);
+            _height = Math.Max(1, height);
+            InvalidateVisual();
+        }
+
+        protected override void OnRender(DrawingContext drawingContext)
+        {
+            var fill = new SolidColorBrush(Color.FromArgb(45, 37, 99, 235));
+            fill.Freeze();
+            var pen = new Pen(BrushFactory.Frozen("#2563EB"), 2);
+            pen.Freeze();
+            drawingContext.DrawRectangle(fill, null, new Rect(_x - 3, 0, 6, _height));
+            drawingContext.DrawLine(pen, new Point(_x, 0), new Point(_x, _height));
+        }
     }
 }

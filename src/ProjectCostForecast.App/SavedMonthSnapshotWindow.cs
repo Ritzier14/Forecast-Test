@@ -173,6 +173,12 @@ public sealed class SavedMonthSnapshotWindow : Window
 
     private void SnapshotGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != ModifierKeys.None)
+        {
+            // Let ProjectDataGrid preserve/toggle the shared row selection.
+            return;
+        }
+
         if (e.OriginalSource is DependencyObject source
             && FindParent<DataGridRow>(source)?.Item is SavedMonthSnapshotRow row)
         {
@@ -197,7 +203,7 @@ public sealed class SavedMonthSnapshotWindow : Window
 
     private DataGrid BuildSnapshotGrid(ObservableCollection<SavedMonthSnapshotRow> snapshots)
     {
-        var grid = new DataGrid
+        var grid = new ProjectDataGrid
         {
             AutoGenerateColumns = false,
             IsReadOnly = true,
@@ -277,7 +283,7 @@ public sealed class SavedMonthSnapshotWindow : Window
 
     private DataGrid BuildLineGrid()
     {
-        var grid = new DataGrid
+        var grid = new ProjectDataGrid
         {
             AutoGenerateColumns = false,
             IsReadOnly = true

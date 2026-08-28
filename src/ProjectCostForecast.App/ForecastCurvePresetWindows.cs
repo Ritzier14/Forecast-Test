@@ -178,7 +178,7 @@ public sealed class ManageForecastCurvePresetsWindow : Window
             Margin = new Thickness(0, 0, 0, 12)
         });
 
-        _grid = new DataGrid
+        _grid = new ProjectDataGrid
         {
             ItemsSource = _presets,
             AutoGenerateColumns = false,

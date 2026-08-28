@@ -78,8 +78,10 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private bool _isDirty;
     private PointCollection _ledgerActualChartPoints = [];
     private PointCollection _ledgerForecastChartPoints = [];
+    private PointCollection _ledgerBudgetChartPoints = [];
     private Geometry _ledgerActualChartGeometry = Geometry.Empty;
     private Geometry _ledgerForecastChartGeometry = Geometry.Empty;
+    private Geometry _ledgerBudgetChartGeometry = Geometry.Empty;
     private double _ledgerChartCanvasWidth = LedgerChartMinWidth;
     private DateOnly? _forecastEditLockCutoffDate;
     private bool _viewRefreshQueued;
@@ -118,6 +120,11 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private string _forecastFreezeColumnKey = DefaultForecastFreezeColumnKey;
     private CategorySortOption? _selectedCategorySortOption;
     private LedgerChartRangeOption? _selectedLedgerChartRangeOption;
+    private LedgerChartTimeScale _ledgerChartTimeScale = LedgerChartTimeScale.Month;
+    private bool _showLedgerActualSeries = true;
+    private bool _showLedgerForecastSeries = true;
+    private bool _showLedgerBudgetSeries = true;
+    private string _taskCodeReviewDisplayMode = "Assigned Name";
     private PivotFieldDefinition? _selectedPivotField;
     private PivotAreaField? _selectedPivotRowField;
     private PivotAreaField? _selectedPivotColumnField;
@@ -193,6 +200,8 @@ public sealed partial class MainWindowViewModel : NotifyObject
         ActualsPeriodSummaries = CreateCollection<ActualsPeriodSummary>();
         AuditEvents = CreateCollection<AuditEvent>();
         ValidationIssues = CreateCollection<ValidationIssue>();
+        MonthlyForecastAcrossRows = CreateCollection<MonthlyForecastAcrossRow>();
+        TaskCodeReviewRows = CreateCollection<TaskCodeReviewRow>();
         MonthlyReportFiscalSummaryRows = CreateCollection<MonthlyReportFiscalSummaryRow>();
         MonthlyReportCategoryRows = CreateCollection<MonthlyReportCategoryRow>();
         MonthlyReportVarianceCommentRows = CreateCollection<MonthlyReportVarianceCommentRow>();
@@ -205,6 +214,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
         AvailablePeriods = CreateCollection<string>();
         MonthlyVarianceFilters = new ObservableCollection<string> { "All", "Negative only", "Positive only", "Any variance" };
         BudgetVarianceFilters = new ObservableCollection<string> { "All", "Over budget", "Under budget", "Any variance" };
+        TaskCodeReviewDisplayModes = new ObservableCollection<string> { "Assigned Name", "Category", "Both" };
         CategorySortOptions = new ObservableCollection<CategorySortOption>
         {
             new() { Key = "Alphabetical", Name = "A-Z" },
@@ -328,6 +338,8 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public ObservableCollection<ActualsPeriodSummary> ActualsPeriodSummaries { get; }
     public ObservableCollection<AuditEvent> AuditEvents { get; }
     public ObservableCollection<ValidationIssue> ValidationIssues { get; }
+    public ObservableCollection<MonthlyForecastAcrossRow> MonthlyForecastAcrossRows { get; }
+    public ObservableCollection<TaskCodeReviewRow> TaskCodeReviewRows { get; }
     public ObservableCollection<MonthlyReportFiscalSummaryRow> MonthlyReportFiscalSummaryRows { get; }
     public ObservableCollection<MonthlyReportCategoryRow> MonthlyReportCategoryRows { get; }
     public ObservableCollection<MonthlyReportVarianceCommentRow> MonthlyReportVarianceCommentRows { get; }
@@ -340,6 +352,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public ObservableCollection<string> AvailablePeriods { get; }
     public ObservableCollection<string> MonthlyVarianceFilters { get; }
     public ObservableCollection<string> BudgetVarianceFilters { get; }
+    public ObservableCollection<string> TaskCodeReviewDisplayModes { get; }
     public ObservableCollection<CategorySortOption> CategorySortOptions { get; }
     public ObservableCollection<LedgerChartRangeOption> LedgerChartRangeOptions { get; }
     public ObservableCollection<KpiOption> KpiOptions { get; }
@@ -453,6 +466,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
                     _selectedResourceSummary = null;
                     OnPropertyChanged(nameof(SelectedResourceSummary));
                 }
+                RebuildMonthlyForecastPresentationRows();
                 QueueLedgerChanged();
                 CommandManager.InvalidateRequerySuggested();
             }
@@ -471,6 +485,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
                     _selectedForecastLine = null;
                     OnPropertyChanged(nameof(SelectedForecastLine));
                 }
+                RebuildMonthlyForecastPresentationRows();
                 QueueLedgerChanged();
             }
         }
@@ -587,6 +602,12 @@ public sealed partial class MainWindowViewModel : NotifyObject
         private set => SetProperty(ref _ledgerForecastChartPoints, value);
     }
 
+    public PointCollection LedgerBudgetChartPoints
+    {
+        get => _ledgerBudgetChartPoints;
+        private set => SetProperty(ref _ledgerBudgetChartPoints, value);
+    }
+
     public Geometry LedgerActualChartGeometry
     {
         get => _ledgerActualChartGeometry;
@@ -597,6 +618,12 @@ public sealed partial class MainWindowViewModel : NotifyObject
     {
         get => _ledgerForecastChartGeometry;
         private set => SetProperty(ref _ledgerForecastChartGeometry, value);
+    }
+
+    public Geometry LedgerBudgetChartGeometry
+    {
+        get => _ledgerBudgetChartGeometry;
+        private set => SetProperty(ref _ledgerBudgetChartGeometry, value);
     }
 
     public double LedgerChartCanvasWidth
@@ -686,6 +713,79 @@ public sealed partial class MainWindowViewModel : NotifyObject
         }
     }
 
+    public LedgerChartTimeScale LedgerChartTimeScale
+    {
+        get => _ledgerChartTimeScale;
+        private set
+        {
+            if (SetProperty(ref _ledgerChartTimeScale, value))
+            {
+                RebuildLedgerChart();
+                SaveUserPreferences();
+            }
+        }
+    }
+
+    public bool ShowLedgerActualSeries
+    {
+        get => _showLedgerActualSeries;
+        set
+        {
+            if (SetProperty(ref _showLedgerActualSeries, value))
+            {
+                RebuildLedgerChart();
+                SaveUserPreferences();
+            }
+        }
+    }
+
+    public bool ShowLedgerForecastSeries
+    {
+        get => _showLedgerForecastSeries;
+        set
+        {
+            if (SetProperty(ref _showLedgerForecastSeries, value))
+            {
+                RebuildLedgerChart();
+                SaveUserPreferences();
+            }
+        }
+    }
+
+    public bool ShowLedgerBudgetSeries
+    {
+        get => _showLedgerBudgetSeries;
+        set
+        {
+            if (SetProperty(ref _showLedgerBudgetSeries, value))
+            {
+                RebuildLedgerChart();
+                SaveUserPreferences();
+            }
+        }
+    }
+
+    public void ZoomLedgerChart(bool zoomIn)
+    {
+        var next = zoomIn
+            ? LedgerChartTimeScale switch
+            {
+                LedgerChartTimeScale.Year => LedgerChartTimeScale.HalfYear,
+                LedgerChartTimeScale.HalfYear => LedgerChartTimeScale.Quarter,
+                LedgerChartTimeScale.Quarter => LedgerChartTimeScale.Month,
+                _ => LedgerChartTimeScale.Month
+            }
+            : LedgerChartTimeScale switch
+            {
+                LedgerChartTimeScale.Month => LedgerChartTimeScale.Quarter,
+                LedgerChartTimeScale.Quarter => LedgerChartTimeScale.HalfYear,
+                LedgerChartTimeScale.HalfYear => LedgerChartTimeScale.Year,
+                _ => LedgerChartTimeScale.Year
+            };
+
+        LedgerChartTimeScale = next;
+    }
+
     public bool ShowForecastZeroAsBlank => SelectedWorkspaceView?.ShowZeroAsBlank ?? true;
 
     public void SetSelectedForecastShowZeroAsBlank(bool showZeroAsBlank)
@@ -753,6 +853,9 @@ public sealed partial class MainWindowViewModel : NotifyObject
             if (SetProperty(ref _activeDetailWorkspaceKey, value))
             {
                 RefreshCurrentDetailWorkspaceViews();
+                RebuildMonthlyForecastPresentationRows();
+                OnPropertyChanged(nameof(IsMonthlyForecastMonthsAcross));
+                OnPropertyChanged(nameof(MonthlyForecastAcrossRows));
             }
         }
     }
@@ -815,7 +918,10 @@ public sealed partial class MainWindowViewModel : NotifyObject
                     _selectedDetailWorkspaceViewNames[ActiveDetailWorkspaceKey] = value.Name;
                 }
 
+                RebuildMonthlyForecastPresentationRows();
                 OnPropertyChanged(nameof(ShowLedgerCostsPivotByMonth));
+                OnPropertyChanged(nameof(IsMonthlyForecastMonthsAcross));
+                OnPropertyChanged(nameof(MonthlyForecastAcrossRows));
                 if (string.Equals(ActiveDetailWorkspaceKey, "Ledger Costs", StringComparison.OrdinalIgnoreCase))
                 {
                     ApplyLedgerTransactionGrouping();
@@ -999,6 +1105,13 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public int ForecastLineCount => ForecastLines.Count;
     public int TransactionCount => Transactions.Count;
     public int ValidationIssueCount => ValidationIssues.Count;
+    public string ValidationSummaryText => ValidationIssues.Count == 0
+        ? "No validation issues"
+        : string.Join(", ", ValidationIssues
+            .GroupBy(issue => new { issue.Category, issue.Severity })
+            .OrderBy(group => group.Key.Category)
+            .ThenBy(group => group.Key.Severity)
+            .Select(group => $"{group.Key.Category}: {group.Count()} {group.Key.Severity.ToLowerInvariant()}"));
     public string AppVersion => AppVersionValue;
     public string AppVersionDisplay => $"v{AppVersion}";
     public string AppWindowTitle => $"Project Cost Forecast - {ReleaseStage} - {AppVersionDisplay}";
@@ -1037,6 +1150,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     }
     public decimal LedgerForecastTotal => _ledgerTotals.ForecastTotal;
     public decimal LedgerProjectedTotal => _ledgerTotals.ProjectedTotal;
+    public decimal LedgerBudgetTotal => GetActiveLedgerBudgetTotal();
 
     public IEnumerable<CostTransaction> LedgerTransactions => _activeLedgerTransactions;
 

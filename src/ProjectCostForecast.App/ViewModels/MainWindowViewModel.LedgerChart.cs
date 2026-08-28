@@ -15,6 +15,8 @@ namespace ProjectCostForecast.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
+    private sealed record LedgerChartBucket(DateOnly StartDate, DateOnly EndDate, IReadOnlyList<DateOnly> Months, string Label);
+
     private void RefreshLedgerSelectionSnapshots()
     {
         _activeLedgerTransactions = BuildLedgerTransactionsForCurrentSelection();
@@ -117,7 +119,6 @@ public sealed partial class MainWindowViewModel
                 var date = tx.DocDate!.Value;
                 return new DateOnly(date.Year, date.Month, 1);
             })
-            .OrderBy(group => group.Key)
             .ToDictionary(group => group.Key, group => group.Sum(tx => tx.Amount));
 
         var forecastByMonth = _activeLedgerForecastEntries
@@ -127,7 +128,6 @@ public sealed partial class MainWindowViewModel
                 var date = entry.PeriodStartDate!.Value;
                 return new DateOnly(date.Year, date.Month, 1);
             })
-            .OrderBy(group => group.Key)
             .ToDictionary(group => group.Key, group => group.Sum(entry => entry.Amount));
 
         if (GetActiveLedgerForecastLine() is null && SelectedResourceSummary is null)
@@ -147,7 +147,6 @@ public sealed partial class MainWindowViewModel
             .Distinct()
             .OrderBy(date => date)
             .ToList();
-
         var fullDomainStart = GetLedgerChartStartMonth(keyedMonths);
         var domainEnd = keyedMonths[^1];
         if (domainEnd <= fullDomainStart)
@@ -157,74 +156,158 @@ public sealed partial class MainWindowViewModel
 
         var domainStart = GetVisibleLedgerChartStart(fullDomainStart, domainEnd);
         var fullTimeline = EnumerateMonthStarts(fullDomainStart, domainEnd).ToList();
-        LedgerChartCanvasWidth = CalculateLedgerChartWidth(domainStart, domainEnd);
-
-        var actualPoints = new PointCollection();
-        var forecastPoints = new PointCollection();
-        var actualRunning = 0m;
-        var forecastRunning = 0m;
-        var maxValue = 0m;
-
-        actualPoints.Add(new Point(MapChartX(domainStart, domainStart, domainEnd), MapChartY(0, 1)));
-        forecastPoints.Add(new Point(MapChartX(domainStart, domainStart, domainEnd), MapChartY(0, 1)));
-
-        foreach (var date in fullTimeline)
+        var fullBuckets = BuildLedgerChartBuckets(fullTimeline);
+        var visibleBuckets = fullBuckets
+            .Where(bucket => bucket.EndDate >= domainStart && bucket.StartDate <= domainEnd)
+            .ToList();
+        if (visibleBuckets.Count == 0)
         {
-            actualRunning += actualByMonth.GetValueOrDefault(date);
-            forecastRunning += forecastByMonth.GetValueOrDefault(date);
-            if (date < domainStart)
-            {
-                continue;
-            }
-
-            var projected = actualRunning + forecastRunning;
-            maxValue = Math.Max(maxValue, Math.Max(actualRunning, projected));
+            ClearLedgerChart("No periods are available for this selection.");
+            return;
         }
 
-        var yAxisMax = GetNiceAxisMaximum(maxValue);
-
-        actualRunning = 0m;
-        forecastRunning = 0m;
+        LedgerChartCanvasWidth = CalculateLedgerChartWidth(visibleBuckets.Count);
+        var budgetTotal = GetActiveLedgerBudgetTotal();
+        var budgetPerMonth = fullTimeline.Count == 0 ? 0m : budgetTotal / fullTimeline.Count;
+        var actualPoints = new PointCollection();
+        var forecastPoints = new PointCollection();
+        var budgetPoints = new PointCollection();
+        var actualRunning = 0m;
+        var forecastRunning = 0m;
+        var budgetRunning = 0m;
+        var visibleIndex = 0;
+        var maxValue = 0m;
         var plottedStart = false;
 
-        foreach (var date in fullTimeline)
+        foreach (var bucket in fullBuckets)
         {
-            actualRunning += actualByMonth.GetValueOrDefault(date);
-            forecastRunning += forecastByMonth.GetValueOrDefault(date);
-            if (date < domainStart)
+            foreach (var month in bucket.Months)
+            {
+                actualRunning += actualByMonth.GetValueOrDefault(month);
+                forecastRunning += forecastByMonth.GetValueOrDefault(month);
+                budgetRunning += budgetPerMonth;
+            }
+
+            if (!visibleBuckets.Contains(bucket))
             {
                 continue;
             }
 
             var actualValue = actualRunning;
             var projectedValue = actualRunning + forecastRunning;
+            var budgetValue = budgetRunning;
             if (!plottedStart)
             {
-                actualPoints[0] = new Point(MapChartX(domainStart, domainStart, domainEnd), MapChartY(actualValue, yAxisMax));
-                forecastPoints[0] = new Point(MapChartX(domainStart, domainStart, domainEnd), MapChartY(projectedValue, yAxisMax));
+                actualPoints.Add(new Point(MapChartX(0, visibleBuckets.Count), MapChartY(actualValue, 1)));
+                forecastPoints.Add(new Point(MapChartX(0, visibleBuckets.Count), MapChartY(projectedValue, 1)));
+                budgetPoints.Add(new Point(MapChartX(0, visibleBuckets.Count), MapChartY(budgetValue, 1)));
                 plottedStart = true;
             }
 
-            var x = MapChartX(date, domainStart, domainEnd);
+            maxValue = Math.Max(maxValue, GetVisibleLedgerChartMaximum(actualValue, projectedValue, budgetValue));
+            visibleIndex++;
+        }
+
+        var yAxisMax = GetNiceAxisMaximum(maxValue);
+        actualRunning = 0m;
+        forecastRunning = 0m;
+        budgetRunning = 0m;
+        visibleIndex = 0;
+        actualPoints.Clear();
+        forecastPoints.Clear();
+        budgetPoints.Clear();
+        var hasPlottedStart = false;
+
+        foreach (var bucket in fullBuckets)
+        {
+            foreach (var month in bucket.Months)
+            {
+                actualRunning += actualByMonth.GetValueOrDefault(month);
+                forecastRunning += forecastByMonth.GetValueOrDefault(month);
+                budgetRunning += budgetPerMonth;
+            }
+
+            if (!visibleBuckets.Contains(bucket))
+            {
+                continue;
+            }
+
+            var x = MapChartX(visibleIndex, visibleBuckets.Count);
+            var actualValue = actualRunning;
+            var projectedValue = actualRunning + forecastRunning;
+            if (!hasPlottedStart)
+            {
+                actualPoints.Add(new Point(x, MapChartY(actualValue, yAxisMax)));
+                forecastPoints.Add(new Point(x, MapChartY(projectedValue, yAxisMax)));
+                budgetPoints.Add(new Point(x, MapChartY(budgetRunning, yAxisMax)));
+                hasPlottedStart = true;
+            }
+
             actualPoints.Add(new Point(x, MapChartY(actualValue, yAxisMax)));
             forecastPoints.Add(new Point(x, MapChartY(projectedValue, yAxisMax)));
+            budgetPoints.Add(new Point(x, MapChartY(budgetRunning, yAxisMax)));
+            visibleIndex++;
         }
 
         LedgerActualChartPoints = actualPoints;
         LedgerForecastChartPoints = forecastPoints;
+        LedgerBudgetChartPoints = budgetPoints;
         LedgerActualChartGeometry = BuildSmoothChartGeometry(actualPoints);
         LedgerForecastChartGeometry = BuildSmoothChartGeometry(forecastPoints);
+        LedgerBudgetChartGeometry = BuildSmoothChartGeometry(budgetPoints);
 
-        BuildLedgerChartAxes(domainStart, domainEnd, yAxisMax);
-        LedgerChartStatusText = $"Showing {SelectedLedgerChartRangeOption?.Name?.ToLowerInvariant() ?? "the selected range"}, ending at the latest month. Solid line is cumulative actual spend by month; dotted line adds forecast.";
+        BuildLedgerChartAxes(visibleBuckets, yAxisMax);
+        LedgerChartStatusText = $"Showing {SelectedLedgerChartRangeOption?.Name?.ToLowerInvariant() ?? "the selected range"} at {LedgerChartTimeScale.ToString().ToLowerInvariant()} scale. Solid line is cumulative actual spend; dotted line adds forecast; dashed gray line is budget.";
+    }
+
+    private decimal GetActiveLedgerBudgetTotal()
+    {
+        var activeLine = GetActiveLedgerForecastLine();
+        if (activeLine is not null)
+        {
+            return Math.Max(0m, activeLine.Budget);
+        }
+
+        if (SelectedResourceSummary is null)
+        {
+            return 0m;
+        }
+
+        var resource = CalculationService.Normalise(SelectedResourceSummary.ResourceName);
+        return Math.Max(0m, ForecastLines
+            .Where(line => string.Equals(CalculationService.Normalise(line.ResourceName), resource, StringComparison.OrdinalIgnoreCase))
+            .Sum(line => line.Budget));
+    }
+
+    private decimal GetVisibleLedgerChartMaximum(decimal actual, decimal projected, decimal budget)
+    {
+        var values = new List<decimal>();
+        if (ShowLedgerActualSeries)
+        {
+            values.Add(actual);
+        }
+
+        if (ShowLedgerForecastSeries)
+        {
+            values.Add(projected);
+        }
+
+        if (ShowLedgerBudgetSeries)
+        {
+            values.Add(budget);
+        }
+
+        return values.Count == 0 ? 0m : Math.Max(0m, values.Max());
     }
 
     private void ClearLedgerChart(string message)
     {
         LedgerActualChartPoints = [];
         LedgerForecastChartPoints = [];
+        LedgerBudgetChartPoints = [];
         LedgerActualChartGeometry = Geometry.Empty;
         LedgerForecastChartGeometry = Geometry.Empty;
+        LedgerBudgetChartGeometry = Geometry.Empty;
         LedgerChartCanvasWidth = LedgerChartMinWidth;
         ReplaceCollection(LedgerChartGridLines, []);
         ReplaceCollection(LedgerChartXAxisLabels, []);
@@ -262,7 +345,7 @@ public sealed partial class MainWindowViewModel
         return requestedStart > fullDomainStart ? requestedStart : fullDomainStart;
     }
 
-    private void BuildLedgerChartAxes(DateOnly domainStart, DateOnly domainEnd, decimal yAxisMax)
+    private void BuildLedgerChartAxes(IReadOnlyList<LedgerChartBucket> buckets, decimal yAxisMax)
     {
         var plotLeft = LedgerChartLeftPadding;
         var plotTop = LedgerChartTopPadding;
@@ -293,9 +376,10 @@ public sealed partial class MainWindowViewModel
             });
         }
 
-        foreach (var monthStart in EnumerateMonthStarts(domainStart, domainEnd))
+        for (var index = 0; index < buckets.Count; index++)
         {
-            var x = MapChartX(monthStart, domainStart, domainEnd);
+            var bucket = buckets[index];
+            var x = MapChartX(index, buckets.Count);
             if (x > plotLeft)
             {
                 gridLines.Add(new ChartLineSegment
@@ -311,7 +395,7 @@ public sealed partial class MainWindowViewModel
             {
                 X = x - 24,
                 Y = plotBottom + 8,
-                Text = $"{monthStart:MMM yy}\n{FormatFiscalPeriodForCalendarMonth(monthStart)}"
+                Text = bucket.Label
             });
         }
 
@@ -336,15 +420,80 @@ public sealed partial class MainWindowViewModel
         ReplaceCollection(LedgerChartYAxisLabels, yLabels);
     }
 
-    private double CalculateLedgerChartWidth(DateOnly domainStart, DateOnly domainEnd)
+    private double CalculateLedgerChartWidth(int bucketCount)
     {
-        var monthCount = CountMonthsInclusive(domainStart, domainEnd);
         var monthSpacing = SelectedLedgerChartRangeOption?.MonthSpacing ?? DefaultLedgerChartMonthSpacing;
+        var scaleMultiplier = LedgerChartTimeScale switch
+        {
+            LedgerChartTimeScale.Month => 1d,
+            LedgerChartTimeScale.Quarter => 1.1d,
+            LedgerChartTimeScale.HalfYear => 1.2d,
+            LedgerChartTimeScale.Year => 1.35d,
+            _ => 1d
+        };
         var plotWidth = Math.Max(
             LedgerChartMinWidth - LedgerChartLeftPadding - LedgerChartRightPadding,
-            Math.Max(1, monthCount - 1) * monthSpacing);
+            Math.Max(1, bucketCount - 1) * monthSpacing * scaleMultiplier);
 
         return LedgerChartLeftPadding + plotWidth + LedgerChartRightPadding;
+    }
+
+    private IReadOnlyList<LedgerChartBucket> BuildLedgerChartBuckets(IReadOnlyList<DateOnly> timeline)
+    {
+        if (timeline.Count == 0)
+        {
+            return [];
+        }
+
+        var buckets = new List<LedgerChartBucket>();
+        var currentMonths = new List<DateOnly>();
+        string? currentKey = null;
+
+        foreach (var month in timeline)
+        {
+            var key = LedgerChartTimeScale switch
+            {
+                LedgerChartTimeScale.Quarter => $"{month.Year}-Q{((month.Month - 1) / 3) + 1}",
+                LedgerChartTimeScale.HalfYear => $"{month.Year}-H{(month.Month <= 6 ? 1 : 2)}",
+                LedgerChartTimeScale.Year => month.Year.ToString(),
+                _ => $"{month.Year}-{month.Month:00}"
+            };
+
+            if (currentKey is not null && !string.Equals(currentKey, key, StringComparison.Ordinal))
+            {
+                buckets.Add(CreateLedgerChartBucket(currentMonths, LedgerChartTimeScale));
+                currentMonths = [];
+            }
+
+            currentKey = key;
+            currentMonths.Add(month);
+        }
+
+        if (currentMonths.Count > 0)
+        {
+            buckets.Add(CreateLedgerChartBucket(currentMonths, LedgerChartTimeScale));
+        }
+
+        return buckets;
+    }
+
+    private static LedgerChartBucket CreateLedgerChartBucket(IReadOnlyList<DateOnly> months, LedgerChartTimeScale scale)
+    {
+        var start = months[0];
+        var end = months[^1];
+        var label = MainWindowViewModelChartLabel(start, scale);
+        return new LedgerChartBucket(start, end, months.ToList(), label);
+    }
+
+    private static string MainWindowViewModelChartLabel(DateOnly start, LedgerChartTimeScale scale)
+    {
+        return scale switch
+        {
+            LedgerChartTimeScale.Quarter => $"Q{((start.Month - 1) / 3) + 1} {start.Year}",
+            LedgerChartTimeScale.HalfYear => $"H{(start.Month <= 6 ? 1 : 2)} {start.Year}",
+            LedgerChartTimeScale.Year => start.Year.ToString(),
+            _ => $"{start:MMM yy}\n{FormatFiscalPeriodForCalendarMonth(start)}"
+        };
     }
 
     private static IEnumerable<DateOnly> EnumerateMonthStarts(DateOnly domainStart, DateOnly domainEnd)
@@ -419,6 +568,13 @@ public sealed partial class MainWindowViewModel
         var totalDays = Math.Max(1, domainEnd.DayNumber - domainStart.DayNumber);
         var elapsedDays = date.DayNumber - domainStart.DayNumber;
         return LedgerChartLeftPadding + (plotWidth * elapsedDays / totalDays);
+    }
+
+    private double MapChartX(int index, int count)
+    {
+        var plotWidth = LedgerChartCanvasWidth - LedgerChartLeftPadding - LedgerChartRightPadding;
+        var ratio = count <= 1 ? 0d : Math.Clamp(index / (double)(count - 1), 0d, 1d);
+        return LedgerChartLeftPadding + plotWidth * ratio;
     }
 
     private static double MapChartY(decimal value, decimal yAxisMax)

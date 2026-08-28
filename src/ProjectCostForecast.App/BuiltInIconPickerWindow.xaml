@@ -9,6 +9,12 @@
              SnapsToDevicePixels="True"
              UseLayoutRounding="True">
     <UserControl.Resources>
+        <DropShadowEffect x:Key="IconPickerDialogShadow"
+                          BlurRadius="28"
+                          Direction="270"
+                          ShadowDepth="8"
+                          Opacity="0.18"
+                          Color="#0F172A" />
         <Style x:Key="IconPickerTabButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0,0,0,3" />
@@ -48,7 +54,8 @@
             BorderBrush="Transparent"
             BorderThickness="0"
             CornerRadius="22"
-            Padding="28">
+            Padding="28"
+            Effect="{StaticResource IconPickerDialogShadow}">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />

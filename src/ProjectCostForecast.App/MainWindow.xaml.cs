@@ -84,7 +84,9 @@ public partial class MainWindow : Window
         new("ic_category_compliance_20.png", "Compliance", "/Assets/Icons/png/ic_category_compliance_20.png"),
         new("ic_category_closeout_20.png", "Close out", "/Assets/Icons/png/ic_category_closeout_20.png"),
         new("ic_calendar_18.png", "Calendar", "/Assets/Icons/png/ic_calendar_18.png"),
-        new("ic_nav_reports_20.png", "Reports", "/Assets/Icons/png/ic_nav_reports_20.png")
+        new("ic_nav_reports_20.png", "Reports", "/Assets/Icons/png/ic_nav_reports_20.png"),
+        new("ic_view_grid_16.png", "View grid", "/Assets/Icons/png/ic_view_grid_16.png"),
+        new("ic_save_view_16.png", "Saved view", "/Assets/Icons/png/ic_save_view_16.png")
     ];
     private readonly Dictionary<DataGrid, GridColumnFilterState> _gridColumnFilters = [];
     private readonly Dictionary<ICollectionView, Predicate<object>?> _baseViewFilters = [];
@@ -105,11 +107,13 @@ public partial class MainWindow : Window
     private MainWindowViewModel? _subscribedViewModel;
     private Point? _forecastLeftDragStart;
     private ForecastLine? _forecastDragLine;
-    private ForecastRowResizeSession? _forecastRowResize;
-    private bool _forecastRowResizeCursorActive;
+    private ForecastColumnReorderSession? _forecastColumnReorder;
+    private ColumnReorderAdorner? _forecastColumnReorderAdorner;
+    private bool _forecastColumnReorderHandlersAttached;
     private object? _forecastRowSelectionAnchor;
     private Point? _workspaceTabDragStart;
     private TabItem? _workspaceDraggedTabItem;
+    private TabReorderAdorner? _workspaceTabReorderAdorner;
     private Point? _workspaceViewDragStart;
     private WorkspaceViewTab? _workspaceDraggedView;
     private UIElement? _dimmedDragElement;
@@ -127,6 +131,7 @@ public partial class MainWindow : Window
     private bool _ganttRedrawQueued;
     private bool _scheduleGridColumnsAutoSized;
     private bool _ledgerChartScrollQueued;
+    private bool _ledgerChartZooming;
     private bool _workspaceViewColumnStateQueued;
     private bool _leftNavigationCollapsed;
     private bool _detailWorkspaceViewColumnStateQueued;
@@ -179,6 +184,7 @@ public partial class MainWindow : Window
             RebuildMonthlyPivotColumns();
             RebuildBudgetGridColumns();
             ConfigureSelectedMonthlyForecastGrid();
+            ConfigureTaskCodeReviewGrid();
             StartForecastGridFirstDrawMeasure();
             RebuildForecastGridColumns();
             AttachColumnMenus(this);
@@ -204,6 +210,7 @@ public partial class MainWindow : Window
             RebuildMonthlyPivotColumns();
             RebuildBudgetGridColumns();
             ConfigureSelectedMonthlyForecastGrid();
+            ConfigureTaskCodeReviewGrid();
             RebuildForecastGridColumns();
             ApplyDefaultColumnPresentation(this);
             AttachSpreadsheetGridHandlers(this);
@@ -490,6 +497,36 @@ public partial class MainWindow : Window
         {
             viewModel.BeginRenameWorkspaceView(view);
         }
+    }
+
+    private void WorkspaceViewTabs_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not ListBox listBox
+            || DataContext is not MainWindowViewModel viewModel
+            || e.OriginalSource is not DependencyObject source
+            || FindParent<ListBoxItem>(source) is not { DataContext: WorkspaceViewTab view } item)
+        {
+            return;
+        }
+
+        var menu = CreateColumnContextMenu();
+        var changeIcon = new MenuItem { Header = "Change icon" };
+        changeIcon.Click += (_, _) => ExecuteAfterClosingMenu(changeIcon, () =>
+            OpenBuiltInIconPicker(
+                "View Icon",
+                viewModel.GetWorkspaceViewIconKey(view),
+                viewModel.GetWorkspaceViewIconColorHex(view),
+                "ic_view_grid_16.png",
+                null,
+                "Standard",
+                (iconKey, iconColorHex) => viewModel.SetWorkspaceViewIcon(view, iconKey, iconColorHex)));
+        menu.Items.Add(changeIcon);
+        ApplyMenuIcons(menu);
+        menu.PlacementTarget = item;
+        menu.Placement = PlacementMode.MousePoint;
+        item.ContextMenu = menu;
+        menu.IsOpen = true;
+        e.Handled = true;
     }
 
     private void LedgerWorkspaceTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)

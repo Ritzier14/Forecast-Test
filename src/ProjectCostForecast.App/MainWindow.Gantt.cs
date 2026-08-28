@@ -42,6 +42,8 @@ public partial class MainWindow
     }
 
     private double _ganttDayWidth = 18;
+    private readonly List<double> _ganttRowTops = [];
+    private readonly List<double> _ganttRowHeights = [];
     private MainWindowViewModel? _ganttSubscribedViewModel;
     private bool _ganttSyncingScroll;
     private ScrollViewer? _scheduleGridScrollViewer;
@@ -150,12 +152,15 @@ public partial class MainWindow
 
     private void ConfigureScheduleGridPerformance()
     {
-        ScheduleGrid.EnableRowVirtualization = true;
+        // The Gantt canvas shares this ScrollViewer's pixel offset. A
+        // virtualizing panel estimates the sizes of unrealized variable-height
+        // rows, so its extent and offset drift as rows enter the viewport.
+        // Realize schedule rows to keep both panes on the exact same geometry.
+        ScheduleGrid.EnableRowVirtualization = false;
         ScheduleGrid.EnableColumnVirtualization = false;
         ScheduleGrid.CanUserResizeColumns = true;
-        VirtualizingPanel.SetIsVirtualizing(ScheduleGrid, true);
-        VirtualizingPanel.SetVirtualizationMode(ScheduleGrid, VirtualizationMode.Recycling);
-        ScrollViewer.SetCanContentScroll(ScheduleGrid, true);
+        VirtualizingPanel.SetIsVirtualizing(ScheduleGrid, false);
+        ScrollViewer.SetCanContentScroll(ScheduleGrid, false);
     }
 
     private MainWindowViewModel? GanttViewModel => DataContext as MainWindowViewModel;
@@ -243,6 +248,29 @@ public partial class MainWindow
         if (latest is not null && DataContext is MainWindowViewModel viewModel)
         {
             viewModel.SelectedScheduleActivity = latest;
+        }
+
+        QueueRedrawGantt();
+    }
+
+    private void ScheduleGrid_RowHeightChanged(object? sender, ProjectDataGridRowHeightChangedEventArgs e)
+    {
+        QueueRedrawGantt();
+    }
+
+    private void ScheduleGrid_ModifierRowSelectionCompleted(
+        object? sender,
+        ProjectDataGridModifierSelectionEventArgs e)
+    {
+        if (e.CurrentItem is not ScheduleActivity activity)
+        {
+            return;
+        }
+
+        _schedulePrimarySelection = activity;
+        if (GanttViewModel is { } viewModel)
+        {
+            viewModel.SelectedScheduleActivity = activity;
         }
 
         QueueRedrawGantt();
@@ -444,7 +472,8 @@ public partial class MainWindow
         var (rangeStart, rangeEnd) = GetGanttDateRange(viewModel);
         var totalDays = rangeEnd.DayNumber - rangeStart.DayNumber + 1;
         var width = totalDays * _ganttDayWidth;
-        var height = activities.Count * GanttRowHeight;
+        BuildGanttRowLayout(activities);
+        var height = GetGanttBodyHeight();
 
         GanttBodyCanvas.Width = width;
         GanttBodyCanvas.Height = height;
@@ -470,6 +499,73 @@ public partial class MainWindow
         {
             DrawGanttRow(activities[i], i, rangeStart);
         }
+    }
+
+    private void BuildGanttRowLayout(IReadOnlyList<ScheduleActivity> activities)
+    {
+        _ganttRowTops.Clear();
+        _ganttRowHeights.Clear();
+        var top = 0d;
+        var defaultHeight = GetScheduleDefaultRowHeight();
+        foreach (var activity in activities)
+        {
+            var height = ScheduleGrid.GetRowHeight(activity) ?? defaultHeight;
+            height = double.IsFinite(height) && height > 0 ? height : defaultHeight;
+            _ganttRowTops.Add(top);
+            _ganttRowHeights.Add(height);
+            top += height;
+        }
+    }
+
+    private double GetGanttBodyHeight()
+    {
+        return _ganttRowTops.Count == 0
+            ? 0d
+            : _ganttRowTops[^1] + _ganttRowHeights[^1];
+    }
+
+    private double GetGanttRowTop(int rowIndex)
+    {
+        return rowIndex >= 0 && rowIndex < _ganttRowTops.Count
+            ? _ganttRowTops[rowIndex]
+            : Math.Max(0, rowIndex) * GetScheduleDefaultRowHeight();
+    }
+
+    private double GetGanttRowHeight(int rowIndex)
+    {
+        return rowIndex >= 0 && rowIndex < _ganttRowHeights.Count
+            ? _ganttRowHeights[rowIndex]
+            : GetScheduleDefaultRowHeight();
+    }
+
+    private double GetScheduleDefaultRowHeight()
+    {
+        return double.IsFinite(ScheduleGrid.RowHeight) && ScheduleGrid.RowHeight > 0
+            ? ScheduleGrid.RowHeight
+            : GanttRowHeight;
+    }
+
+    private int GetGanttRowIndex(double y, bool allowAfterLast = false)
+    {
+        if (_ganttRowTops.Count == 0)
+        {
+            return allowAfterLast ? 0 : -1;
+        }
+
+        if (y < 0)
+        {
+            return -1;
+        }
+
+        for (var index = 0; index < _ganttRowTops.Count; index++)
+        {
+            if (y < _ganttRowTops[index] + _ganttRowHeights[index])
+            {
+                return index;
+            }
+        }
+
+        return allowAfterLast ? _ganttRowTops.Count : -1;
     }
 
     private (DateOnly Start, DateOnly End) GetGanttDateRange(MainWindowViewModel viewModel)
@@ -699,12 +795,15 @@ public partial class MainWindow
     {
         for (var i = 1; i <= rowCount; i++)
         {
+            var rowBottom = i < rowCount
+                ? GetGanttRowTop(i)
+                : GetGanttBodyHeight();
             var line = new Line
             {
                 X1 = 0,
                 X2 = width,
-                Y1 = i * GanttRowHeight,
-                Y2 = i * GanttRowHeight,
+                Y1 = rowBottom,
+                Y2 = rowBottom,
                 Stroke = GanttRowLineBrush,
                 StrokeThickness = 1
             };
@@ -771,8 +870,9 @@ public partial class MainWindow
             var toX = succUsesFinish
                 ? GanttDateToX(successor.EarlyFinish.Value, rangeStart) + _ganttDayWidth
                 : GanttDateToX(successor.EarlyStart.Value, rangeStart);
-            var fromY = (predRow * GanttRowHeight) + (GanttRowHeight / 2);
-            var toY = (succRow * GanttRowHeight) + (succRow >= predRow ? 4 : GanttRowHeight - 4);
+            var fromY = GetGanttRowTop(predRow) + (GetGanttRowHeight(predRow) / 2);
+            var successorHeight = GetGanttRowHeight(succRow);
+            var toY = GetGanttRowTop(succRow) + (succRow >= predRow ? 4 : successorHeight - 4);
 
             var elbowX = predUsesStart ? fromX - 8 : fromX + 8;
             var approachX = succUsesFinish ? toX + 8 : toX - 8;
@@ -857,14 +957,15 @@ public partial class MainWindow
 
     private void DrawGanttRow(ScheduleActivity activity, int rowIndex, DateOnly rangeStart)
     {
-        var rowTop = rowIndex * GanttRowHeight;
+        var rowTop = GetGanttRowTop(rowIndex);
+        var rowHeight = GetGanttRowHeight(rowIndex);
         var isSelected = ScheduleGrid.SelectedItems.Contains(activity);
         if (isSelected)
         {
             var selectionBand = new Rectangle
             {
                 Width = Math.Max(GanttBodyCanvas.Width, GanttBodyScroll.ViewportWidth),
-                Height = GanttRowHeight,
+                Height = rowHeight,
                 Fill = BrushFactory.Frozen("#DBEAFE"),
                 Opacity = 0.45,
                 IsHitTestVisible = false
@@ -891,7 +992,7 @@ public partial class MainWindow
                 ToolTip = $"{activity.Id} baseline: {baselineStart:d/MM/yyyy} → {baselineFinish:d/MM/yyyy}"
             };
             Canvas.SetLeft(baselineBar, GanttDateToX(baselineStart, rangeStart));
-            Canvas.SetTop(baselineBar, rowTop + GanttRowHeight - 6);
+            Canvas.SetTop(baselineBar, rowTop + rowHeight - 6);
             GanttBodyCanvas.Children.Add(baselineBar);
         }
 
@@ -911,8 +1012,8 @@ public partial class MainWindow
             {
                 X1 = barLeft + barWidth,
                 X2 = GanttDateToX(lateFinish, rangeStart) + _ganttDayWidth,
-                Y1 = rowTop + (GanttRowHeight / 2),
-                Y2 = rowTop + (GanttRowHeight / 2),
+                Y1 = rowTop + (rowHeight / 2),
+                Y2 = rowTop + (rowHeight / 2),
                 Stroke = GanttFloatBrush,
                 StrokeThickness = 2,
                 ToolTip = $"Float to late finish {lateFinish:d/MM/yyyy}"
@@ -927,8 +1028,8 @@ public partial class MainWindow
             {
                 X1 = GanttDateToX(slipBaselineFinish, rangeStart) + _ganttDayWidth,
                 X2 = barLeft + barWidth,
-                Y1 = rowTop + GanttRowHeight - 4.5,
-                Y2 = rowTop + GanttRowHeight - 4.5,
+                Y1 = rowTop + rowHeight - 4.5,
+                Y2 = rowTop + rowHeight - 4.5,
                 Stroke = GanttSlipBrush,
                 StrokeThickness = 1.6,
                 StrokeDashArray = [2, 2],
@@ -943,7 +1044,7 @@ public partial class MainWindow
             case ScheduleActivityKind.Heading:
             {
                 bar = BuildGanttSummaryBar(barWidth);
-                Canvas.SetTop(bar, rowTop + 6);
+                Canvas.SetTop(bar, rowTop + (rowHeight / 2) - 4.5);
                 break;
             }
             case ScheduleActivityKind.Milestone:
@@ -963,13 +1064,13 @@ public partial class MainWindow
                     StrokeThickness = isSelected ? 2 : 0
                 };
                 barLeft = GanttDateToX(earlyStart, rangeStart) + (_ganttDayWidth / 2) - (size / 2);
-                Canvas.SetTop(bar, rowTop + (GanttRowHeight / 2) - (size / 2));
+                Canvas.SetTop(bar, rowTop + (rowHeight / 2) - (size / 2));
                 break;
             }
             case ScheduleActivityKind.Hammock:
             {
                 bar = BuildGanttHammockBar(barWidth);
-                Canvas.SetTop(bar, rowTop + 8);
+                Canvas.SetTop(bar, rowTop + (rowHeight / 2) - 5);
                 break;
             }
             default:
@@ -998,7 +1099,7 @@ public partial class MainWindow
                 }
 
                 bar = container;
-                Canvas.SetTop(bar, rowTop + (GanttRowHeight / 2) - 6);
+                Canvas.SetTop(bar, rowTop + (rowHeight / 2) - 6);
                 break;
             }
         }
@@ -1011,7 +1112,11 @@ public partial class MainWindow
         if (activity.Kind is ScheduleActivityKind.Task or ScheduleActivityKind.Milestone)
         {
             AttachGanttBarInteractions(bar, activity, rangeStart);
-            AddGanttLinkHandle(activity, activity.IsMilestone ? barLeft + 13 : barLeft + barWidth, rowTop);
+            AddGanttLinkHandle(
+                activity,
+                activity.IsMilestone ? barLeft + 13 : barLeft + barWidth,
+                rowTop,
+                rowHeight);
         }
         else
         {
@@ -1027,7 +1132,7 @@ public partial class MainWindow
             IsHitTestVisible = false
         };
         Canvas.SetLeft(label, barLeft + barWidth + 18);
-        Canvas.SetTop(label, rowTop + (GanttRowHeight / 2) - 7);
+        Canvas.SetTop(label, rowTop + (rowHeight / 2) - 7);
         GanttBodyCanvas.Children.Add(label);
     }
 
@@ -1195,11 +1300,16 @@ public partial class MainWindow
                 _ganttDragMoved = true;
             }
 
+            var sourceRow = GetGanttRowIndex(_ganttDragStart.Y);
+            var moveThreshold = GetGanttRowHeight(sourceRow) / 2;
             if (_ganttDragMode == GanttDragMode.Move
-                && Math.Abs(deltaY) >= GanttRowHeight / 2)
+                && Math.Abs(deltaY) >= moveThreshold)
             {
-                var targetRow = Math.Clamp((int)Math.Floor(position.Y / GanttRowHeight), 0, GanttViewModel?.ScheduleActivities.Count - 1 ?? 0);
-                Canvas.SetTop(_ganttGhostRect, targetRow * GanttRowHeight + 3);
+                var targetRow = GetGanttRowIndex(position.Y);
+                if (targetRow >= 0)
+                {
+                    Canvas.SetTop(_ganttGhostRect, GetGanttRowTop(targetRow) + 3);
+                }
             }
 
             var deltaDays = Math.Round(deltaX / _ganttDayWidth);
@@ -1245,12 +1355,16 @@ public partial class MainWindow
                     viewModel.ShiftScheduleActivity(activity, deltaDays);
                 }
 
-                if (Math.Abs(deltaY) >= GanttRowHeight / 2)
+                var sourceRow = GetGanttRowIndex(_ganttDragStart.Y);
+                if (Math.Abs(deltaY) >= GetGanttRowHeight(sourceRow) / 2)
                 {
-                    var targetRow = Math.Clamp((int)Math.Floor(position.Y / GanttRowHeight), 0, viewModel.ScheduleActivities.Count - 1);
-                    viewModel.MoveScheduleActivity(activity, targetRow);
-                    RedrawGantt();
-                    return;
+                    var targetRow = GetGanttRowIndex(position.Y);
+                    if (targetRow >= 0)
+                    {
+                        viewModel.MoveScheduleActivity(activity, targetRow);
+                        RedrawGantt();
+                        return;
+                    }
                 }
             }
 
@@ -1267,7 +1381,7 @@ public partial class MainWindow
         };
     }
 
-    private void AddGanttLinkHandle(ScheduleActivity activity, double x, double rowTop)
+    private void AddGanttLinkHandle(ScheduleActivity activity, double x, double rowTop, double rowHeight)
     {
         var handle = new Ellipse
         {
@@ -1281,7 +1395,7 @@ public partial class MainWindow
             Tag = activity
         };
         var centerX = x + 6.5;
-        var centerY = rowTop + (GanttRowHeight / 2);
+        var centerY = rowTop + (rowHeight / 2);
         Canvas.SetLeft(handle, x + 2);
         Canvas.SetTop(handle, centerY - 4.5);
 
@@ -1366,7 +1480,7 @@ public partial class MainWindow
                 return;
             }
 
-            var targetRow = (int)Math.Floor(position.Y / GanttRowHeight);
+            var targetRow = GetGanttRowIndex(position.Y);
             if (targetRow >= 0 && targetRow < viewModel.ScheduleActivities.Count)
             {
                 var target = viewModel.ScheduleActivities[targetRow];
@@ -1400,7 +1514,7 @@ public partial class MainWindow
         }
 
         var position = e.GetPosition(GanttBodyCanvas);
-        var row = (int)Math.Floor(position.Y / GanttRowHeight);
+        var row = GetGanttRowIndex(position.Y);
         var target = row >= 0 && row < viewModel.ScheduleActivities.Count
             ? viewModel.ScheduleActivities[row]
             : null;
@@ -1659,7 +1773,7 @@ public partial class MainWindow
 
         handle.ReleaseMouseCapture();
         var position = e.GetPosition(GanttBodyCanvas);
-        var targetRow = (int)Math.Floor(position.Y / GanttRowHeight);
+        var targetRow = GetGanttRowIndex(position.Y);
         RemoveGanttDragVisuals();
         _ganttDragMode = GanttDragMode.None;
         _ganttDragActivity = null;
@@ -1691,10 +1805,15 @@ public partial class MainWindow
         _ganttDragStart = _ganttCreateStart;
         _ganttDragRangeStart = GetGanttDateRange(viewModel).Start;
         _ganttDragMoved = false;
+        var createRow = GetGanttRowIndex(_ganttCreateStart.Y, allowAfterLast: true);
+        var createRowHeight = GetGanttRowHeight(createRow);
+        var createRowTop = createRow < _ganttRowTops.Count
+            ? GetGanttRowTop(createRow)
+            : GetGanttBodyHeight();
         _ganttGhostRect = new Rectangle
         {
             Width = 1,
-            Height = GanttRowHeight - 7,
+            Height = Math.Max(1, createRowHeight - 7),
             Fill = GanttGhostBrush,
             Stroke = GanttTaskBrush,
             StrokeThickness = 1,
@@ -1702,7 +1821,7 @@ public partial class MainWindow
             IsHitTestVisible = false
         };
         Canvas.SetLeft(_ganttGhostRect, _ganttCreateStart.X);
-        Canvas.SetTop(_ganttGhostRect, Math.Floor(_ganttCreateStart.Y / GanttRowHeight) * GanttRowHeight + 3);
+        Canvas.SetTop(_ganttGhostRect, createRowTop + 3);
         GanttBodyCanvas.Children.Add(_ganttGhostRect);
         GanttBodyCanvas.CaptureMouse();
         e.Handled = true;
@@ -1750,7 +1869,10 @@ public partial class MainWindow
         var calendar = viewModel.ScheduleDataRef.EnsureDefaultCalendar();
         startDate = SchedulingService.RollForward(calendar, startDate);
         var duration = Math.Max(1, SchedulingService.CountWorkingDaysSigned(calendar, startDate, finishDate) + 1);
-        var row = Math.Clamp((int)Math.Floor(_ganttCreateStart.Y / GanttRowHeight), 0, viewModel.ScheduleActivities.Count);
+        var row = Math.Clamp(
+            GetGanttRowIndex(_ganttCreateStart.Y, allowAfterLast: true),
+            0,
+            viewModel.ScheduleActivities.Count);
         var activity = row < viewModel.ScheduleActivities.Count && viewModel.ScheduleActivities[row].IsUnscheduled
             ? viewModel.ScheduleActivities[row]
             : viewModel.AddScheduleActivityAt(ScheduleActivityKind.Task, row);
@@ -1766,7 +1888,7 @@ public partial class MainWindow
             return;
         }
 
-        var targetRow = (int)Math.Floor(position.Y / GanttRowHeight);
+        var targetRow = GetGanttRowIndex(position.Y);
         if (targetRow < 0 || targetRow >= viewModel.ScheduleActivities.Count)
         {
             _ganttLinkHint.Visibility = Visibility.Collapsed;

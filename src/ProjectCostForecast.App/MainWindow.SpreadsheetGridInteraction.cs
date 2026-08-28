@@ -107,7 +107,6 @@ public partial class MainWindow
                         UIElement.PreviewMouseLeftButtonUpEvent,
                         new MouseButtonEventHandler(ForecastLinesGrid_PreviewMouseLeftButtonUp),
                         handledEventsToo: true);
-                    grid.LostMouseCapture += ForecastLinesGrid_LostMouseCapture;
                 }
                 grid.PreviewMouseLeftButtonDown += SpreadsheetGrid_PreviewMouseLeftButtonDown;
                 grid.PreviewMouseLeftButtonUp += SpreadsheetGrid_PreviewMouseLeftButtonUp;
@@ -120,6 +119,10 @@ public partial class MainWindow
                 grid.CellEditEnding += SpreadsheetGrid_CellEditEnding;
                 grid.SelectedCellsChanged += SpreadsheetGrid_SelectedCellsChanged;
                 grid.CurrentCellChanged += SpreadsheetGrid_CurrentCellChanged;
+                if (grid is ProjectDataGrid projectGrid)
+                {
+                    projectGrid.ModifierRowSelectionCompleted += SpreadsheetGrid_ModifierRowSelectionCompleted;
+                }
                 grid.LoadingRow += SpreadsheetGrid_LoadingRow;
                 grid.Loaded += SpreadsheetGrid_Loaded;
                 grid.AddHandler(FrameworkElement.ContextMenuOpeningEvent, new ContextMenuEventHandler(SpreadsheetTextBox_ContextMenuOpening), true);
@@ -643,7 +646,7 @@ public partial class MainWindow
             return;
         }
 
-        if (ReferenceEquals(grid, ForecastLinesGrid) && _forecastRowResize is not null)
+        if (grid is ProjectDataGrid { IsRowResizeInProgress: true })
         {
             e.Handled = true;
             return;
@@ -1697,6 +1700,23 @@ public partial class MainWindow
         _spreadsheetPreviousCurrentCells[grid] = currentCell;
         EnsureCurrentCellSelected(grid);
         QueueSpreadsheetSelectionUpdate(grid, [previousCell.Item, currentCell.Item, GetGridRowContext(grid)]);
+    }
+
+    private void SpreadsheetGrid_ModifierRowSelectionCompleted(
+        object? sender,
+        ProjectDataGridModifierSelectionEventArgs e)
+    {
+        if (sender is not DataGrid grid)
+        {
+            return;
+        }
+
+        var previousRow = GetGridRowContext(grid);
+        SelectGridRowContext(grid, e.CurrentItem);
+        QueueSpreadsheetSelectionUpdate(
+            grid,
+            [previousRow, e.CurrentItem],
+            refreshAllVisuals: true);
     }
 
     private void SpreadsheetTextBox_ContextMenuOpening(object sender, ContextMenuEventArgs e)

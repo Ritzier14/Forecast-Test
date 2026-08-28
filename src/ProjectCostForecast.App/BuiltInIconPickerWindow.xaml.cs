@@ -198,14 +198,14 @@ public partial class BuiltInIconPickerWindow : UserControl
         var button = new Button
         {
             Tag = option.Key,
-            Width = 42,
-            Height = 42,
-            Margin = new Thickness(0, 0, 4, 4),
+            Width = 126,
+            Height = 88,
+            Margin = new Thickness(0, 0, 10, 10),
             Padding = new Thickness(0),
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
             Cursor = Cursors.Hand,
-            ToolTip = option.Label
+            ToolTip = option.Label + " — click to select; right-click to set colour"
         };
         button.Click += SelectIcon_Click;
         button.MouseRightButtonUp += SelectIcon_MouseRightButtonUp;
@@ -213,28 +213,68 @@ public partial class BuiltInIconPickerWindow : UserControl
         var border = new Border
         {
             BorderBrush = isSelected
-                ? BrushFactory.Frozen("#3B82F6")
+                ? BrushFactory.Frozen("#2563EB")
                 : (_showCardBorders ? BrushFactory.Frozen("#E5EAF3") : Brushes.Transparent),
             BorderThickness = isSelected
                 ? new Thickness(2)
                 : (_showCardBorders ? new Thickness(1) : new Thickness(0)),
-            CornerRadius = new CornerRadius(0),
-            Background = isSelected ? BrushFactory.Frozen("#F5F9FF") : BrushFactory.Frozen("#FFFFFF"),
-            Padding = new Thickness(4)
+            CornerRadius = new CornerRadius(12),
+            Background = isSelected ? BrushFactory.Frozen("#EEF5FF") : BrushFactory.Frozen("#FFFFFF"),
+            Padding = new Thickness(8)
         };
 
         var grid = new Grid();
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var image = new Image
         {
-            Source = MainWindow.GetBuiltInImageSourceByPath(option.AssetPath, SelectedIconKey == option.Key ? SelectedIconColorHex : null),
-            Width = 26,
-            Height = 26,
+            Source = MainWindow.GetBuiltInImageSourceByPath(option.AssetPath, isSelected ? SelectedIconColorHex : null),
+            Width = 34,
+            Height = 34,
             Stretch = Stretch.Uniform,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
         };
         RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+        Grid.SetRow(image, 0);
         grid.Children.Add(image);
+
+        var label = new TextBlock
+        {
+            Text = option.Label,
+            Foreground = isSelected ? BrushFactory.Frozen("#1D4ED8") : BrushFactory.Frozen("#475569"),
+            FontSize = 11,
+            FontWeight = isSelected ? FontWeights.SemiBold : FontWeights.Normal,
+            TextAlignment = TextAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Margin = new Thickness(0, 6, 0, 0)
+        };
+        Grid.SetRow(label, 1);
+        grid.Children.Add(label);
+
+        if (isSelected)
+        {
+            grid.Children.Add(new Border
+            {
+                Width = 18,
+                Height = 18,
+                CornerRadius = new CornerRadius(9),
+                Background = BrushFactory.Frozen("#2563EB"),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                Child = new TextBlock
+                {
+                    Text = "✓",
+                    Foreground = Brushes.White,
+                    FontSize = 11,
+                    FontWeight = FontWeights.Bold,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextAlignment = TextAlignment.Center
+                }
+            });
+        }
 
         if (isSelected && !string.IsNullOrWhiteSpace(SelectedIconColorHex))
         {
@@ -254,6 +294,28 @@ public partial class BuiltInIconPickerWindow : UserControl
 
         border.Child = grid;
         button.Content = border;
+        button.MouseEnter += (_, _) =>
+        {
+            border.Background = isSelected
+                ? BrushFactory.Frozen("#E4EFFF")
+                : BrushFactory.Frozen("#F8FAFC");
+            if (!isSelected && _showCardBorders)
+            {
+                border.BorderBrush = BrushFactory.Frozen("#B8C7D9");
+            }
+        };
+        button.MouseLeave += (_, _) =>
+        {
+            border.Background = isSelected
+                ? BrushFactory.Frozen("#EEF5FF")
+                : BrushFactory.Frozen("#FFFFFF");
+            if (!isSelected)
+            {
+                border.BorderBrush = _showCardBorders
+                    ? BrushFactory.Frozen("#E5EAF3")
+                    : Brushes.Transparent;
+            }
+        };
         return button;
     }
 

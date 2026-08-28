@@ -672,7 +672,19 @@ public partial class MainWindow
         menu.Items.Add(hideColumnsMenu);
     }
 
-    private void AddForecastPeriodVisibilityItems(MenuItem menu, DataGrid grid)
+    private void AddForecastPeriodVisibilityItems(ItemsControl menu, DataGrid grid)
+    {
+        var forecastMenu = BuildForecastPeriodVisibilityMenu(grid);
+        if (forecastMenu is null)
+        {
+            return;
+        }
+
+        menu.Items.Add(new Separator());
+        menu.Items.Add(forecastMenu);
+    }
+
+    private MenuItem? BuildForecastPeriodVisibilityMenu(DataGrid grid)
     {
         var monthColumns = grid.Columns
             .Where(column => column.Header is ForecastMonthColumnDefinition)
@@ -680,15 +692,13 @@ public partial class MainWindow
             .ToList();
         if (monthColumns.Count == 0)
         {
-            return;
+            return null;
         }
 
-        menu.Items.Add(new Separator());
         var forecastMenu = new MenuItem
         {
             Header = "Forecast View"
         };
-        menu.Items.Add(forecastMenu);
 
         AddColumnGroupVisibilityItem(forecastMenu, grid, "Show Forecast View", monthColumns);
         var financialYearsMenu = new MenuItem { Header = "Financial Years" };
@@ -701,6 +711,8 @@ public partial class MainWindow
         {
             AddColumnGroupVisibilityItem(financialYearsMenu, grid, group.Key, group.ToList());
         }
+
+        return forecastMenu;
     }
 
     private void AddColumnGroupVisibilityItem(MenuItem menu, DataGrid grid, string label, IReadOnlyCollection<DataGridColumn> columns)
@@ -1049,6 +1061,36 @@ public partial class MainWindow
 
         var menu = CreateColumnContextMenu();
         AddSectionHeader(menu, "Calendar year");
+        if (int.TryParse(yearLabel, out _))
+        {
+            var calendarYearColumns = ForecastLinesGrid.Columns
+                .Where(column => column.Header is ForecastMonthColumnDefinition { IsTotal: false } monthColumn
+                    && string.Equals(monthColumn.YearLabel, yearLabel, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var hideYear = new MenuItem
+            {
+                Header = "Hide calendar year",
+                IsEnabled = calendarYearColumns.Count > 0
+            };
+            hideYear.Click += (_, _) => ExecuteAfterClosingMenu(
+                hideYear,
+                () => SetColumnGroupVisibility(ForecastLinesGrid, calendarYearColumns, false));
+            menu.Items.Add(hideYear);
+
+            var addYear = new MenuItem { Header = "Add new calendar year" };
+            addYear.Click += (_, _) => ExecuteAfterClosingMenu(addYear, viewModel.AddNewCalendarYear);
+            menu.Items.Add(addYear);
+
+            var forecastMenu = BuildForecastPeriodVisibilityMenu(ForecastLinesGrid);
+            if (forecastMenu is not null)
+            {
+                menu.Items.Add(new Separator());
+                menu.Items.Add(forecastMenu);
+            }
+
+            menu.Items.Add(new Separator());
+        }
+
         menu.Items.Add(BuildForecastHeaderColourTargetMenu(
             $"Calendar year {yearLabel}",
             viewModel.GetForecastCalendarYearHeaderColorHex(yearLabel),

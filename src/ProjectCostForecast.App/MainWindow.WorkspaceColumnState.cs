@@ -85,6 +85,7 @@ public partial class MainWindow
         _subscribedViewModel.LedgerMonthlyPivotPeriods.CollectionChanged += ViewModelPivotColumns_CollectionChanged;
         _subscribedViewModel.PivotResultColumns.CollectionChanged += ViewModelPivotColumns_CollectionChanged;
         _subscribedViewModel.CtcMonthForecastColumns.CollectionChanged += ViewModelForecastColumns_CollectionChanged;
+        _subscribedViewModel.MonthlyForecastAcrossRows.CollectionChanged += ViewModelMonthlyForecastAcrossRows_CollectionChanged;
         _subscribedViewModel.BudgetFiscalYears.CollectionChanged += ViewModelBudgetFiscalYears_CollectionChanged;
         _subscribedViewModel.PropertyChanged += SubscribedViewModel_PropertyChanged;
     }
@@ -102,6 +103,7 @@ public partial class MainWindow
         viewModel.LedgerMonthlyPivotPeriods.CollectionChanged -= ViewModelPivotColumns_CollectionChanged;
         viewModel.PivotResultColumns.CollectionChanged -= ViewModelPivotColumns_CollectionChanged;
         viewModel.CtcMonthForecastColumns.CollectionChanged -= ViewModelForecastColumns_CollectionChanged;
+        viewModel.MonthlyForecastAcrossRows.CollectionChanged -= ViewModelMonthlyForecastAcrossRows_CollectionChanged;
         viewModel.BudgetFiscalYears.CollectionChanged -= ViewModelBudgetFiscalYears_CollectionChanged;
         viewModel.PropertyChanged -= SubscribedViewModel_PropertyChanged;
         _subscribedViewModel = null;
@@ -111,7 +113,18 @@ public partial class MainWindow
         => RebuildMonthlyPivotColumns();
 
     private void ViewModelForecastColumns_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-        => RebuildForecastGridColumns();
+    {
+        RebuildForecastGridColumns();
+        ConfigureSelectedMonthlyForecastGrid();
+    }
+
+    private void ViewModelMonthlyForecastAcrossRows_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (_subscribedViewModel?.IsMonthlyForecastMonthsAcross == true)
+        {
+            ConfigureSelectedMonthlyForecastGrid();
+        }
+    }
 
     private void ViewModelBudgetFiscalYears_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         => RebuildBudgetGridColumns();
@@ -128,6 +141,7 @@ public partial class MainWindow
         if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowCtcMonthForecastColumns), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowMonthNameAboveFiscalPeriod), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedCtcMonthForecastYear), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedCtcMonthForecastYears), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowForecastZeroAsBlank), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowVarianceIndicators), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowActualCostInMonthCells), StringComparison.Ordinal)
@@ -171,6 +185,19 @@ public partial class MainWindow
             QueueApplyCurrentDetailWorkspaceViewColumnState();
         }
 
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.IsMonthlyForecastMonthsAcross), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.MonthlyForecastAcrossRows), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedMonthlyForecasts), StringComparison.Ordinal))
+        {
+            ConfigureSelectedMonthlyForecastGrid();
+        }
+
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.TaskCodeReviewDisplayMode), StringComparison.Ordinal)
+            || string.Equals(e.PropertyName, nameof(MainWindowViewModel.TaskCodeReviewRows), StringComparison.Ordinal))
+        {
+            ConfigureTaskCodeReviewGrid();
+        }
+
         if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ForecastGroupByKey), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowOnlyLinesWithActualCost), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowCostThisMonthOnly), StringComparison.Ordinal)
@@ -197,7 +224,10 @@ public partial class MainWindow
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.LedgerActualChartGeometry), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.LedgerForecastChartGeometry), StringComparison.Ordinal))
         {
-            QueueScrollLedgerChartToEnd();
+            if (!_ledgerChartZooming)
+            {
+                QueueScrollLedgerChartToEnd();
+            }
         }
     }
 

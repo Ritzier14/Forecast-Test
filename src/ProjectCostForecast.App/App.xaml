@@ -493,6 +493,12 @@
             <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
         </Style>
 
+        <!-- ProjectDataGrid is the canonical table control. WPF does not
+             inherit an implicit DataGrid style onto a derived control, so the
+             explicit BasedOn keeps every table on the same visual template. -->
+        <Style TargetType="{x:Type local:ProjectDataGrid}"
+               BasedOn="{StaticResource {x:Type DataGrid}}" />
+
         <Style TargetType="DataGridColumnHeader">
             <Setter Property="Background" Value="#EAF0F8" />
             <Setter Property="Foreground" Value="#0F172A" />
@@ -602,6 +608,8 @@
 
         <Style TargetType="DataGridCell">
             <Setter Property="Padding" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="SnapsToDevicePixels" Value="True" />
             <Setter Property="UseLayoutRounding" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
