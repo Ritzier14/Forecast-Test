@@ -13,6 +13,7 @@ The current build focuses on the highest-value spreadsheet workflow and the rele
 - Actuals pivot view grouped by task, resource, and FY-period.
 - Editable monthly forecasts with audit entries.
 - Open/save project JSON files with backups.
+- Verify and restore project backups to a new file, with a pre-restore backup for explicit overwrites.
 - Raw transaction CSV import/export.
 - Validation and audit tabs.
 - Add, duplicate, and delete forecast lines.
@@ -67,6 +68,7 @@ The checks verify the important workbook-derived drilldowns, including:
 - `1.Mar 26.xlsm` - root source workbook being recreated and enhanced.
 - `source_workbook/1.Mar 26.xlsm` - archived source workbook copy.
 - `tests/ProjectCostForecast.Tests` - no-dependency acceptance check harness.
+- `docs/RECOVERY_RUNBOOK.md` - user-facing backup, retention, and restore instructions.
 
 ## Stack
 

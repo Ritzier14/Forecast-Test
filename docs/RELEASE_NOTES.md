@@ -14,6 +14,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - Workbook Report tab matching the spreadsheet's FY spent-to-date, cost-to-complete, planned-cost, AP/LTP budget, and variance block.
 - Actuals Pivot tab matching the workbook pivot's task/resource/FY-period grouping.
 - Open, save, and save-as project JSON files, with timestamped backups when overwriting.
+- Verified backup restore to a new project path, safe overwrite restore with a pre-restore backup, and bounded backup retention.
 - CSV import for raw transactions with common header aliases.
 - CSV export for raw transactions.
 - Forecast line add, duplicate, and delete commands.

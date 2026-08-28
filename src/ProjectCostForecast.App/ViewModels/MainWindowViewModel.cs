@@ -291,6 +291,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
         OpenProjectCommand = new RelayCommand(_ => OpenProject());
         SaveProjectCommand = new RelayCommand(_ => SaveProject(), _ => true);
         SaveProjectAsCommand = new RelayCommand(_ => SaveProjectAs());
+        RestoreProjectBackupCommand = new RelayCommand(_ => RestoreProjectBackup());
         ImportCsvCommand = new RelayCommand(_ => ImportCsv(), _ => !IsViewingSavedMonth);
         ExportTransactionsCommand = new RelayCommand(_ => ExportTransactions());
         RecalculateCommand = new RelayCommand(_ => RecalculateAndRefresh(markDirty: true, reason: "Manual recalculation"), _ => !IsViewingSavedMonth);
@@ -400,6 +401,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public ICommand OpenProjectCommand { get; }
     public ICommand SaveProjectCommand { get; }
     public ICommand SaveProjectAsCommand { get; }
+    public ICommand RestoreProjectBackupCommand { get; }
     public ICommand ImportCsvCommand { get; }
     public ICommand ExportTransactionsCommand { get; }
     public ICommand RecalculateCommand { get; }

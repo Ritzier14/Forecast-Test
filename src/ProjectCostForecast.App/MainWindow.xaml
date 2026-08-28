@@ -533,6 +533,7 @@
                         <Button Content="Open project" Command="{Binding OpenProjectCommand}" ToolTip="Open a project file" Style="{StaticResource LeftForecastActionButtonStyle}" />
                         <Button Content="Save project" Command="{Binding SaveProjectCommand}" ToolTip="Save the current project" Style="{StaticResource LeftForecastActionButtonStyle}" />
                         <Button Content="Save project as" Command="{Binding SaveProjectAsCommand}" ToolTip="Save the current project under a new name" Style="{StaticResource LeftForecastActionButtonStyle}" />
+                        <Button Content="Restore backup" Command="{Binding RestoreProjectBackupCommand}" ToolTip="Verify and restore a project backup to a safe destination" Style="{StaticResource LeftForecastActionButtonStyle}" />
                         <Button Content="Clear all" Command="{Binding ClearAllCommand}" ToolTip="Clear all project records" Style="{StaticResource LeftForecastActionButtonStyle}" />
                         <Button Content="Import CSV" Command="{Binding ImportCsvCommand}" ToolTip="Import cost transactions from CSV" Style="{StaticResource LeftForecastActionButtonStyle}" />
                         <CheckBox Content="Initial cost load"

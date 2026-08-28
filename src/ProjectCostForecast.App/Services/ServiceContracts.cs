@@ -35,6 +35,19 @@ public interface IProjectFileService
         Save(path, dataset);
         return GetRevision(path);
     }
+
+    ProjectBackupVerification VerifyBackup(string backupPath)
+    {
+        throw new NotSupportedException("This project file service does not support backup verification.");
+    }
+
+    ProjectRestoreResult RestoreBackup(
+        string backupPath,
+        string? currentProjectPath = null,
+        string? destinationPath = null)
+    {
+        throw new NotSupportedException("This project file service does not support backup restore.");
+    }
 }
 
 public interface IUserPreferencesService

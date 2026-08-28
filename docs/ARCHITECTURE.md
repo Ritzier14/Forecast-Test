@@ -22,7 +22,7 @@ Domain and calculation code must not acquire new dependencies on `Window`, `Data
 
 `MainWindowViewModelDependencies` owns construction of calculation, scheduling, import, storage, validation, and preferences services. The parameterless view-model constructor is retained for XAML/startup compatibility and delegates to that boundary. Tests and future startup code should pass explicit dependencies and an initial-dataset factory.
 
-Storage is accessed through `IProjectFileService` and `IUserPreferencesService`. JSON writes go to a unique temporary file in the destination directory, are flushed, and then replace the destination. Project backups use collision-safe names.
+Storage is accessed through `IProjectFileService` and `IUserPreferencesService`. JSON writes go to a unique temporary file in the destination directory, are flushed, and then replace the destination. Project backups use collision-safe names, are verified through the project migration/validation boundary, and follow a bounded retention policy.
 
 ## State and refresh rules
 

@@ -79,6 +79,53 @@ public sealed partial class MainWindowViewModel
         return SaveDatasetAs(_dataset, showError);
     }
 
+    private void RestoreProjectBackup()
+    {
+        if (!ConfirmDiscardUnsavedChanges())
+        {
+            return;
+        }
+
+        var backupDialog = new OpenFileDialog
+        {
+            Title = "Select a verified project backup",
+            Filter = "Project Cost Forecast backups (*.bak.json)|*.bak.json|JSON files (*.json)|*.json|All files (*.*)|*.*"
+        };
+        if (backupDialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var destinationDialog = new SaveFileDialog
+        {
+            Title = "Restore project backup to a new file",
+            Filter = "Project Cost Forecast JSON (*.json)|*.json|All files (*.*)|*.*",
+            FileName = BuildDefaultRestoredProjectFileName()
+        };
+        if (destinationDialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var restore = _projectFileService.RestoreBackup(
+                backupDialog.FileName,
+                ProjectFilePath,
+                destinationDialog.FileName);
+            var restoredProject = _projectFileService.LoadWithRevision(restore.RestoredPath);
+            ApplyLoadedProject(restore.RestoredPath, restoredProject);
+            StatusText = string.IsNullOrWhiteSpace(restore.PreRestoreBackupPath)
+                ? $"Restored {restore.RestoredPath} from {restore.BackupPath}."
+                : $"Restored {restore.RestoredPath} from {restore.BackupPath}; pre-restore backup created at {restore.PreRestoreBackupPath}.";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Restore failed: {ex.Message}";
+            MessageBox.Show(ex.Message, "Restore failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private bool SaveDataset(ProjectDataset dataset, bool showError = true, string operation = "Save project")
     {
         ArgumentNullException.ThrowIfNull(dataset);
@@ -337,6 +384,14 @@ public sealed partial class MainWindowViewModel
         return string.IsNullOrWhiteSpace(collapsedTitle)
             ? "ProjectCostForecast.project.json"
             : $"{collapsedTitle}.json";
+    }
+
+    private string BuildDefaultRestoredProjectFileName()
+    {
+        var defaultName = BuildDefaultProjectFileName();
+        var extension = Path.GetExtension(defaultName);
+        var baseName = Path.GetFileNameWithoutExtension(defaultName);
+        return $"{baseName}.restored{extension}";
     }
 
     private void ImportCsv()
