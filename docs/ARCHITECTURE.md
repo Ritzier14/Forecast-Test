@@ -71,10 +71,9 @@ The split should be performed feature by feature with characterization tests. Mo
 
 Every architecture change must keep these gates green:
 
-1. `dotnet build ProjectCostForecast.sln -c Release`
-2. the acceptance executable in `tests/ProjectCostForecast.Tests`
-3. project save/load and CSV export/import round trips
-4. scheduling correctness and the large-schedule timing check
-5. a large-data refresh benchmark as soon as refresh coordination is extracted
+1. `.\scripts\verify.ps1` as the authoritative entry point: Release build followed by the discovered tests in `tests/ProjectCostForecast.UnitTests`.
+2. project save/load and CSV/XLSX/XLSM import/export boundary checks.
+3. scheduling correctness, deterministic WPF interaction checks, and the characterized large-schedule/calculation timing checks.
+4. a large-data refresh benchmark as soon as refresh coordination is extracted.
 
-The console acceptance harness should ultimately become a discovered test project. Until then, CI must execute it with `dotnet run`; `dotnet test` alone does not run its checks.
+`docs/TEST_COVERAGE_MAP.md` maps all 428 logical assertions from the original console harness to named discovered tests. The executable in `tests/ProjectCostForecast.Tests` remains unchanged as an opt-in compatibility smoke check invoked with `-RunLegacySmoke`; it is deliberately not a second default test gate and must not be retired without explicit user approval.

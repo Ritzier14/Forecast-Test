@@ -2,6 +2,10 @@
 param(
     [switch]$NoRestore,
 
+    # The legacy executable is retained as an opt-in smoke check. It is not the
+    # authoritative automated-test path; discovered tests below are.
+    [switch]$RunLegacySmoke,
+
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
 
@@ -41,12 +45,18 @@ function Invoke-RequiredNativeCommand {
 try {
     $repoRoot = (Resolve-Path -LiteralPath (Join-Path -Path $PSScriptRoot -ChildPath '..')).Path
     $solutionPath = Join-Path -Path $repoRoot -ChildPath 'ProjectCostForecast.sln'
-    $harnessProjectPath = Join-Path -Path $repoRoot -ChildPath 'tests\ProjectCostForecast.Tests\ProjectCostForecast.Tests.csproj'
     $unitTestProjectPath = Join-Path -Path $repoRoot -ChildPath 'tests\ProjectCostForecast.UnitTests\ProjectCostForecast.UnitTests.csproj'
 
-    foreach ($requiredPath in @($solutionPath, $harnessProjectPath, $unitTestProjectPath)) {
+    foreach ($requiredPath in @($solutionPath, $unitTestProjectPath)) {
         if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
             throw "Required repository file was not found: $requiredPath"
+        }
+    }
+
+    if ($RunLegacySmoke) {
+        $harnessProjectPath = Join-Path -Path $repoRoot -ChildPath 'tests\ProjectCostForecast.Tests\ProjectCostForecast.Tests.csproj'
+        if (-not (Test-Path -LiteralPath $harnessProjectPath -PathType Leaf)) {
+            throw "Legacy smoke project was not found: $harnessProjectPath"
         }
     }
 
@@ -73,16 +83,6 @@ try {
     )
 
     Invoke-RequiredNativeCommand -FilePath $resolvedDotnet -Arguments @(
-        'run',
-        '--project',
-        $harnessProjectPath,
-        '-c',
-        $Configuration,
-        '--no-build',
-        '--no-restore'
-    )
-
-    Invoke-RequiredNativeCommand -FilePath $resolvedDotnet -Arguments @(
         'test',
         $unitTestProjectPath,
         '-c',
@@ -90,6 +90,19 @@ try {
         '--no-build',
         '--no-restore'
     )
+
+    if ($RunLegacySmoke) {
+        Write-Host 'Running retained legacy console smoke check (not the authoritative test gate).'
+        Invoke-RequiredNativeCommand -FilePath $resolvedDotnet -Arguments @(
+            'run',
+            '--project',
+            $harnessProjectPath,
+            '-c',
+            $Configuration,
+            '--no-build',
+            '--no-restore'
+        )
+    }
 
     Write-Host 'Verification passed.'
     $exitCode = 0

@@ -21,6 +21,7 @@ The current build focuses on the highest-value spreadsheet workflow and the rele
 - Validation and audit tabs.
 - Add, duplicate, and delete forecast lines.
 - Command-line acceptance checks for the workbook-derived seed data.
+- A named discovered xUnit suite mapping all 428 legacy harness assertions, including deterministic STA-hosted WPF checks.
 - A P6-style Schedule tab with a CPM Gantt chart: activities, milestones, headings
   with sub-grouping, hammock tasks, FS/SS/FF/SF links with lag, early/late dates,
   total float and critical path, constraint dates, multiple calendars with holidays,
@@ -40,8 +41,8 @@ The codebase is being migrated toward a modular WPF architecture with explicit a
 ## How to verify
 
 The repository verification entry point restores packages, builds the solution in
-Release configuration, runs the console acceptance harness, and runs the discovered
-unit-test project. From the repository root, run:
+Release configuration, and runs the authoritative discovered xUnit suite. From the
+repository root, run:
 
 ```powershell
 .\scripts\verify.ps1
@@ -50,11 +51,14 @@ unit-test project. From the repository root, run:
 The first run needs a .NET 8 SDK and access to the configured NuGet source. After a
 successful restore, use `.\scripts\verify.ps1 -NoRestore` for the fast local path.
 The script can also be invoked by its full path from another working directory.
-The script exits non-zero if restore, build, either test gate, or the acceptance
-harness fails. Build outputs remain under the existing ignored `bin/`, `obj/`, and
-`artifacts/` paths. The discovered tests live in
-`tests\ProjectCostForecast.UnitTests`; the original executable harness remains a
-required compatibility gate.
+The script exits non-zero if restore, build, or a discovered test fails. Build
+outputs remain under the existing ignored `bin/`, `obj/`, and `artifacts/` paths.
+The tests live in `tests\ProjectCostForecast.UnitTests`; their mapping to the
+original executable harness is documented in `docs/TEST_COVERAGE_MAP.md`.
+
+The original console harness is retained as a distinct opt-in compatibility smoke
+check. Run `.\scripts\verify.ps1 -NoRestore -RunLegacySmoke` when that comparison is
+specifically useful; it is not the authoritative automated-test gate.
 
 The checks verify the important workbook-derived drilldowns, including:
 
@@ -74,6 +78,7 @@ The checks verify the important workbook-derived drilldowns, including:
 - `docs/RECOVERY_RUNBOOK.md` - user-facing backup, retention, and restore instructions.
 - `docs/DIAGNOSTICS_RUNBOOK.md` - user-facing diagnostics and corrupt-preference recovery instructions.
 - `docs/DATE_TIME_CONTRACT.md` - NZ business-date, UTC persistence, display-locale, and legacy timestamp rules.
+- `docs/TEST_COVERAGE_MAP.md` - complete legacy-harness-to-discovered-test mapping and test isolation rules.
 
 ## Stack
 
