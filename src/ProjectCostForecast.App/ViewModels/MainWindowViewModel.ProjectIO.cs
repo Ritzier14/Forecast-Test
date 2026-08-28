@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -48,16 +49,29 @@ public sealed partial class MainWindowViewModel
 
     private bool SaveProject(bool showError = true)
     {
+        SyncDatasetFromCollections();
+        return SaveDataset(_dataset, showError);
+    }
+
+    private bool SaveProjectAs(bool showError = true)
+    {
+        SyncDatasetFromCollections();
+        return SaveDatasetAs(_dataset, showError);
+    }
+
+    private bool SaveDataset(ProjectDataset dataset, bool showError = true)
+    {
+        ArgumentNullException.ThrowIfNull(dataset);
+
         if (string.IsNullOrWhiteSpace(ProjectFilePath))
         {
-            return SaveProjectAs(showError);
+            return SaveDatasetAs(dataset, showError);
         }
 
         AuditEvent? saveAuditEvent = null;
         try
         {
             var backupPath = _projectFileService.CreateBackup(ProjectFilePath);
-            SyncDatasetFromCollections();
             saveAuditEvent = new AuditEvent
             {
                 EntityType = "Project",
@@ -66,24 +80,30 @@ public sealed partial class MainWindowViewModel
                 NewValue = ProjectFilePath,
                 Reason = "Project saved"
             };
-            AddAuditEvent(saveAuditEvent);
-            _projectFileService.Save(ProjectFilePath, _dataset);
-            IsDirty = false;
-            StatusText = string.IsNullOrWhiteSpace(backupPath)
-                ? $"Saved {ProjectFilePath}"
-                : $"Saved {ProjectFilePath}; backup created.";
+            AddSaveAuditEvent(dataset, saveAuditEvent);
+            _projectFileService.Save(ProjectFilePath, dataset);
+            if (ReferenceEquals(dataset, _dataset))
+            {
+                IsDirty = false;
+                StatusText = string.IsNullOrWhiteSpace(backupPath)
+                    ? $"Saved {ProjectFilePath}"
+                    : $"Saved {ProjectFilePath}; backup created.";
+            }
+
             return true;
         }
         catch (Exception ex)
         {
             if (saveAuditEvent is not null)
             {
-                AuditEvents.Remove(saveAuditEvent);
-                _dataset.AuditEvents.Remove(saveAuditEvent);
-                OnPropertyChanged(nameof(AuditEvents));
+                RemoveSaveAuditEvent(dataset, saveAuditEvent);
             }
 
-            StatusText = $"Save failed: {ex.Message}";
+            if (ReferenceEquals(dataset, _dataset))
+            {
+                StatusText = $"Save failed: {ex.Message}";
+            }
+
             if (showError)
             {
                 MessageBox.Show(ex.Message, "Save failed", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -93,8 +113,10 @@ public sealed partial class MainWindowViewModel
         }
     }
 
-    private bool SaveProjectAs(bool showError = true)
+    private bool SaveDatasetAs(ProjectDataset dataset, bool showError = true)
     {
+        ArgumentNullException.ThrowIfNull(dataset);
+
         var dialog = new SaveFileDialog
         {
             Title = "Save Project Cost Forecast file",
@@ -109,13 +131,34 @@ public sealed partial class MainWindowViewModel
 
         var previousPath = ProjectFilePath;
         ProjectFilePath = dialog.FileName;
-        if (SaveProject())
+        if (SaveDataset(dataset, showError))
         {
             return true;
         }
 
         ProjectFilePath = previousPath;
         return false;
+    }
+
+    private void AddSaveAuditEvent(ProjectDataset dataset, AuditEvent auditEvent)
+    {
+        if (ReferenceEquals(dataset, _dataset))
+        {
+            AddAuditEvent(auditEvent);
+            return;
+        }
+
+        dataset.AuditEvents.Insert(0, auditEvent);
+    }
+
+    private void RemoveSaveAuditEvent(ProjectDataset dataset, AuditEvent auditEvent)
+    {
+        dataset.AuditEvents.Remove(auditEvent);
+        if (ReferenceEquals(dataset, _dataset))
+        {
+            AuditEvents.Remove(auditEvent);
+            OnPropertyChanged(nameof(AuditEvents));
+        }
     }
 
     private string BuildDefaultProjectFileName()
@@ -1150,8 +1193,11 @@ public sealed partial class MainWindowViewModel
 
     private void SetupNewMonth()
     {
-        SyncDatasetFromCollections();
-        ApplyClosedForecastPeriodRule();
+        if (Volatile.Read(ref _newMonthOperationInProgress) != 0)
+        {
+            return;
+        }
+
         var currentPeriod = Header.CurrentPeriod;
         if (string.IsNullOrWhiteSpace(currentPeriod))
         {
@@ -1159,10 +1205,7 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        _calculationService.Recalculate(_dataset);
-        ReplaceCollection(ForecastLines, _dataset.ForecastLines);
-
-        var nextPeriod = GetNextForecastPeriod(currentPeriod);
+        var nextPeriod = NewMonthOperation.GetNextForecastPeriod(_dataset, currentPeriod);
         var message = string.IsNullOrWhiteSpace(nextPeriod)
             ? $"Confirm you are ready to save the project file and set up a new month. This will save {currentPeriod} as a baseline and roll current forecast values into the previous month fields."
             : $"Confirm you are ready to save the project file and set up a new month. This will save {currentPeriod} as a baseline, roll current forecast values into the previous month fields, and move the current period to {nextPeriod}.";
@@ -1172,27 +1215,93 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        var snapshot = BuildSavedMonthSnapshot(currentPeriod);
-        SavedMonthSnapshots.Insert(0, snapshot);
+        TryCreateNewMonthBaseline(confirmed: true, showError: true);
+    }
 
-        foreach (var line in ForecastLines)
+    public bool TryCreateNewMonthBaseline(bool confirmed, bool showError = false)
+    {
+        if (!confirmed || Interlocked.CompareExchange(ref _newMonthOperationInProgress, 1, 0) != 0)
         {
-            line.LastMonthPlannedCost = line.PlannedCostFcc;
-            line.LastMonthForecast = line.MonthForecast;
+            return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(nextPeriod))
+        var selectedForecastLine = SelectedForecastLine;
+        (int RowNumber, string TaskNumber, string ResourceName, string ProjectCode)? selectedForecastLineKey = selectedForecastLine is null
+            ? null
+            : (selectedForecastLine.RowNumber, selectedForecastLine.TaskNumber, selectedForecastLine.ResourceName, selectedForecastLine.ProjectCode);
+        var selectedResourceName = SelectedResourceSummary?.ResourceName;
+
+        try
         {
-            Header.CurrentPeriod = nextPeriod;
-            OnPropertyChanged(nameof(Header));
+            SyncDatasetFromCollections();
+            var preparation = _newMonthOperation.Prepare(_dataset);
+            if (!preparation.IsReady)
+            {
+                StatusText = preparation.Message;
+                if (showError && preparation.Status == NewMonthPreparationStatus.MissingCurrentPeriod)
+                {
+                    MessageBox.Show(preparation.Message, "New month", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+
+                return false;
+            }
+
+            if (!SaveDataset(preparation.StagedDataset!, showError))
+            {
+                return false;
+            }
+
+            LoadDataset(preparation.StagedDataset!, markDirty: false);
+            RestoreNewMonthSelection(selectedForecastLineKey, selectedResourceName);
+            IsDirty = false;
+            StatusText = preparation.Message;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"New month failed: {ex.Message}";
+            if (showError)
+            {
+                MessageBox.Show(ex.Message, "New month failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+            return false;
+        }
+        finally
+        {
+            Volatile.Write(ref _newMonthOperationInProgress, 0);
+        }
+    }
+
+    private void RestoreNewMonthSelection(
+        (int RowNumber, string TaskNumber, string ResourceName, string ProjectCode)? selectedForecastLineKey,
+        string? selectedResourceName)
+    {
+        if (selectedForecastLineKey is { } key)
+        {
+            var restoredLine = ForecastLines.FirstOrDefault(line =>
+                line.RowNumber == key.RowNumber
+                && string.Equals(line.TaskNumber, key.TaskNumber, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(line.ResourceName, key.ResourceName, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(line.ProjectCode, key.ProjectCode, StringComparison.OrdinalIgnoreCase));
+            if (restoredLine is not null)
+            {
+                SelectedForecastLine = restoredLine;
+                return;
+            }
         }
 
-        AddAuditEvent("SavedMonth", currentPeriod, "Baseline", string.Empty, snapshot.SavedAt.ToString("s"), "Created new month baseline");
-        AddAuditEvent("SavedMonth", currentPeriod, "FutureAction", string.Empty, "UnlockOpenSavedMonth", "Future unlock-open-saved-month action recorded");
-        RecalculateAndRefresh(markDirty: true, reason: string.IsNullOrWhiteSpace(nextPeriod)
-            ? $"Saved {currentPeriod} baseline"
-            : $"Saved {currentPeriod} baseline and moved to {nextPeriod}");
-        SaveProject();
+        if (!string.IsNullOrWhiteSpace(selectedResourceName))
+        {
+            SelectedResourceSummary = ResourceSummaries.FirstOrDefault(summary =>
+                string.Equals(summary.ResourceName, selectedResourceName, StringComparison.OrdinalIgnoreCase));
+            return;
+        }
+
+        if (selectedForecastLineKey is null && selectedResourceName is null)
+        {
+            SelectedForecastLine = null;
+        }
     }
 
     private void OpenUnmatchedImportViewer()
@@ -1212,51 +1321,12 @@ public sealed partial class MainWindowViewModel
 
     private SavedMonthSnapshot BuildSavedMonthSnapshot(string period)
     {
-        var lines = ForecastLines.Select(line => new SavedMonthForecastLine
-        {
-            RowNumber = line.RowNumber,
-            TaskNumber = line.TaskNumber,
-            ResourceName = line.ResourceName,
-            ProjectCode = line.ProjectCode,
-            CostToDate = line.CostToDateSummary,
-            CurrentPeriodForecast = line.MonthForecast,
-            CostToComplete = line.TotalForecastCtc,
-            FinalForecast = line.PlannedCostFcc,
-            Budget = line.Budget,
-            TotalBudgetVariance = line.TotalBudgetVariance,
-            VarianceFromPreviousMonth = line.VarianceLastMonthToDate,
-            MonthlyForecasts = line.MonthlyForecasts.Select(forecast => new SavedMonthPeriodAmount
-            {
-                PeriodLabel = forecast.PeriodLabel,
-                PeriodStartDate = forecast.PeriodStartDate,
-                Amount = forecast.Amount
-            }).ToList()
-        }).ToList();
-
-        return new SavedMonthSnapshot
-        {
-            Period = period,
-            SavedAt = DateTime.Now,
-            CostToDate = lines.Sum(line => line.CostToDate),
-            CostToComplete = lines.Sum(line => line.CostToComplete),
-            FinalForecast = lines.Sum(line => line.FinalForecast),
-            TotalBudgetVariance = lines.Sum(line => line.TotalBudgetVariance),
-            ForecastLines = lines
-        };
+        return NewMonthOperation.BuildSavedMonthSnapshot(period, ForecastLines);
     }
 
     private string GetNextForecastPeriod(string currentPeriod)
     {
-        var periods = _dataset.ForecastPeriods
-            .Where(period => !string.IsNullOrWhiteSpace(period.Label))
-            .OrderBy(period => period.StartDate ?? DateOnly.MaxValue)
-            .ThenBy(period => period.Label)
-            .Select(period => period.Label)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var index = periods.FindIndex(period => string.Equals(period, currentPeriod, StringComparison.OrdinalIgnoreCase));
-        return index >= 0 && index + 1 < periods.Count ? periods[index + 1] : string.Empty;
+        return NewMonthOperation.GetNextForecastPeriod(_dataset, currentPeriod);
     }
 
     private void OpenSavedMonthViewer()

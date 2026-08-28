@@ -854,7 +854,7 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | LUNA-01 | Complete | `scripts/verify.ps1`; default, `-NoRestore`, path-with-spaces, and failure-propagation checks pass |
 | LUNA-02 | Complete | Discovered test project passes 4 persistence/calculation tests; legacy harness remains mandatory |
 | LUNA-03 | Complete | `CloseDecisionPolicy`, wired `MainWindow.OnClosing`, and 5 focused safe-close tests; verifier passes with 9 discovered tests plus the legacy harness |
-| LUNA-04 | Not started | |
+| LUNA-04 | Complete | `NewMonthOperation` stages rollover on a cloned dataset; cancellation, failure, success, duplicate, and re-entrant tests pass; verifier passes with 14 discovered tests plus the legacy harness |
 | LUNA-05 | Not started | |
 | LUNA-06A | Not started | |
 | LUNA-06B | Not started | |

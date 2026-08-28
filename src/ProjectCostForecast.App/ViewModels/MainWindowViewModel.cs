@@ -6,6 +6,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Threading;
 using ProjectCostForecast.App;
 using Microsoft.Win32;
 using ProjectCostForecast.App.Models;
@@ -46,6 +47,8 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private const double DefaultLedgerChartMonthSpacing = 36;
 
     private readonly CalculationService _calculationService;
+    private readonly NewMonthOperation _newMonthOperation;
+    private readonly ProjectDatasetCloner _projectDatasetCloner;
     private readonly IProjectFileService _projectFileService;
     private readonly CsvTransactionService _csvTransactionService;
     private readonly ValidationService _validationService;
@@ -76,6 +79,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private string _activeDetailWorkspaceKey = "Ledger Costs";
     private WorkspaceViewTab? _selectedDetailWorkspaceView;
     private bool _isDirty;
+    private int _newMonthOperationInProgress;
     private PointCollection _ledgerActualChartPoints = [];
     private PointCollection _ledgerForecastChartPoints = [];
     private PointCollection _ledgerBudgetChartPoints = [];
@@ -143,12 +147,14 @@ public sealed partial class MainWindowViewModel : NotifyObject
         ArgumentNullException.ThrowIfNull(dependencies);
         dependencies.Validate();
         _calculationService = dependencies.CalculationService;
+        _projectDatasetCloner = dependencies.ProjectDatasetCloner;
         _projectFileService = dependencies.ProjectFileService;
         _csvTransactionService = dependencies.CsvTransactionService;
         _validationService = dependencies.ValidationService;
         _userPreferencesService = dependencies.UserPreferencesService;
         _schedulingService = dependencies.SchedulingService;
         _forecastCurveService = dependencies.ForecastCurveService;
+        _newMonthOperation = new NewMonthOperation(_calculationService, _projectDatasetCloner);
 
         _preferenceSaveTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
