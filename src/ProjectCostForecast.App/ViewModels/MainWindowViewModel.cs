@@ -1178,5 +1178,18 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public decimal LedgerUnitsTotal => _ledgerTotals.UnitsTotal;
     public decimal LedgerAverageRate => _ledgerTotals.AverageRate;
 
-    public bool ConfirmClose() => ConfirmDiscardUnsavedChanges();
+    public bool ConfirmClose(CloseDecision decision)
+    {
+        var shouldClose = CloseDecisionPolicy.ShouldClose(
+            IsDirty,
+            decision,
+            () => SaveProject(showError: false));
+
+        if (shouldClose && decision == CloseDecision.Discard)
+        {
+            IsDirty = false;
+        }
+
+        return shouldClose;
+    }
 }

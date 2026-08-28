@@ -13,6 +13,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using ProjectCostForecast.App.Models;
+using ProjectCostForecast.App.Services;
 using ProjectCostForecast.App.ViewModels;
 
 namespace ProjectCostForecast.App;
@@ -105,6 +106,7 @@ public partial class MainWindow : Window
     private ScrollViewer? _activeGridScrollViewer;
     private ScrollViewer? _forecastGridScrollViewer;
     private MainWindowViewModel? _subscribedViewModel;
+    private bool _closeDecisionInProgress;
     private Point? _forecastLeftDragStart;
     private ForecastLine? _forecastDragLine;
     private ForecastColumnReorderSession? _forecastColumnReorder;
@@ -268,13 +270,54 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
-        if (DataContext is MainWindowViewModel closingViewModel)
+        if (_closeDecisionInProgress)
         {
-            closingViewModel.SetStartInFullScreen(WindowState == WindowState.Maximized);
-            closingViewModel.FlushUserPreferences();
+            e.Cancel = true;
+            return;
         }
 
-        base.OnClosing(e);
+        _closeDecisionInProgress = true;
+        try
+        {
+            if (DataContext is MainWindowViewModel closingViewModel)
+            {
+                var decision = closingViewModel.IsDirty
+                    ? PromptForCloseDecision()
+                    : CloseDecision.Discard;
+
+                if (!closingViewModel.ConfirmClose(decision))
+                {
+                    e.Cancel = true;
+                    return;
+                }
+
+                closingViewModel.SetStartInFullScreen(WindowState == WindowState.Maximized);
+                closingViewModel.FlushUserPreferences();
+            }
+
+            base.OnClosing(e);
+        }
+        finally
+        {
+            _closeDecisionInProgress = false;
+        }
+    }
+
+    private CloseDecision PromptForCloseDecision()
+    {
+        var result = MessageBox.Show(
+            this,
+            "Save changes before closing?\n\nChoose Yes to save, No to discard, or Cancel to keep the window open.",
+            "Unsaved changes",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Warning);
+
+        return result switch
+        {
+            MessageBoxResult.Yes => CloseDecision.Save,
+            MessageBoxResult.No => CloseDecision.Discard,
+            _ => CloseDecision.Cancel
+        };
     }
 
     private void WorkspaceTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)

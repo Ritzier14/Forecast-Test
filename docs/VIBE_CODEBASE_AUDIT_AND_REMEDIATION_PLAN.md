@@ -851,9 +851,9 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | Packet | Status | Evidence link / note |
 |---|---|---|
 | LUNA-00 | Complete | `docs/audit/BASELINE.md` and `docs/audit/PACKET_LEDGER.md`; checkpoint `4f1fc24` pushed |
-| LUNA-01 | In progress | One-command local verification |
-| LUNA-02 | Not started | |
-| LUNA-03 | Not started | |
+| LUNA-01 | Complete | `scripts/verify.ps1`; default, `-NoRestore`, path-with-spaces, and failure-propagation checks pass |
+| LUNA-02 | Complete | Discovered test project passes 4 persistence/calculation tests; legacy harness remains mandatory |
+| LUNA-03 | Complete | `CloseDecisionPolicy`, wired `MainWindow.OnClosing`, and 5 focused safe-close tests; verifier passes with 9 discovered tests plus the legacy harness |
 | LUNA-04 | Not started | |
 | LUNA-05 | Not started | |
 | LUNA-06A | Not started | |

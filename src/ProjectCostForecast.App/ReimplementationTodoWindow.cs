@@ -9,8 +9,8 @@ public sealed class ReimplementationTodoWindow : Window
     [
         new(
             "Unsaved changes prompt when quitting",
-            "Disabled for now",
-            "The function already exists in the application; the quit-time call is disabled temporarily.")
+            "Implemented",
+            "Closing now offers Save, Discard, or Cancel; cancelled or failed saves keep the window open.")
     ];
 
     public ReimplementationTodoWindow()

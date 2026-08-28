@@ -35,12 +35,22 @@ The codebase is being migrated toward a modular WPF architecture with explicit a
 
 ## How to verify
 
-Run:
+The repository verification entry point restores packages, builds the solution in
+Release configuration, runs the console acceptance harness, and runs the discovered
+unit-test project. From the repository root, run:
 
 ```powershell
-dotnet build ProjectCostForecast.sln
-dotnet run --project tests\ProjectCostForecast.Tests\ProjectCostForecast.Tests.csproj
+.\scripts\verify.ps1
 ```
+
+The first run needs a .NET 8 SDK and access to the configured NuGet source. After a
+successful restore, use `.\scripts\verify.ps1 -NoRestore` for the fast local path.
+The script can also be invoked by its full path from another working directory.
+The script exits non-zero if restore, build, either test gate, or the acceptance
+harness fails. Build outputs remain under the existing ignored `bin/`, `obj/`, and
+`artifacts/` paths. The discovered tests live in
+`tests\ProjectCostForecast.UnitTests`; the original executable harness remains a
+required compatibility gate.
 
 The checks verify the important workbook-derived drilldowns, including:
 

@@ -17,7 +17,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - CSV import for raw transactions with common header aliases.
 - CSV export for raw transactions.
 - Forecast line add, duplicate, and delete commands.
-- Release-candidate status/header information and unsaved-change warning on close.
+- Release-candidate status/header information and Save / Discard / Cancel handling for unsaved changes on close.
 - No-dependency command-line acceptance checks in `tests/ProjectCostForecast.Tests`.
 
 ### Verified

@@ -46,11 +46,11 @@ public sealed partial class MainWindowViewModel
         }
     }
 
-    private bool SaveProject()
+    private bool SaveProject(bool showError = true)
     {
         if (string.IsNullOrWhiteSpace(ProjectFilePath))
         {
-            return SaveProjectAs();
+            return SaveProjectAs(showError);
         }
 
         AuditEvent? saveAuditEvent = null;
@@ -83,12 +83,17 @@ public sealed partial class MainWindowViewModel
                 OnPropertyChanged(nameof(AuditEvents));
             }
 
-            MessageBox.Show(ex.Message, "Save failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            StatusText = $"Save failed: {ex.Message}";
+            if (showError)
+            {
+                MessageBox.Show(ex.Message, "Save failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
             return false;
         }
     }
 
-    private bool SaveProjectAs()
+    private bool SaveProjectAs(bool showError = true)
     {
         var dialog = new SaveFileDialog
         {
