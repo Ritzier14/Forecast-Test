@@ -26,19 +26,54 @@ public sealed class ProjectFileService : IProjectFileService
 
     public ProjectDataset Load(string path)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        using var stream = File.OpenRead(path);
-        var dataset = _migrationPipeline.Load(stream).Dataset;
-        EnsureValid(dataset, "Open project");
-        return dataset;
+        return LoadWithRevision(path).Dataset;
     }
 
     public void Save(string path, ProjectDataset dataset)
     {
+        _ = SaveWithRevision(path, dataset, expectedRevision: null);
+    }
+
+    public ProjectFileLoadResult LoadWithRevision(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        var fullPath = Path.GetFullPath(path);
+        var content = File.ReadAllBytes(fullPath);
+        using var stream = new MemoryStream(content, writable: false);
+        var dataset = _migrationPipeline.Load(stream).Dataset;
+        EnsureValid(dataset, "Open project");
+        return new ProjectFileLoadResult(dataset, ProjectFileRevision.FromBytes(fullPath, content));
+    }
+
+    public ProjectFileRevision? GetRevision(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        return File.Exists(path) ? ProjectFileRevision.Capture(path) : null;
+    }
+
+    public ProjectFileRevision SaveWithRevision(
+        string path,
+        ProjectDataset dataset,
+        ProjectFileRevision? expectedRevision,
+        string operation = "Save project")
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentNullException.ThrowIfNull(dataset);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+
         var prepared = _migrationPipeline.PrepareForSave(dataset).Dataset;
-        EnsureValid(prepared, "Save project");
+        EnsureValid(prepared, operation);
+
+        var actualRevision = GetRevision(path);
+        if (expectedRevision is not null && !expectedRevision.Matches(actualRevision))
+        {
+            throw new ProjectFileConflictException(path, operation, expectedRevision, actualRevision);
+        }
+
         AtomicJsonFile.Write(path, prepared, _jsonOptions);
+        return ProjectFileRevision.Capture(path);
     }
 
     public string CreateBackup(string path)

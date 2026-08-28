@@ -19,6 +19,7 @@ public sealed class MainWindowViewModelDependencies
     public SchedulingService SchedulingService { get; init; } = new();
     public ForecastCurveService ForecastCurveService { get; init; } = new();
     public Func<ProjectDataset> InitialDatasetFactory { get; init; } = () => new SampleDataService().Load();
+    public Func<ProjectSaveConflict, SaveConflictDecision>? SaveConflictDecisionHandler { get; init; }
 
     public void Validate()
     {

@@ -37,25 +37,34 @@ public sealed partial class MainWindowViewModel
 
         try
         {
-            var loadedDataset = _projectFileService.Load(dialog.FileName);
-            var normalizedDataset = _projectDatasetMigrationPipeline.Normalize(loadedDataset).Dataset;
-            var validationReport = _validationService.ValidateForOperation(normalizedDataset);
-            if (validationReport.HasErrors)
-            {
-                ReplaceCollection(ValidationIssues, validationReport.Issues);
-                OnPropertyChanged(nameof(ValidationIssueCount));
-                OnPropertyChanged(nameof(ValidationSummaryText));
-                throw new ProjectValidationException(validationReport.BuildBlockingMessage("Open project"), validationReport);
-            }
-
-            LoadDataset(normalizedDataset, markDirty: false);
-            ProjectFilePath = dialog.FileName;
+            var loadedProject = _projectFileService.LoadWithRevision(dialog.FileName);
+            ApplyLoadedProject(dialog.FileName, loadedProject);
             StatusText = $"Opened {dialog.FileName}";
         }
         catch (Exception ex)
         {
             MessageBox.Show(ex.Message, "Open failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void ApplyLoadedProject(string path, ProjectFileLoadResult loadedProject)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentNullException.ThrowIfNull(loadedProject);
+
+        var normalizedDataset = _projectDatasetMigrationPipeline.Normalize(loadedProject.Dataset).Dataset;
+        var validationReport = _validationService.ValidateForOperation(normalizedDataset);
+        if (validationReport.HasErrors)
+        {
+            ReplaceCollection(ValidationIssues, validationReport.Issues);
+            OnPropertyChanged(nameof(ValidationIssueCount));
+            OnPropertyChanged(nameof(ValidationSummaryText));
+            throw new ProjectValidationException(validationReport.BuildBlockingMessage("Open project"), validationReport);
+        }
+
+        LoadDataset(normalizedDataset, markDirty: false);
+        ProjectFilePath = path;
+        _projectFileRevision = loadedProject.Revision;
     }
 
     private bool SaveProject(bool showError = true)
@@ -87,6 +96,19 @@ public sealed partial class MainWindowViewModel
         AuditEvent? saveAuditEvent = null;
         try
         {
+            var expectedRevision = _projectFileRevision;
+            if (expectedRevision is not null)
+            {
+                var actualRevision = _projectFileService.GetRevision(ProjectFilePath);
+                if (!expectedRevision.Matches(actualRevision))
+                {
+                    return HandleSaveConflict(
+                        new ProjectFileConflictException(ProjectFilePath, operation, expectedRevision, actualRevision),
+                        dataset,
+                        showError);
+                }
+            }
+
             var backupPath = _projectFileService.CreateBackup(ProjectFilePath);
             saveAuditEvent = new AuditEvent
             {
@@ -97,7 +119,11 @@ public sealed partial class MainWindowViewModel
                 Reason = "Project saved"
             };
             AddSaveAuditEvent(dataset, saveAuditEvent);
-            _projectFileService.Save(ProjectFilePath, dataset);
+            _projectFileRevision = _projectFileService.SaveWithRevision(
+                ProjectFilePath,
+                dataset,
+                expectedRevision,
+                operation);
             if (ReferenceEquals(dataset, _dataset))
             {
                 IsDirty = false;
@@ -107,6 +133,15 @@ public sealed partial class MainWindowViewModel
             }
 
             return true;
+        }
+        catch (ProjectFileConflictException ex)
+        {
+            if (saveAuditEvent is not null)
+            {
+                RemoveSaveAuditEvent(dataset, saveAuditEvent);
+            }
+
+            return HandleSaveConflict(ex, dataset, showError);
         }
         catch (Exception ex)
         {
@@ -151,14 +186,93 @@ public sealed partial class MainWindowViewModel
         }
 
         var previousPath = ProjectFilePath;
+        var previousRevision = _projectFileRevision;
         ProjectFilePath = dialog.FileName;
+        _projectFileRevision = null;
         if (SaveDataset(dataset, showError, operation))
         {
             return true;
         }
 
         ProjectFilePath = previousPath;
+        _projectFileRevision = previousRevision;
         return false;
+    }
+
+    private bool HandleSaveConflict(
+        ProjectFileConflictException conflict,
+        ProjectDataset dataset,
+        bool showError)
+    {
+        SaveConflictDecision decision;
+        try
+        {
+            decision = _saveConflictDecisionHandler(conflict.Conflict);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Save conflict decision failed: {ex.Message}";
+            if (showError)
+            {
+                MessageBox.Show(ex.Message, "Save conflict", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+            return false;
+        }
+
+        return decision switch
+        {
+            SaveConflictDecision.Reload => ReloadAfterSaveConflict(conflict, showError),
+            SaveConflictDecision.SaveAs => SaveDatasetAs(dataset, showError, conflict.Operation),
+            SaveConflictDecision.Cancel => CancelSaveAfterConflict(conflict),
+            _ => throw new ArgumentOutOfRangeException(nameof(decision), decision, "Unknown save conflict decision.")
+        };
+    }
+
+    private bool ReloadAfterSaveConflict(ProjectFileConflictException conflict, bool showError)
+    {
+        try
+        {
+            var loadedProject = _projectFileService.LoadWithRevision(conflict.Path);
+            ApplyLoadedProject(conflict.Path, loadedProject);
+            StatusText = $"Reloaded {conflict.Path} after an external change. Unsaved changes were discarded.";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Reload failed: {ex.Message}";
+            if (showError)
+            {
+                MessageBox.Show(ex.Message, "Reload failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        return false;
+    }
+
+    private bool CancelSaveAfterConflict(ProjectFileConflictException conflict)
+    {
+        StatusText = $"{conflict.Operation} cancelled because the project file changed externally. "
+            + "Reload the file or use Save As to preserve these changes.";
+        return false;
+    }
+
+    private static SaveConflictDecision ShowSaveConflictDecision(ProjectSaveConflict conflict)
+    {
+        var result = MessageBox.Show(
+            $"The project file '{conflict.Path}' changed outside this session.\n\n"
+            + "Yes: reload the newer file and discard current unsaved changes.\n"
+            + "No: use Save As to preserve current changes in another file.\n"
+            + "Cancel: keep working without saving.",
+            "Project changed externally",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Warning);
+
+        return result switch
+        {
+            MessageBoxResult.Yes => SaveConflictDecision.Reload,
+            MessageBoxResult.No => SaveConflictDecision.SaveAs,
+            _ => SaveConflictDecision.Cancel
+        };
     }
 
     private bool TryBlockOperation(string operation, ProjectDataset dataset, bool showError)

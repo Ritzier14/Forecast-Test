@@ -337,6 +337,7 @@ public sealed partial class MainWindowViewModel
         if (newProject)
         {
             ProjectFilePath = string.Empty;
+            _projectFileRevision = null;
         }
 
         AddAuditEvent(

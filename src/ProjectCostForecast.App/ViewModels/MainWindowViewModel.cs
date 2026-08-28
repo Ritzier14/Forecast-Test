@@ -51,6 +51,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private readonly ProjectDatasetCloner _projectDatasetCloner;
     private readonly ProjectDatasetMigrationPipeline _projectDatasetMigrationPipeline;
     private readonly IProjectFileService _projectFileService;
+    private readonly Func<ProjectSaveConflict, SaveConflictDecision> _saveConflictDecisionHandler;
     private readonly CsvTransactionService _csvTransactionService;
     private readonly ValidationService _validationService;
     private readonly IUserPreferencesService _userPreferencesService;
@@ -62,6 +63,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private string _selectedProjectCode = "All";
     private string _selectedPeriod = "All";
     private string _projectFilePath = string.Empty;
+    private ProjectFileRevision? _projectFileRevision;
     private string _statusText = string.Empty;
     private string _ledgerChartStatusText = "Select a resource to see the spend curve.";
     private string _monthlyReportFiscalYear1Label = "FY 1";
@@ -151,6 +153,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
         _projectDatasetCloner = dependencies.ProjectDatasetCloner;
         _projectDatasetMigrationPipeline = dependencies.ProjectDatasetMigrationPipeline;
         _projectFileService = dependencies.ProjectFileService;
+        _saveConflictDecisionHandler = dependencies.SaveConflictDecisionHandler ?? ShowSaveConflictDecision;
         _csvTransactionService = dependencies.CsvTransactionService;
         _validationService = dependencies.ValidationService;
         _userPreferencesService = dependencies.UserPreferencesService;

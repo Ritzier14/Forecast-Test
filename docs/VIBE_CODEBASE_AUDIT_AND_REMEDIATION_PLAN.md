@@ -857,7 +857,7 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | LUNA-04 | Complete | `NewMonthOperation` stages rollover on a cloned dataset; cancellation, failure, success, duplicate, and re-entrant tests pass; verifier passes with 14 discovered tests plus the legacy harness |
 | LUNA-05 | Complete | `ProjectDatasetMigrationPipeline` adds format 1, migrates unversioned files, rejects null/malformed/future files, and passes the verifier with 20 discovered tests plus the legacy harness |
 | LUNA-06A | Complete | Validation severity/codes, blocking save/load/month/import boundaries, post-migration session guard, and 8 focused boundary tests; Release verification passes with 28 discovered tests plus the legacy harness |
-| LUNA-06B | Not started | |
+| LUNA-06B | Complete | Content-hash revision tokens, atomic stale-write rejection, injectable Reload / Save As / Cancel decisions, and 3 focused conflict tests; Release verification passes with 31 discovered tests plus the legacy harness |
 | LUNA-07 | Not started | |
 | LUNA-08 | Not started | |
 | LUNA-09 | Not started | |
