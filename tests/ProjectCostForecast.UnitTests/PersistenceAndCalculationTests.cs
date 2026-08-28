@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json;
 using ProjectCostForecast.App.Models;
 using ProjectCostForecast.App.Services;
 using Xunit;
@@ -86,6 +87,108 @@ public sealed class PersistenceAndCalculationTests
         Assert.Equal("Backup source", service.Load(firstBackup).Header.ProjectTitle);
         Assert.Equal("Backup source", service.Load(secondBackup).Header.ProjectTitle);
         Assert.Equal(2, Directory.EnumerateFiles(Path.Combine(directory.Root, "backups"), "*.bak.json").Count());
+    }
+
+    [Fact]
+    public void Legacy_project_fixture_migrates_to_current_format_deterministically_and_idempotently()
+    {
+        var pipeline = new ProjectDatasetMigrationPipeline();
+        using var stream = File.OpenRead(FixturePath("legacy-unversioned.json"));
+
+        var first = pipeline.Load(stream);
+
+        Assert.Equal(ProjectDatasetMigrationPipeline.LegacyUnversionedVersion, first.SourceVersion);
+        Assert.True(first.WasMigrated);
+        Assert.Equal(ProjectDatasetMigrationPipeline.CurrentVersion, first.Dataset.FormatVersion);
+        Assert.Equal(["26-09", "26-10", "26-11"], first.Dataset.ForecastPeriods.Select(period => period.Label));
+        Assert.Equal(new DateOnly(2026, 3, 1), first.Dataset.ForecastPeriods[0].StartDate);
+        Assert.Equal(new DateOnly(2026, 4, 1), first.Dataset.ForecastPeriods[1].StartDate);
+        Assert.Equal(new DateOnly(2026, 5, 1), first.Dataset.ForecastPeriods[2].StartDate);
+        Assert.Equal(["26-09", "26-10", "26-11"], Assert.Single(first.Dataset.ForecastLines).MonthlyForecasts.Select(forecast => forecast.PeriodLabel));
+        Assert.Equal(["26-09", "26-10", "26-11"], Assert.Single(first.Dataset.ManagementResources).MonthlyAllocations.Select(allocation => allocation.PeriodLabel));
+        Assert.Equal(["26-09", "26-10", "26-11"], Assert.Single(Assert.Single(first.Dataset.SavedMonthSnapshots).ForecastLines).MonthlyForecasts.Select(forecast => forecast.PeriodLabel));
+
+        var second = pipeline.Normalize(first.Dataset);
+
+        Assert.False(second.DataChanged);
+        Assert.False(second.WasMigrated);
+        Assert.Equal(ProjectDatasetMigrationPipeline.CurrentVersion, second.Dataset.FormatVersion);
+    }
+
+    [Fact]
+    public void Migrated_legacy_fixture_saves_with_the_current_project_file_version()
+    {
+        using var directory = new TemporaryDirectory();
+        var path = Path.Combine(directory.Root, "migrated.json");
+        var service = new ProjectFileService();
+        var dataset = service.Load(FixturePath("legacy-unversioned.json"));
+
+        service.Save(path, dataset);
+
+        using var document = JsonDocument.Parse(File.ReadAllText(path));
+        var version = document.RootElement.EnumerateObject()
+            .Single(property => string.Equals(property.Name, nameof(ProjectDataset.FormatVersion), StringComparison.OrdinalIgnoreCase))
+            .Value
+            .GetInt32();
+        Assert.Equal(ProjectDatasetMigrationPipeline.CurrentVersion, version);
+        Assert.Equal(ProjectDatasetMigrationPipeline.CurrentVersion, service.Load(path).FormatVersion);
+    }
+
+    [Fact]
+    public void Current_project_fixture_round_trips_without_data_changes()
+    {
+        using var directory = new TemporaryDirectory();
+        var path = Path.Combine(directory.Root, "current-round-trip.json");
+        var service = new ProjectFileService();
+
+        var loaded = service.Load(FixturePath("current-v1.json"));
+
+        Assert.Equal(ProjectDatasetMigrationPipeline.CurrentVersion, loaded.FormatVersion);
+        Assert.Equal("Current format fixture", loaded.Header.ProjectTitle);
+        Assert.Equal("26-09", loaded.Header.CurrentPeriod);
+        Assert.Equal(new DateOnly(2026, 3, 1), Assert.Single(loaded.ForecastPeriods).StartDate);
+
+        service.Save(path, loaded);
+        var reopened = service.Load(path);
+
+        Assert.Equal(loaded.Header.ProjectTitle, reopened.Header.ProjectTitle);
+        Assert.Equal(loaded.Header.CurrentPeriod, reopened.Header.CurrentPeriod);
+        Assert.Equal(loaded.ForecastPeriods.Select(period => period.Label), reopened.ForecastPeriods.Select(period => period.Label));
+        Assert.Equal(loaded.AuditEvents.Select(audit => audit.AuditId), reopened.AuditEvents.Select(audit => audit.AuditId));
+    }
+
+    [Fact]
+    public void Top_level_json_null_is_rejected_as_a_format_error()
+    {
+        var exception = Assert.Throws<ProjectFileFormatException>(
+            () => new ProjectFileService().Load(FixturePath("null-root.json")));
+
+        Assert.Contains("JSON object", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("null", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Malformed_project_fixture_is_rejected_with_a_clear_format_error()
+    {
+        var exception = Assert.Throws<ProjectFileFormatException>(
+            () => new ProjectFileService().Load(FixturePath("malformed.json")));
+
+        Assert.Contains("malformed", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Future_project_fixture_is_rejected_before_deserialization()
+    {
+        var exception = Assert.Throws<ProjectFileFormatException>(
+            () => new ProjectFileService().Load(FixturePath("future-v99.json")));
+
+        Assert.Contains("version 99", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("supports up to version 1", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string FixturePath(string fileName)
+    {
+        return Path.Combine(AppContext.BaseDirectory, "Fixtures", "ProjectFiles", fileName);
     }
 
     private static ProjectDataset CreateDataset(string title = "Calculation fixture")

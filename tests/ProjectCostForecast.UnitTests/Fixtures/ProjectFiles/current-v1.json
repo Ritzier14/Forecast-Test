@@ -1,0 +1,33 @@
+{
+  "formatVersion": 1,
+  "header": {
+    "projectTitle": "Current format fixture",
+    "reportTitle": "Current report",
+    "currentPeriod": "26-09",
+    "sourceWorkbook": "fixture.xlsx",
+    "importNotes": "Current format values"
+  },
+  "forecastPeriods": [
+    {
+      "column": "K",
+      "label": "26-09",
+      "startDate": "2026-03-01"
+    }
+  ],
+  "auditEvents": [
+    {
+      "auditId": "current-fixture-event",
+      "entityType": "Project",
+      "entityId": "Current format fixture",
+      "fieldName": "Loaded",
+      "changedAt": "2026-08-29T10:00:00+12:00",
+      "reason": "Current fixture"
+    }
+  ],
+  "schedule": {
+    "calendars": [],
+    "activities": [],
+    "links": [],
+    "baselines": []
+  }
+}

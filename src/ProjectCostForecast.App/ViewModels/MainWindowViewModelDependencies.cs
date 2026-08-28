@@ -11,6 +11,7 @@ public sealed class MainWindowViewModelDependencies
 {
     public CalculationService CalculationService { get; init; } = new();
     public ProjectDatasetCloner ProjectDatasetCloner { get; init; } = new();
+    public ProjectDatasetMigrationPipeline ProjectDatasetMigrationPipeline { get; init; } = new();
     public IProjectFileService ProjectFileService { get; init; } = new ProjectFileService();
     public CsvTransactionService CsvTransactionService { get; init; } = new();
     public ValidationService ValidationService { get; init; } = new();
@@ -23,6 +24,7 @@ public sealed class MainWindowViewModelDependencies
     {
         ArgumentNullException.ThrowIfNull(CalculationService);
         ArgumentNullException.ThrowIfNull(ProjectDatasetCloner);
+        ArgumentNullException.ThrowIfNull(ProjectDatasetMigrationPipeline);
         ArgumentNullException.ThrowIfNull(ProjectFileService);
         ArgumentNullException.ThrowIfNull(CsvTransactionService);
         ArgumentNullException.ThrowIfNull(ValidationService);

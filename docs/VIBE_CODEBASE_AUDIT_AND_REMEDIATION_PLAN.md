@@ -855,7 +855,7 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | LUNA-02 | Complete | Discovered test project passes 4 persistence/calculation tests; legacy harness remains mandatory |
 | LUNA-03 | Complete | `CloseDecisionPolicy`, wired `MainWindow.OnClosing`, and 5 focused safe-close tests; verifier passes with 9 discovered tests plus the legacy harness |
 | LUNA-04 | Complete | `NewMonthOperation` stages rollover on a cloned dataset; cancellation, failure, success, duplicate, and re-entrant tests pass; verifier passes with 14 discovered tests plus the legacy harness |
-| LUNA-05 | Not started | |
+| LUNA-05 | Complete | `ProjectDatasetMigrationPipeline` adds format 1, migrates unversioned files, rejects null/malformed/future files, and passes the verifier with 20 discovered tests plus the legacy harness |
 | LUNA-06A | Not started | |
 | LUNA-06B | Not started | |
 | LUNA-07 | Not started | |

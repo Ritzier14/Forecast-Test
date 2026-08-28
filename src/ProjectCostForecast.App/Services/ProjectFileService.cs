@@ -7,6 +7,7 @@ namespace ProjectCostForecast.App.Services;
 
 public sealed class ProjectFileService : IProjectFileService
 {
+    private readonly ProjectDatasetMigrationPipeline _migrationPipeline;
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -14,16 +15,22 @@ public sealed class ProjectFileService : IProjectFileService
         WriteIndented = true
     };
 
+    public ProjectFileService(ProjectDatasetMigrationPipeline? migrationPipeline = null)
+    {
+        _migrationPipeline = migrationPipeline ?? new ProjectDatasetMigrationPipeline();
+    }
+
     public ProjectDataset Load(string path)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
         using var stream = File.OpenRead(path);
-        var dataset = JsonSerializer.Deserialize<ProjectDataset>(stream, _jsonOptions);
-        return dataset ?? new ProjectDataset();
+        return _migrationPipeline.Load(stream).Dataset;
     }
 
     public void Save(string path, ProjectDataset dataset)
     {
         ArgumentNullException.ThrowIfNull(dataset);
+        _migrationPipeline.PrepareForSave(dataset);
         AtomicJsonFile.Write(path, dataset, _jsonOptions);
     }
 

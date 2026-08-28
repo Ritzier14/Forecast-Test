@@ -31,7 +31,7 @@ public sealed partial class MainWindowViewModel
             });
         }
 
-        NormaliseForecastPeriodDates(_dataset);
+        _projectDatasetMigrationPipeline.Normalize(_dataset);
         RebuildCtcMonthForecastYearOptions();
 
         // Rebuilding the available-year list can restore the persisted

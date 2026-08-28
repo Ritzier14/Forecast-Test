@@ -49,6 +49,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private readonly CalculationService _calculationService;
     private readonly NewMonthOperation _newMonthOperation;
     private readonly ProjectDatasetCloner _projectDatasetCloner;
+    private readonly ProjectDatasetMigrationPipeline _projectDatasetMigrationPipeline;
     private readonly IProjectFileService _projectFileService;
     private readonly CsvTransactionService _csvTransactionService;
     private readonly ValidationService _validationService;
@@ -148,6 +149,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
         dependencies.Validate();
         _calculationService = dependencies.CalculationService;
         _projectDatasetCloner = dependencies.ProjectDatasetCloner;
+        _projectDatasetMigrationPipeline = dependencies.ProjectDatasetMigrationPipeline;
         _projectFileService = dependencies.ProjectFileService;
         _csvTransactionService = dependencies.CsvTransactionService;
         _validationService = dependencies.ValidationService;

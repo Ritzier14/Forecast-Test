@@ -22,4 +22,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ProjectCostForecast.App\ProjectCostForecast.App.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Fixtures\ProjectFiles\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

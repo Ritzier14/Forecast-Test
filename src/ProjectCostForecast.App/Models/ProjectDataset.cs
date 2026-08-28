@@ -5,6 +5,10 @@ namespace ProjectCostForecast.App.Models;
 
 public sealed class ProjectDataset
 {
+    // This is the persisted project-file format, independent of the app
+    // assembly version. Unversioned files are treated as legacy format 0 by
+    // the migration pipeline.
+    public int FormatVersion { get; set; } = 1;
     public ProjectHeader Header { get; set; } = new();
     public List<PhaseItem> Phases { get; set; } = [];
     public List<ForecastPeriod> ForecastPeriods { get; set; } = [];

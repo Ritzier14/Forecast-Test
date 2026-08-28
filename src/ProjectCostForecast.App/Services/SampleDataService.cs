@@ -1,17 +1,11 @@
 using System.IO;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using ProjectCostForecast.App.Models;
 
 namespace ProjectCostForecast.App.Services;
 
 public sealed class SampleDataService
 {
-    private readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        NumberHandling = JsonNumberHandling.AllowReadingFromString
-    };
+    private readonly ProjectDatasetMigrationPipeline _migrationPipeline = new();
 
     public ProjectDataset Load()
     {
@@ -30,7 +24,6 @@ public sealed class SampleDataService
         }
 
         using var stream = File.OpenRead(path);
-        var dataset = JsonSerializer.Deserialize<ProjectDataset>(stream, _jsonOptions);
-        return dataset ?? new ProjectDataset();
+        return _migrationPipeline.Load(stream).Dataset;
     }
 }
