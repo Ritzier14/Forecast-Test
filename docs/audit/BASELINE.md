@@ -3,7 +3,7 @@
 - Recorded: 2026-08-29
 - Branch: `alpha/1.13-1.22`
 - Parent commit before checkpoint: `417240b` (`Expand forecasting UI and reporting workflows`)
-- Checkpoint commit: the commit titled `chore(audit): checkpoint pre-audit working tree`; its SHA is recorded below after commit.
+- Checkpoint commit: `4f1fc24` (`chore(audit): checkpoint pre-audit working tree`).
 - Scope: all modifications and untracked files present before the audit checkpoint are preserved as pre-audit work. They are not attributed to LUNA-01.
 
 ## Repository state before the checkpoint
@@ -59,6 +59,5 @@ The first restore attempt was blocked by the sandbox's NuGet TLS/network restric
 
 ## Checkpoint identity
 
-- Checkpoint commit SHA: to be filled immediately after the checkpoint commit.
-- Checkpoint push result: to be filled after push.
-
+- Checkpoint commit SHA: `4f1fc24`.
+- Checkpoint push result: pushed successfully to `origin/alpha/1.13-1.22`.

@@ -850,8 +850,8 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 
 | Packet | Status | Evidence link / note |
 |---|---|---|
-| LUNA-00 | Not started | Mandatory checkpoint first |
-| LUNA-01 | Not started | |
+| LUNA-00 | Complete | `docs/audit/BASELINE.md` and `docs/audit/PACKET_LEDGER.md`; checkpoint `4f1fc24` pushed |
+| LUNA-01 | In progress | One-command local verification |
 | LUNA-02 | Not started | |
 | LUNA-03 | Not started | |
 | LUNA-04 | Not started | |
