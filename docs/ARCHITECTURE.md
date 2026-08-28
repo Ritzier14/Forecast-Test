@@ -24,6 +24,8 @@ Domain and calculation code must not acquire new dependencies on `Window`, `Data
 
 Storage is accessed through `IProjectFileService` and `IUserPreferencesService`. JSON writes go to a unique temporary file in the destination directory, are flushed, and then replace the destination. Project backups use collision-safe names, are verified through the project migration/validation boundary, and follow a bounded retention policy. `DiagnosticsService` is a best-effort local rolling log; it records operation and exception type with sanitized context, and its write failures never mask the original failure. Malformed preferences are quarantined before defaults are loaded.
 
+CSV/XLSX/XLSM files are untrusted boundaries. `CsvTransactionService` applies explicit compressed-file, uncompressed-workbook, worksheet, row, column, cell, and cell-text limits before returning a complete import batch; cancellation or parse failure returns no partial batch. Re-import uses the existing transaction duplicate key and skips matching rows, so an all-duplicate import leaves project state unchanged. Formula-like text is neutralized only while writing CSV output; canonical model and JSON values are never rewritten for spreadsheet safety.
+
 The WPF composition root attaches `RuntimeExceptionPolicy` to the dispatcher,
 application-domain, and unobserved-task boundaries. An unexpected UI or
 application-domain failure is logged and follows a fail-fast shutdown policy;

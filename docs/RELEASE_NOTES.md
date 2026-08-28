@@ -18,6 +18,8 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - Bounded sanitized diagnostics, top-level exception handling, and timestamped quarantine for malformed user preferences.
 - CSV import for raw transactions with common header aliases.
 - CSV export for raw transactions.
+- Bounded CSV/XLSX/XLSM import with typed malformed/oversized-file failures, cancellation safety, deterministic duplicate skipping, and closed file handles.
+- Spreadsheet-safe CSV text export that neutralizes formula-like values while preserving canonical project data.
 - Forecast line add, duplicate, and delete commands.
 - Release-candidate status/header information and Save / Discard / Cancel handling for unsaved changes on close.
 - No-dependency command-line acceptance checks in `tests/ProjectCostForecast.Tests`.

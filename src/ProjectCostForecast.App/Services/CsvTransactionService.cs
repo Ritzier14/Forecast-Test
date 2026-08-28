@@ -15,79 +15,48 @@ public sealed class CsvTransactionService
         ".xlsm"
     };
 
+    private readonly ImportBoundaryOptions _options;
+
+    public CsvTransactionService(ImportBoundaryOptions? options = null)
+    {
+        _options = options ?? ImportBoundaryOptions.Default;
+        _options.Validate();
+    }
+
+    public ImportBoundaryOptions Options => _options;
+
     public List<CostTransaction> Import(string path, int startingRowNumber)
     {
-        var rows = ReadRows(path);
-        var isWorkbookImport = string.Equals(Path.GetExtension(path), ".xlsx", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(Path.GetExtension(path), ".xlsm", StringComparison.OrdinalIgnoreCase);
-        if (rows.Count == 0)
+        return Import(path, startingRowNumber, CancellationToken.None);
+    }
+
+    public List<CostTransaction> Import(
+        string path,
+        int startingRowNumber,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentOutOfRangeException.ThrowIfNegative(startingRowNumber);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var extension = Path.GetExtension(path);
+        if (!SupportedExtensions.Contains(extension))
         {
-            return [];
+            throw new ImportBoundaryException(
+                ImportBoundaryFailureKind.UnsupportedFileType,
+                $"Import file '{Path.GetFileName(path)}' has unsupported type '{extension}'. Choose a .csv, .xlsx, or .xlsm file.",
+                path);
         }
 
-        var headers = rows[0]
-            .Select((header, index) => new { Key = NormaliseHeader(header), Index = index })
-            .Where(item => !string.IsNullOrWhiteSpace(item.Key))
-            .GroupBy(item => item.Key)
-            .ToDictionary(group => group.Key, group => group.First().Index);
-
-        var imported = new List<CostTransaction>();
-        for (var i = 1; i < rows.Count; i++)
-        {
-            var row = rows[i];
-            if (row.All(string.IsNullOrWhiteSpace))
-            {
-                continue;
-            }
-
-            var transaction = new CostTransaction
-            {
-                RowNumber = startingRowNumber++,
-                FyPeriod = Get(row, headers, "fyperiod", "fyperi", "fy", "periodlabel"),
-                TaskNumber = Get(row, headers, "tasknumber", "tasknumb", "tasknum", "task"),
-                Period = ParseInt(Get(row, headers, "period")),
-                DocDate = ParseDate(Get(row, headers, "docdate", "date", "documentdate")),
-                Units = ParseDecimal(Get(row, headers, "units", "quantity")),
-                UnitRate = ParseDecimal(Get(row, headers, "unitrate", "unitra", "rate")),
-                Amount = ParseDecimal(Get(row, headers, "amount", "amou", "cost", "value")),
-                CostLedger = Get(row, headers, "costledger", "costle", "ledger"),
-                CostAccount = Get(row, headers, "costaccount", "costac", "account"),
-                ProjectCode = Get(row, headers, "projectcode", "projectco", "project"),
-                ParentProjectCode = Get(row, headers, "parentprojectcode", "parentproject", "parentpro", "parent"),
-                ResourceCode = Get(row, headers, "resourcecode", "resourcec", "resourceco", "resourc", "resource", "resour", "code"),
-                ResourceDescription = Get(row, headers, "resourcedescription", "resourced", "resourcedesc", "resourcedescr", "resourcei"),
-                Source = Get(row, headers, "source"),
-                PoNumber = Get(row, headers, "ponumber", "ponumb", "ponum", "po"),
-                PoComments = Get(row, headers, "pocomments", "pocomm", "pocor", "pocom", "pocomment"),
-                SupplierName = Get(row, headers, "suppliername", "suppliern", "supplier"),
-                Narrative1 = Get(row, headers, "narrative1", "narrative"),
-                Narrative2 = Get(row, headers, "narrative2"),
-                Narrative3 = Get(row, headers, "narrative3"),
-                Who = Get(row, headers, "who"),
-                EcmNumber = Get(row, headers, "ecmnumber", "ecmnum", "ecm"),
-                ManualName = Get(row, headers, "manualname", "manualresource", "name")
-            };
-
-            // Exports can include filter descriptions or total rows below the
-            // data range.  A cost transaction must have both a valid FY period
-            // and a task number; retaining footer rows creates phantom costs.
-            if (isWorkbookImport
-                && (!FiscalPeriod.TryParseLabel(transaction.FyPeriod, out _, out _)
-                    || string.IsNullOrWhiteSpace(transaction.TaskNumber)))
-            {
-                continue;
-            }
-
-            imported.Add(transaction);
-        }
-
-        return imported;
+        return string.Equals(extension, ".csv", StringComparison.OrdinalIgnoreCase)
+            ? ImportCsv(path, startingRowNumber, cancellationToken)
+            : ImportWorkbook(path, startingRowNumber, cancellationToken);
     }
 
     public bool SupportsFile(string path)
     {
-        var extension = Path.GetExtension(path);
-        return !string.IsNullOrWhiteSpace(extension) && SupportedExtensions.Contains(extension);
+        return !string.IsNullOrWhiteSpace(path)
+            && SupportedExtensions.Contains(Path.GetExtension(path));
     }
 
     public string GetSupportedFileFilter()
@@ -97,38 +66,44 @@ public sealed class CsvTransactionService
 
     public void ExportTransactions(string path, IEnumerable<CostTransaction> transactions)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentNullException.ThrowIfNull(transactions);
+
         var builder = new StringBuilder();
         builder.AppendLine("FY Period,Task Number,Period,Doc Date,Units,Unit Rate,Amount,Cost Ledger,Cost Account,Project Code,Parent Project,Resource Code,Resource Description,Source,PO Number,PO Comments,Supplier Name,Narrative 1,Narrative 2,Narrative 3,Who,ECM Number,Manual Name");
 
         foreach (var tx in transactions)
         {
-            var fields = new[]
+            var encodedFields = new[]
             {
-                tx.FyPeriod,
-                tx.TaskNumber,
-                tx.Period.ToString(CultureInfo.InvariantCulture),
-                tx.DocDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
-                tx.Units.ToString(CultureInfo.InvariantCulture),
-                tx.UnitRate.ToString(CultureInfo.InvariantCulture),
-                tx.Amount.ToString(CultureInfo.InvariantCulture),
-                tx.CostLedger,
-                tx.CostAccount,
-                tx.ProjectCode,
-                tx.ParentProjectCode,
-                tx.ResourceCode,
-                tx.ResourceDescription,
-                tx.Source,
-                tx.PoNumber,
-                tx.PoComments,
-                tx.SupplierName,
-                tx.Narrative1,
-                tx.Narrative2,
-                tx.Narrative3,
-                tx.Who,
-                tx.EcmNumber,
-                tx.ManualName
+                SpreadsheetExportBoundary.EscapeCsvField(tx.FyPeriod ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.TaskNumber ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.Period.ToString(CultureInfo.InvariantCulture), neutralizeFormula: false),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.DocDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.Units.ToString(CultureInfo.InvariantCulture), neutralizeFormula: false),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.UnitRate.ToString(CultureInfo.InvariantCulture), neutralizeFormula: false),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.Amount.ToString(CultureInfo.InvariantCulture), neutralizeFormula: false),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.CostLedger ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.CostAccount ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.ProjectCode ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.ParentProjectCode ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.ResourceCode ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.ResourceDescription ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.Source ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.PoNumber ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.PoComments ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.SupplierName ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.Narrative1 ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.Narrative2 ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.Narrative3 ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.Who ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.EcmNumber ?? string.Empty),
+                SpreadsheetExportBoundary.EscapeCsvField(tx.ManualName ?? string.Empty)
             };
-            builder.AppendLine(string.Join(",", fields.Select(Escape)));
+            // Numeric values use the same quoting rules but are deliberately
+            // not sent through formula neutralization, so a negative amount
+            // remains a numeric value when opened in a spreadsheet.
+            builder.AppendLine(string.Join(",", encodedFields));
         }
 
         File.WriteAllText(path, builder.ToString(), Encoding.UTF8);
@@ -136,6 +111,7 @@ public sealed class CsvTransactionService
 
     public static string BuildNameMappingKey(CostTransaction transaction)
     {
+        ArgumentNullException.ThrowIfNull(transaction);
         return string.Join("|", new[]
         {
             NormaliseKeyPart(transaction.ResourceDescription),
@@ -147,6 +123,7 @@ public sealed class CsvTransactionService
 
     public static string BuildDuplicateKey(CostTransaction transaction)
     {
+        ArgumentNullException.ThrowIfNull(transaction);
         return string.Join("|", new[]
         {
             NormaliseKeyPart(transaction.FyPeriod),
@@ -174,106 +151,591 @@ public sealed class CsvTransactionService
         });
     }
 
-    private static List<List<string>> ReadRows(string path)
+    private List<CostTransaction> ImportCsv(
+        string path,
+        int startingRowNumber,
+        CancellationToken cancellationToken)
     {
-        var extension = Path.GetExtension(path);
-        if (string.Equals(extension, ".xlsx", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(extension, ".xlsm", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            return ReadWorkbookRows(path);
-        }
+            using var stream = OpenInputStream(path);
+            using var reader = new StreamReader(
+                stream,
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true),
+                detectEncodingFromByteOrderMarks: true,
+                bufferSize: 4096);
 
-        using var reader = new StreamReader(path, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
-        return ReadCsvRows(reader);
+            return MapRows(
+                ReadCsvRows(reader, path, cancellationToken),
+                path,
+                isWorkbookImport: false,
+                startingRowNumber,
+                cancellationToken);
+        }
+        catch (ImportBoundaryException)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (DecoderFallbackException ex)
+        {
+            throw ImportBoundaryException.Malformed(
+                ImportBoundaryFailureKind.MalformedCsv,
+                path,
+                "the CSV is not valid UTF-8 text",
+                ex);
+        }
+        catch (IOException ex)
+        {
+            throw ImportBoundaryException.FileAccess(path, ex);
+        }
     }
 
-    private static List<List<string>> ReadWorkbookRows(string path)
+    private List<CostTransaction> ImportWorkbook(
+        string path,
+        int startingRowNumber,
+        CancellationToken cancellationToken)
     {
-        using var workbook = new XLWorkbook(path);
-        var worksheet = workbook.Worksheets.FirstOrDefault()
-            ?? throw new InvalidOperationException("The workbook does not contain any worksheets.");
-        var range = worksheet.RangeUsed();
-        if (range is null)
+        EnsureFileSize(path);
+        WorkbookBoundaryPreflight.Validate(path, _options, cancellationToken);
+
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var workbook = new XLWorkbook(path);
+            if (workbook.Worksheets.Count == 0)
+            {
+                throw ImportBoundaryException.Malformed(
+                    ImportBoundaryFailureKind.MalformedWorkbook,
+                    path,
+                    "the workbook does not contain a worksheet");
+            }
+
+            if (workbook.Worksheets.Count > _options.MaxWorksheets)
+            {
+                throw ImportBoundaryException.LimitExceeded(
+                    ImportBoundaryFailureKind.WorksheetLimitExceeded,
+                    path,
+                    "worksheet count",
+                    nameof(_options.MaxWorksheets),
+                    workbook.Worksheets.Count,
+                    _options.MaxWorksheets);
+            }
+
+            var worksheet = workbook.Worksheets.FirstOrDefault()
+                ?? throw ImportBoundaryException.Malformed(
+                    ImportBoundaryFailureKind.MalformedWorkbook,
+                    path,
+                    "the workbook does not contain a readable worksheet");
+            var range = worksheet.RangeUsed();
+            if (range is null)
+            {
+                return [];
+            }
+
+            var rowCount = range.RowCount();
+            var columnCount = range.ColumnCount();
+            if (rowCount > _options.MaxRowsPerWorksheet)
+            {
+                throw ImportBoundaryException.LimitExceeded(
+                    ImportBoundaryFailureKind.RowLimitExceeded,
+                    path,
+                    "worksheet row count",
+                    nameof(_options.MaxRowsPerWorksheet),
+                    rowCount,
+                    _options.MaxRowsPerWorksheet,
+                    worksheet.Name);
+            }
+
+            if (columnCount > _options.MaxColumnsPerWorksheet)
+            {
+                throw ImportBoundaryException.LimitExceeded(
+                    ImportBoundaryFailureKind.ColumnLimitExceeded,
+                    path,
+                    "worksheet column count",
+                    nameof(_options.MaxColumnsPerWorksheet),
+                    columnCount,
+                    _options.MaxColumnsPerWorksheet,
+                    worksheet.Name);
+            }
+
+            var cellCount = checked((long)rowCount * columnCount);
+            if (cellCount > _options.MaxCellsPerWorksheet)
+            {
+                throw ImportBoundaryException.LimitExceeded(
+                    ImportBoundaryFailureKind.CellLimitExceeded,
+                    path,
+                    "worksheet cell count",
+                    nameof(_options.MaxCellsPerWorksheet),
+                    cellCount,
+                    _options.MaxCellsPerWorksheet,
+                    worksheet.Name);
+            }
+
+            return MapRows(
+                ReadWorkbookRows(worksheet, range, path, cancellationToken),
+                path,
+                isWorkbookImport: true,
+                startingRowNumber,
+                cancellationToken);
+        }
+        catch (ImportBoundaryException)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw ImportBoundaryException.FileAccess(path, ex);
+        }
+        catch (IOException ex)
+        {
+            throw ImportBoundaryException.Malformed(
+                ImportBoundaryFailureKind.MalformedWorkbook,
+                path,
+                "the workbook could not be read",
+                ex);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            throw ImportBoundaryException.Malformed(
+                ImportBoundaryFailureKind.MalformedWorkbook,
+                path,
+                "the workbook could not be read",
+                ex);
+        }
+    }
+
+    private FileStream OpenInputStream(string path)
+    {
+        try
+        {
+            var stream = new FileStream(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                bufferSize: 64 * 1024,
+                options: FileOptions.SequentialScan);
+            if (stream.Length > _options.MaxFileBytes)
+            {
+                var observedLength = stream.Length;
+                stream.Dispose();
+                throw ImportBoundaryException.LimitExceeded(
+                    ImportBoundaryFailureKind.FileTooLarge,
+                    path,
+                    "file size in bytes",
+                    nameof(_options.MaxFileBytes),
+                    observedLength,
+                    _options.MaxFileBytes);
+            }
+
+            return stream;
+        }
+        catch (ImportBoundaryException)
+        {
+            throw;
+        }
+        catch (FileNotFoundException ex)
+        {
+            throw ImportBoundaryException.FileNotFound(path, ex);
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            throw ImportBoundaryException.FileNotFound(path, ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw ImportBoundaryException.FileAccess(path, ex);
+        }
+        catch (IOException ex)
+        {
+            throw ImportBoundaryException.FileAccess(path, ex);
+        }
+    }
+
+    private void EnsureFileSize(string path)
+    {
+        try
+        {
+            var fileInfo = new FileInfo(path);
+            if (!fileInfo.Exists)
+            {
+                throw ImportBoundaryException.FileNotFound(path);
+            }
+
+            if (fileInfo.Length > _options.MaxFileBytes)
+            {
+                throw ImportBoundaryException.LimitExceeded(
+                    ImportBoundaryFailureKind.FileTooLarge,
+                    path,
+                    "file size in bytes",
+                    nameof(_options.MaxFileBytes),
+                    fileInfo.Length,
+                    _options.MaxFileBytes);
+            }
+        }
+        catch (ImportBoundaryException)
+        {
+            throw;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw ImportBoundaryException.FileAccess(path, ex);
+        }
+        catch (IOException ex)
+        {
+            throw ImportBoundaryException.FileAccess(path, ex);
+        }
+    }
+
+    private List<CostTransaction> MapRows(
+        IEnumerable<IReadOnlyList<string>> rows,
+        string path,
+        bool isWorkbookImport,
+        int startingRowNumber,
+        CancellationToken cancellationToken)
+    {
+        using var enumerator = rows.GetEnumerator();
+        if (!enumerator.MoveNext())
         {
             return [];
         }
 
+        var header = enumerator.Current;
+        if (header.Count == 0 || header.All(string.IsNullOrWhiteSpace))
+        {
+            throw ImportBoundaryException.Malformed(
+                isWorkbookImport ? ImportBoundaryFailureKind.MalformedWorkbook : ImportBoundaryFailureKind.MalformedCsv,
+                path,
+                "the first row does not contain any column headings");
+        }
+
+        var headers = header
+            .Select((value, index) => new { Key = NormaliseHeader(value), Index = index })
+            .Where(item => !string.IsNullOrWhiteSpace(item.Key))
+            .GroupBy(item => item.Key)
+            .ToDictionary(group => group.Key, group => group.First().Index);
+
+        var imported = new List<CostTransaction>();
+        while (enumerator.MoveNext())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var row = enumerator.Current;
+            if (row.All(string.IsNullOrWhiteSpace))
+            {
+                continue;
+            }
+
+            var transaction = new CostTransaction
+            {
+                RowNumber = startingRowNumber++,
+                FyPeriod = Get(row, headers, "fyperiod", "fyperi", "fy", "periodlabel"),
+                TaskNumber = Get(row, headers, "tasknumber", "tasknumb", "tasknum", "task"),
+                Period = ParseInt(Get(row, headers, "period")),
+                DocDate = ParseDate(Get(row, headers, "docdate", "date", "documentdate")),
+                Units = ParseDecimal(Get(row, headers, "units", "quantity")),
+                UnitRate = ParseDecimal(Get(row, headers, "unitrate", "unitra", "rate")),
+                Amount = ParseDecimal(Get(row, headers, "amount", "amou", "cost", "value")),
+                CostLedger = Get(row, headers, "costledger", "costle", "ledger"),
+                CostAccount = Get(row, headers, "costaccount", "costac", "account"),
+                ProjectCode = Get(row, headers, "projectcode", "projectco", "project"),
+                ParentProjectCode = Get(row, headers, "parentprojectcode", "parentproject", "parentpro", "parent"),
+                ResourceCode = Get(row, headers, "resourcecode", "resourcec", "resourceco", "resourc", "resource", "resour", "code"),
+                ResourceDescription = Get(row, headers, "resourcedescription", "resourced", "resourcedesc", "resourcedescr", "resourcei"),
+                Source = Get(row, headers, "source"),
+                PoNumber = Get(row, headers, "ponumber", "ponumb", "ponum", "po"),
+                PoComments = Get(row, headers, "pocomments", "pocomm", "pocor", "pocomment"),
+                SupplierName = Get(row, headers, "suppliername", "suppliern", "supplier"),
+                Narrative1 = Get(row, headers, "narrative1", "narrative"),
+                Narrative2 = Get(row, headers, "narrative2"),
+                Narrative3 = Get(row, headers, "narrative3"),
+                Who = Get(row, headers, "who"),
+                EcmNumber = Get(row, headers, "ecmnumber", "ecmnum", "ecm"),
+                ManualName = Get(row, headers, "manualname", "manualresource", "name")
+            };
+
+            // Exports can include filter descriptions or total rows below the
+            // data range. Retaining those as transactions creates phantom costs.
+            if (isWorkbookImport
+                && (!FiscalPeriod.TryParseLabel(transaction.FyPeriod, out _, out _)
+                    || string.IsNullOrWhiteSpace(transaction.TaskNumber)))
+            {
+                continue;
+            }
+
+            imported.Add(transaction);
+        }
+
+        return imported;
+    }
+
+    private IEnumerable<IReadOnlyList<string>> ReadWorkbookRows(
+        IXLWorksheet worksheet,
+        IXLRange range,
+        string path,
+        CancellationToken cancellationToken)
+    {
         var lastColumn = range.ColumnCount();
-        var rows = new List<List<string>>();
+        var rowCount = 0L;
         foreach (var row in range.RowsUsed())
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            rowCount++;
+            if (rowCount > _options.MaxRowsPerWorksheet)
+            {
+                throw ImportBoundaryException.LimitExceeded(
+                    ImportBoundaryFailureKind.RowLimitExceeded,
+                    path,
+                    "worksheet row count",
+                    nameof(_options.MaxRowsPerWorksheet),
+                    rowCount,
+                    _options.MaxRowsPerWorksheet,
+                    worksheet.Name);
+            }
+
             var values = new List<string>(lastColumn);
             for (var column = 1; column <= lastColumn; column++)
             {
-                values.Add(row.Cell(column).GetFormattedString().Trim());
+                cancellationToken.ThrowIfCancellationRequested();
+                var formatted = row.Cell(column).GetFormattedString();
+                if (formatted.Length > _options.MaxCellCharacters)
+                {
+                    throw ImportBoundaryException.LimitExceeded(
+                        ImportBoundaryFailureKind.CellCharacterLimitExceeded,
+                        path,
+                        "worksheet cell character count",
+                        nameof(_options.MaxCellCharacters),
+                        formatted.Length,
+                        _options.MaxCellCharacters,
+                        worksheet.Name);
+                }
+
+                values.Add(formatted.Trim());
             }
 
-            rows.Add(values);
+            yield return values;
         }
-
-        return rows;
     }
 
-    private static List<List<string>> ReadCsvRows(TextReader reader)
+    private IEnumerable<IReadOnlyList<string>> ReadCsvRows(
+        TextReader reader,
+        string path,
+        CancellationToken cancellationToken)
     {
-        var rows = new List<List<string>>();
         var row = new List<string>();
         var field = new StringBuilder();
         var inQuotes = false;
-        var recordStarted = false;
+        var fieldClosed = false;
+        var fieldStarted = false;
+        var recordNumber = 1L;
+        var cellCount = 0L;
 
-        while (reader.Read() is var next && next >= 0)
+        void AppendCharacter(char character)
         {
-            var c = (char)next;
-            if (c == '"')
+            if (field.Length >= _options.MaxCellCharacters)
             {
-                recordStarted = true;
-                if (inQuotes && reader.Peek() == '"')
+                throw ImportBoundaryException.LimitExceeded(
+                    ImportBoundaryFailureKind.CellCharacterLimitExceeded,
+                    path,
+                    "CSV cell character count",
+                    nameof(_options.MaxCellCharacters),
+                    field.Length + 1L,
+                    _options.MaxCellCharacters);
+            }
+
+            field.Append(character);
+        }
+
+        void CompleteField()
+        {
+            if (row.Count >= _options.MaxColumnsPerWorksheet)
+            {
+                throw ImportBoundaryException.LimitExceeded(
+                    ImportBoundaryFailureKind.ColumnLimitExceeded,
+                    path,
+                    "CSV column count",
+                    nameof(_options.MaxColumnsPerWorksheet),
+                    row.Count + 1L,
+                    _options.MaxColumnsPerWorksheet);
+            }
+
+            cellCount++;
+            if (cellCount > _options.MaxCellsPerWorksheet)
+            {
+                throw ImportBoundaryException.LimitExceeded(
+                    ImportBoundaryFailureKind.CellLimitExceeded,
+                    path,
+                    "CSV cell count",
+                    nameof(_options.MaxCellsPerWorksheet),
+                    cellCount,
+                    _options.MaxCellsPerWorksheet);
+            }
+
+            row.Add(field.ToString());
+            field.Clear();
+            fieldStarted = false;
+            fieldClosed = false;
+        }
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var next = reader.Read();
+            if (next < 0)
+            {
+                break;
+            }
+
+            var character = (char)next;
+            if (inQuotes)
+            {
+                if (character == '"')
                 {
-                    field.Append('"');
-                    reader.Read();
+                    if (reader.Peek() == '"')
+                    {
+                        reader.Read();
+                        AppendCharacter('"');
+                    }
+                    else
+                    {
+                        inQuotes = false;
+                        fieldClosed = true;
+                    }
                 }
                 else
                 {
-                    inQuotes = !inQuotes;
+                    AppendCharacter(character);
                 }
+
+                continue;
             }
-            else if (c == ',' && !inQuotes)
+
+            if (fieldClosed)
             {
-                row.Add(field.ToString());
-                field.Clear();
-                recordStarted = true;
+                if (character == ',')
+                {
+                    CompleteField();
+                    continue;
+                }
+
+                if (character is '\r' or '\n')
+                {
+                    CompleteField();
+                    if (character == '\r' && reader.Peek() == '\n')
+                    {
+                        reader.Read();
+                    }
+
+                    if (recordNumber > _options.MaxRowsPerWorksheet)
+                    {
+                        throw ImportBoundaryException.LimitExceeded(
+                            ImportBoundaryFailureKind.RowLimitExceeded,
+                            path,
+                            "CSV row count",
+                            nameof(_options.MaxRowsPerWorksheet),
+                            recordNumber,
+                            _options.MaxRowsPerWorksheet);
+                    }
+
+                    yield return row;
+                    recordNumber++;
+                    row = [];
+                    continue;
+                }
+
+                throw ImportBoundaryException.Malformed(
+                    ImportBoundaryFailureKind.MalformedCsv,
+                    path,
+                    $"CSV record {recordNumber} has characters after a closing quote");
             }
-            else if ((c == '\r' || c == '\n') && !inQuotes)
+
+            if (character == ',')
             {
-                if (c == '\r' && reader.Peek() == '\n')
+                CompleteField();
+                continue;
+            }
+
+            if (character is '\r' or '\n')
+            {
+                CompleteField();
+                if (character == '\r' && reader.Peek() == '\n')
                 {
                     reader.Read();
                 }
 
-                row.Add(field.ToString());
-                field.Clear();
-                rows.Add(row);
+                if (recordNumber > _options.MaxRowsPerWorksheet)
+                {
+                    throw ImportBoundaryException.LimitExceeded(
+                        ImportBoundaryFailureKind.RowLimitExceeded,
+                        path,
+                        "CSV row count",
+                        nameof(_options.MaxRowsPerWorksheet),
+                        recordNumber,
+                        _options.MaxRowsPerWorksheet);
+                }
+
+                yield return row;
+                recordNumber++;
                 row = [];
-                recordStarted = false;
+                continue;
             }
-            else
+
+            if (character == '"')
             {
-                field.Append(c);
-                recordStarted = true;
+                if (fieldStarted || field.Length > 0)
+                {
+                    throw ImportBoundaryException.Malformed(
+                        ImportBoundaryFailureKind.MalformedCsv,
+                        path,
+                        $"CSV record {recordNumber} contains an unexpected quote");
+                }
+
+                inQuotes = true;
+                fieldStarted = true;
+                continue;
             }
+
+            AppendCharacter(character);
+            fieldStarted = true;
         }
 
-        if (recordStarted || row.Count > 0 || field.Length > 0)
+        if (inQuotes)
         {
-            row.Add(field.ToString());
-            rows.Add(row);
+            throw ImportBoundaryException.Malformed(
+                ImportBoundaryFailureKind.MalformedCsv,
+                path,
+                $"CSV record {recordNumber} contains an unterminated quoted field");
         }
 
-        return rows;
+        if (fieldStarted || fieldClosed || row.Count > 0 || field.Length > 0)
+        {
+            CompleteField();
+            if (recordNumber > _options.MaxRowsPerWorksheet)
+            {
+                throw ImportBoundaryException.LimitExceeded(
+                    ImportBoundaryFailureKind.RowLimitExceeded,
+                    path,
+                    "CSV row count",
+                    nameof(_options.MaxRowsPerWorksheet),
+                    recordNumber,
+                    _options.MaxRowsPerWorksheet);
+            }
+
+            yield return row;
+        }
     }
 
-    private static string Get(IReadOnlyList<string> row, IReadOnlyDictionary<string, int> headers, params string[] keys)
+    private static string Get(
+        IReadOnlyList<string> row,
+        IReadOnlyDictionary<string, int> headers,
+        params string[] keys)
     {
         foreach (var key in keys)
         {
@@ -315,7 +777,12 @@ public sealed class CsvTransactionService
             : 0;
     }
 
-    private static int ParseInt(string value) => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result) ? result : 0;
+    private static int ParseInt(string value)
+    {
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result)
+            ? result
+            : 0;
+    }
 
     private static DateOnly? ParseDate(string value)
     {
@@ -324,16 +791,8 @@ public sealed class CsvTransactionService
             return current;
         }
 
-        return DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var invariant) ? invariant : null;
-    }
-
-    private static string Escape(string value)
-    {
-        if (!value.Contains(',') && !value.Contains('"') && !value.Contains('\n') && !value.Contains('\r'))
-        {
-            return value;
-        }
-
-        return $"\"{value.Replace("\"", "\"\"")}\"";
+        return DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var invariant)
+            ? invariant
+            : null;
     }
 }

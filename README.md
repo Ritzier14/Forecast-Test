@@ -15,7 +15,8 @@ The current build focuses on the highest-value spreadsheet workflow and the rele
 - Open/save project JSON files with backups.
 - Verify and restore project backups to a new file, with a pre-restore backup for explicit overwrites.
 - Sanitized, bounded local diagnostics with corrupt-preference quarantine and startup notices.
-- Raw transaction CSV import/export.
+- Hardened raw-transaction CSV/XLSX/XLSM import with bounded file/workbook limits, malformed-input rejection, and duplicate-row skipping.
+- Spreadsheet-safe CSV export that neutralizes formula-like text without changing project data.
 - Validation and audit tabs.
 - Add, duplicate, and delete forecast lines.
 - Command-line acceptance checks for the workbook-derived seed data.
