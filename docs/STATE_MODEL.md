@@ -1,10 +1,10 @@
 # State model and source-of-truth contract
 
-Status: LUNA-12 evidence packet, 2026-08-29.
+Status: LUNA-13 evidence packet, 2026-08-29.
 
-This document records the state contract that exists before the forecast and
-schedule ownership refactors. It is a map of the current application, not a
-claim that every current mutation path is already ideal. The next ownership
+This document records the state contract through the project/task/category
+presentation boundary. It is a map of the current application, not a claim
+that every current mutation path is already ideal. The next ownership
 packets must use this document as their boundary: LUNA-16A owns the canonical
 forecast/transaction state and derived totals; LUNA-16B owns canonical
 schedule, workspace, snapshot, and preference state.
@@ -95,8 +95,8 @@ The following table covers every root property currently serialized by
 | `FiscalYearBudget` | `FiscalYear`, `Budget` | Legacy budget representation; current budget editing is owned by `BudgetLines`. |
 | `FiscalYearBudgetLine` | `Key`, `Name`, `Amounts` | `IsActive` and `Total` are ignored runtime state; `Total` is the sum of amounts. |
 | `FiscalYearBudgetAmount` | `FiscalYear`, `Amount` | None. `Amount` is an editable budget input. |
-| `ProjectTaskCode` | `SystemCode`, `TaskName`, `IsRawDataCode`, `IsManualCode`, `DisplayOrder`, `IconKey`, `IconColorHex`, `HeaderColorHex` | `DefaultHeaderColorHex`, `CanEditSystemCode`, `CanDelete`, `IconPreview`, `IconColorBrush`, `IconColorLabel`, `HeaderColorBrush`, and `HeaderColorLabel` are ignored derived/presentation values. |
-| `ProjectCategory` | `Name`, `ColorHex`, `IconKey`, `DisplayOrder` | `DefaultColorHex`, `IconPreview`, `ColorBrush`, and `ColorLabel` are ignored derived/presentation values. |
+| `ProjectTaskCode` | `SystemCode`, `TaskName`, `IsRawDataCode`, `IsManualCode`, `DisplayOrder`, `IconKey`, `IconColorHex`, `HeaderColorHex` | `DefaultHeaderColorHex` is an ignored plain fallback input; `CanEditSystemCode` and `CanDelete` are ignored policy helpers. WPF icon/brush/label projections are materialized by `ProjectMetadataPresentation` converters, not stored on the model. |
+| `ProjectCategory` | `Name`, `ColorHex`, `IconKey`, `DisplayOrder` | `DefaultColorHex` is an ignored plain fallback input. WPF icon/brush/label projections are materialized by `ProjectMetadataPresentation` converters, not stored on the model. |
 
 ### Forecast lines and nested forecast state
 
@@ -179,7 +179,13 @@ The following values are calculated today but remain in the JSON shape:
    `JsonIgnore`.
 7. `MonthlyForecast.ActualCostAmount`, audit/unmatched display strings,
    comment display/sort values, task/category resolved display values, and
-   WPF brushes/images are calculated or presentation-only and excluded.
+   WPF brushes/images on the remaining presentation-bearing model candidates
+   are calculated or presentation-only and excluded.
+
+LUNA-13 additionally makes `ProjectTaskCode` and `ProjectCategory` keep icon
+keys, colour hex values, and plain fallback inputs only. Their WPF brushes,
+images, and labels are created at the App boundary and therefore cannot enter
+JSON.
 
 The compatibility rule is conservative: a persisted cache is not silently
 discarded in LUNA-12. It is documented, characterized, and left available to
@@ -316,10 +322,11 @@ silently turn those preferences into `ProjectDataset` authority.
 
 ## 10. Explicit follow-up extensions
 
-The following items are intentionally not fixed by LUNA-12:
+The following items are intentionally not fixed by LUNA-13:
 
-- LUNA-13/LUNA-14: remove WPF media/brush/window dependencies from persisted
-  model files and move presentation into presenters, converters, or views.
+- LUNA-14: remove remaining WPF media/brush/window dependencies from forecast
+  and summary model candidates and move presentation into presenters,
+  converters, or views.
 - LUNA-16A: make forecast lines and transactions canonical, give mutations one
   entry point, recompute summaries from inputs, and remove persisted derived
   values only through a compatible migration. Decide the typed forecast-line
@@ -352,3 +359,21 @@ state slice must enter one of those packets with a named acceptance test.
 These tests are characterization tests, not permission to broaden the packet.
 They should be changed only when the relevant LUNA-16A or LUNA-16B ownership
 decision is implemented and its migration/compatibility impact is reviewed.
+
+## 12. LUNA-13 presentation-boundary evidence
+
+`Luna13ProjectMetadataTests` records the project/task/category presentation
+boundary:
+
+- `ProjectTaskCode` and `ProjectCategory` source and reflected properties have
+  no WPF media or `MainWindow` dependency;
+- App converters preserve selected colours, fallback colours, named colour
+  labels, and safe icon materialization for default and missing assets; and
+- current format and unversioned legacy project fixtures preserve their
+  metadata JSON fields while excluding presentation properties after a
+  save/load round trip.
+
+The task/category editor binds the persisted strings through
+`ProjectMetadataPresentation` converters. This keeps the JSON shape from
+LUNA-05 and leaves the remaining forecast/summary model presentation debt to
+LUNA-14.

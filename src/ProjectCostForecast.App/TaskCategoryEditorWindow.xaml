@@ -25,6 +25,10 @@
     </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <local:ProjectTaskIconConverter x:Key="ProjectTaskIconConverter" />
+        <local:ProjectCategoryIconConverter x:Key="ProjectCategoryIconConverter" />
+        <local:ProjectMetadataColorBrushConverter x:Key="ProjectMetadataColorBrushConverter" />
+        <local:ProjectMetadataColorLabelConverter x:Key="ProjectMetadataColorLabelConverter" />
 
         <Style x:Key="RoundedActionButtonStyle" TargetType="Button">
             <Setter Property="Padding" Value="14,8" />
@@ -460,12 +464,18 @@
                                                         BorderBrush="#D8E4F4"
                                                         BorderThickness="1"
                                                         CornerRadius="7">
-                                                    <Image Source="{Binding IconPreview}"
-                                                           Width="20"
+                                                    <Image Width="20"
                                                            Height="20"
                                                            Stretch="Uniform"
                                                            HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center" />
+                                                           VerticalAlignment="Center">
+                                                        <Image.Source>
+                                                            <MultiBinding Converter="{StaticResource ProjectTaskIconConverter}">
+                                                                <Binding Path="IconKey" />
+                                                                <Binding Path="IconColorHex" />
+                                                            </MultiBinding>
+                                                        </Image.Source>
+                                                    </Image>
                                                 </Border>
                                             </Button>
                                         </Grid>
@@ -487,13 +497,24 @@
                                                         Height="28"
                                                         CornerRadius="14"
                                                         BorderBrush="#CBD5E1"
-                                                        BorderThickness="1"
-                                                        Background="{Binding HeaderColorBrush}">
-                                                    <TextBlock Text="{Binding HeaderColorLabel}"
-                                                               Foreground="#1E293B"
+                                                        BorderThickness="1">
+                                                    <Border.Background>
+                                                        <MultiBinding Converter="{StaticResource ProjectMetadataColorBrushConverter}">
+                                                            <Binding Path="HeaderColorHex" />
+                                                            <Binding Path="DefaultHeaderColorHex" />
+                                                        </MultiBinding>
+                                                    </Border.Background>
+                                                    <TextBlock Foreground="#1E293B"
                                                                FontWeight="SemiBold"
                                                                HorizontalAlignment="Center"
-                                                               VerticalAlignment="Center" />
+                                                               VerticalAlignment="Center">
+                                                        <TextBlock.Text>
+                                                            <MultiBinding Converter="{StaticResource ProjectMetadataColorLabelConverter}">
+                                                                <Binding Path="HeaderColorHex" />
+                                                                <Binding Path="DefaultHeaderColorHex" />
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
                                                 </Border>
                                             </Button>
                                         </Grid>
@@ -558,7 +579,7 @@
                                                         BorderBrush="#D8E4F4"
                                                         BorderThickness="1"
                                                         CornerRadius="7">
-                                                    <Image Source="{Binding IconPreview}"
+                                                    <Image Source="{Binding IconKey, Converter={StaticResource ProjectCategoryIconConverter}}"
                                                            Width="20"
                                                            Height="20"
                                                            Stretch="Uniform"
@@ -585,13 +606,24 @@
                                                         Height="28"
                                                         CornerRadius="14"
                                                         BorderBrush="#CBD5E1"
-                                                        BorderThickness="1"
-                                                        Background="{Binding ColorBrush}">
-                                                    <TextBlock Text="{Binding ColorLabel}"
-                                                               Foreground="#1E293B"
+                                                        BorderThickness="1">
+                                                    <Border.Background>
+                                                        <MultiBinding Converter="{StaticResource ProjectMetadataColorBrushConverter}">
+                                                            <Binding Path="ColorHex" />
+                                                            <Binding Path="DefaultColorHex" />
+                                                        </MultiBinding>
+                                                    </Border.Background>
+                                                    <TextBlock Foreground="#1E293B"
                                                                FontWeight="SemiBold"
                                                                HorizontalAlignment="Center"
-                                                               VerticalAlignment="Center" />
+                                                               VerticalAlignment="Center">
+                                                        <TextBlock.Text>
+                                                            <MultiBinding Converter="{StaticResource ProjectMetadataColorLabelConverter}">
+                                                                <Binding Path="ColorHex" />
+                                                                <Binding Path="DefaultColorHex" />
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
                                                 </Border>
                                             </Button>
                                         </Grid>

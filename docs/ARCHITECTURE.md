@@ -28,6 +28,21 @@ CSV/XLSX/XLSM files are untrusted boundaries. `CsvTransactionService` applies ex
 
 Date/time behavior follows `docs/DATE_TIME_CONTRACT.md`: fiscal and schedule calendar values are `DateOnly` NZ business dates, durable audit/snapshot/preference instants are UTC `DateTimeOffset` values, and display conversion uses `Pacific/Auckland` with `en-NZ`. Current workflow time enters through `IClock`; model constructors use explicit sentinels rather than ambient time. JSON converters accept legacy offset-free NZ-local timestamps and normalize persisted output to invariant UTC without changing fiscal-period dates.
 
+### Project metadata presentation boundary
+
+`ProjectTaskCode` and `ProjectCategory` are persisted model types. They retain
+only the project metadata needed by JSON and application commands: names,
+icon keys, colour hex values, ordering, and editability flags. They do not
+expose WPF media types or call `MainWindow`.
+
+`ProjectMetadataPresentation` and its WPF converters materialize the task and
+category icons, colour brushes, labels, and invalid-colour fallbacks for
+`TaskCategoryEditorWindow`. The ignored `DefaultHeaderColorHex` and
+`DefaultColorHex` values remain plain fallback inputs assigned by the view
+model; their visual interpretation belongs to the converter layer. This keeps
+the persisted JSON names and values unchanged while making the model boundary
+safe for the planned Core assembly.
+
 The WPF composition root attaches `RuntimeExceptionPolicy` to the dispatcher,
 application-domain, and unobserved-task boundaries. An unexpected UI or
 application-domain failure is logged and follows a fail-fast shutdown policy;

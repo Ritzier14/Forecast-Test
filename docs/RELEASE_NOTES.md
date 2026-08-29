@@ -26,6 +26,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - No-dependency command-line acceptance checks in `tests/ProjectCostForecast.Tests`.
 - Complete discovered xUnit migration with a 428/428 legacy-assertion coverage map, named calculation/import/scheduling/view-model/WPF tests, and one authoritative verification path.
 - State/source-of-truth contract covering every project dataset collection, persisted calculated field, identity rule, dirty-tracking seam, serialization boundary, and explicit LUNA-16A/LUNA-16B follow-up.
+- Project and task/category metadata presentation moved into App-level WPF converters; persisted icon keys and colour hex values remain plain JSON data.
 
 ### Verified
 
@@ -39,6 +40,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - Actuals pivot values match the workbook pivot totals.
 - Seed data has no validation errors.
 - The LUNA-12 state characterization suite round-trips editable nested project state, proves known monthly/contingency/budget dirty boundaries, and confirms schedule-derived outputs remain runtime-only.
+- The LUNA-13 characterization suite proves the persisted task/category models have no WPF or `MainWindow` dependency, preserves icon/colour fallback behavior, and round-trips current and legacy project fixtures.
 
 ### Remaining Before A Formal Production Release
 

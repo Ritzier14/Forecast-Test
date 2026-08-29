@@ -1,6 +1,3 @@
-using System;
-using System.Windows.Media;
-
 namespace ProjectCostForecast.App.Models;
 
 public sealed class ProjectDataset
@@ -56,54 +53,26 @@ public sealed class ProjectTaskCode : ObservableModel
     public string IconKey
     {
         get => _iconKey;
-        set
-        {
-            if (SetProperty(ref _iconKey, value?.Trim() ?? string.Empty))
-            {
-                OnPropertyChanged(nameof(IconPreview));
-            }
-        }
+        set => SetProperty(ref _iconKey, value?.Trim() ?? string.Empty);
     }
 
     public string IconColorHex
     {
         get => _iconColorHex;
-        set
-        {
-            if (SetProperty(ref _iconColorHex, value?.Trim() ?? string.Empty))
-            {
-                OnPropertyChanged(nameof(IconPreview));
-                OnPropertyChanged(nameof(IconColorBrush));
-                OnPropertyChanged(nameof(IconColorLabel));
-            }
-        }
+        set => SetProperty(ref _iconColorHex, value?.Trim() ?? string.Empty);
     }
 
     public string HeaderColorHex
     {
         get => _headerColorHex;
-        set
-        {
-            if (SetProperty(ref _headerColorHex, value?.Trim() ?? string.Empty))
-            {
-                OnPropertyChanged(nameof(HeaderColorBrush));
-                OnPropertyChanged(nameof(HeaderColorLabel));
-            }
-        }
+        set => SetProperty(ref _headerColorHex, value?.Trim() ?? string.Empty);
     }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public string DefaultHeaderColorHex
     {
         get => _defaultHeaderColorHex;
-        set
-        {
-            if (SetProperty(ref _defaultHeaderColorHex, value?.Trim() ?? string.Empty))
-            {
-                OnPropertyChanged(nameof(HeaderColorBrush));
-                OnPropertyChanged(nameof(HeaderColorLabel));
-            }
-        }
+        set => SetProperty(ref _defaultHeaderColorHex, value?.Trim() ?? string.Empty);
     }
 
     [System.Text.Json.Serialization.JsonIgnore]
@@ -111,47 +80,6 @@ public sealed class ProjectTaskCode : ObservableModel
 
     [System.Text.Json.Serialization.JsonIgnore]
     public bool CanDelete => !IsRawDataCode;
-
-    [System.Text.Json.Serialization.JsonIgnore]
-    public ImageSource IconPreview => MainWindow.GetBuiltInImageSourceByPath(
-        string.IsNullOrWhiteSpace(IconKey)
-            ? "/Assets/Icons/png/ic_category_project_management_20.png"
-            : $"/Assets/Icons/png/{IconKey}",
-        IconColorHex);
-
-    [System.Text.Json.Serialization.JsonIgnore]
-    public Brush IconColorBrush => BrushFactory.TryParseHexColor(IconColorHex, out var color)
-        ? new SolidColorBrush(color)
-        : BrushFactory.Frozen("#FFFFFF");
-
-    [System.Text.Json.Serialization.JsonIgnore]
-    public string IconColorLabel => string.IsNullOrWhiteSpace(IconColorHex) ? "Default" : IconColorHex;
-
-    [System.Text.Json.Serialization.JsonIgnore]
-    public Brush HeaderColorBrush => BrushFactory.TryParseHexColor(HeaderColorHex, out var color)
-        ? new SolidColorBrush(color)
-        : BrushFactory.TryParseHexColor(DefaultHeaderColorHex, out var defaultColor)
-            ? new SolidColorBrush(defaultColor)
-            : BrushFactory.Frozen("#FFFFFF");
-
-    [System.Text.Json.Serialization.JsonIgnore]
-    public string HeaderColorLabel => GetColorLabel(string.IsNullOrWhiteSpace(HeaderColorHex) ? DefaultHeaderColorHex : HeaderColorHex);
-
-    private static string GetColorLabel(string? hex)
-    {
-        return (hex ?? string.Empty).Trim().ToUpperInvariant() switch
-        {
-            "" => "Default",
-            "#EDF8F0" or "#16A34A" => "Green",
-            "#FFF4E7" or "#EA580C" => "Orange",
-            "#EEF5FF" or "#2563EB" => "Blue",
-            "#F5F0FF" or "#7C3AED" => "Purple",
-            "#ECF9FA" => "Cyan",
-            "#FFF0F5" or "#DC2626" => "Pink",
-            "#475569" => "Slate",
-            _ => hex ?? "Default"
-        };
-    }
 }
 
 public sealed class ProjectCategory : ObservableModel
@@ -166,27 +94,13 @@ public sealed class ProjectCategory : ObservableModel
     public string ColorHex
     {
         get => _colorHex;
-        set
-        {
-            if (SetProperty(ref _colorHex, value?.Trim() ?? string.Empty))
-            {
-                OnPropertyChanged(nameof(IconPreview));
-                OnPropertyChanged(nameof(ColorBrush));
-                OnPropertyChanged(nameof(ColorLabel));
-            }
-        }
+        set => SetProperty(ref _colorHex, value?.Trim() ?? string.Empty);
     }
 
     public string IconKey
     {
         get => _iconKey;
-        set
-        {
-            if (SetProperty(ref _iconKey, value?.Trim() ?? string.Empty))
-            {
-                OnPropertyChanged(nameof(IconPreview));
-            }
-        }
+        set => SetProperty(ref _iconKey, value?.Trim() ?? string.Empty);
     }
     public int DisplayOrder { get; set; }
 
@@ -194,49 +108,7 @@ public sealed class ProjectCategory : ObservableModel
     public string DefaultColorHex
     {
         get => _defaultColorHex;
-        set
-        {
-            if (SetProperty(ref _defaultColorHex, value?.Trim() ?? string.Empty))
-            {
-                OnPropertyChanged(nameof(ColorBrush));
-                OnPropertyChanged(nameof(ColorLabel));
-            }
-        }
-    }
-
-    [System.Text.Json.Serialization.JsonIgnore]
-    public ImageSource IconPreview => MainWindow.GetBuiltInImageSourceByPath(
-        string.IsNullOrWhiteSpace(IconKey)
-            ? "/Assets/Icons/png/ic_category_project_management_20.png"
-            : $"/Assets/Icons/png/{IconKey}");
-
-    [System.Text.Json.Serialization.JsonIgnore]
-    public Brush ColorBrush => BrushFactory.TryParseHexColor(ColorHex, out var color)
-        ? new SolidColorBrush(color)
-        : BrushFactory.TryParseHexColor(DefaultColorHex, out var defaultColor)
-            ? new SolidColorBrush(defaultColor)
-            : BrushFactory.Frozen("#FFFFFF");
-
-    [System.Text.Json.Serialization.JsonIgnore]
-    public string ColorLabel => ProjectTaskCodeColorLabels.GetColorLabel(string.IsNullOrWhiteSpace(ColorHex) ? DefaultColorHex : ColorHex);
-}
-
-internal static class ProjectTaskCodeColorLabels
-{
-    public static string GetColorLabel(string? hex)
-    {
-        return (hex ?? string.Empty).Trim().ToUpperInvariant() switch
-        {
-            "" => "Default",
-            "#EDF8F0" or "#16A34A" => "Green",
-            "#FFF4E7" or "#EA580C" => "Orange",
-            "#EEF5FF" or "#2563EB" => "Blue",
-            "#F5F0FF" or "#7C3AED" => "Purple",
-            "#ECF9FA" => "Cyan",
-            "#FFF0F5" or "#DC2626" => "Pink",
-            "#475569" => "Slate",
-            _ => hex ?? "Default"
-        };
+        set => SetProperty(ref _defaultColorHex, value?.Trim() ?? string.Empty);
     }
 }
 

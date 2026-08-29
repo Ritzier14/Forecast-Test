@@ -864,7 +864,7 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | LUNA-10 | Complete | `DateOnly` NZ business dates, UTC `DateTimeOffset` durable instants, `IClock`, legacy NZ-local migration, invariant persistence/filenames, en-NZ display, and 7 focused DST/rollover/culture/round-trip tests |
 | LUNA-11 | Complete | 428/428 harness assertions mapped; 26 named discovered calculation/import/scheduling/view-model/WPF tests added; verifier defaults to the 86-test xUnit suite and retains the unchanged harness as opt-in smoke |
 | LUNA-12 | Complete | `docs/STATE_MODEL.md`, five focused characterization tests, persisted-collection/derived-cache inventory, identity and dirty-tracking map; full discovered suite passes with 91 tests plus the retained legacy smoke gate |
-| LUNA-13 | Not started | |
+| LUNA-13 | Complete | `ProjectMetadataPresentation` converters own task/category WPF projections; five focused tests, 96 discovered tests, and all 428 retained legacy smoke assertions pass |
 | LUNA-14 | Not started | |
 | LUNA-15A | Not started | |
 | LUNA-15B | Not started | |
