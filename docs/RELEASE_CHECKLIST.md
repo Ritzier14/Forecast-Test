@@ -106,6 +106,9 @@ limitations or approvals, not undocumented work.
   financial row values in default diagnostics.
 - [ ] Release-data owner approves the anonymised startup workbook, archived
   source workbook, and any distribution policy.
+  SOL-00 accepts this P1 for codebase-audit closure only with no formal
+  distribution, owner `user / release-data owner`, and review on 2026-11-29 or
+  before any distribution, whichever occurs first.
 - [ ] A signed installer or MSIX, upgrade path, and deployment rollback channel
   are implemented and tested.
 - [ ] Product acceptance is completed against additional real projects.
@@ -122,5 +125,6 @@ limitations or approvals, not undocumented work.
   register.
 - [x] Confirm no unresolved P0 is hidden and that the F-13 P1 disposition is
   explicitly resolved by the dedicated cleanup packet.
-- [ ] Complete independent SOL-00 final acceptance; the parent Sol agent must
-  review the cleanup commit and all evidence first.
+- [x] Complete independent SOL-00 codebase-audit acceptance. See
+  [`docs/audit/SOL-00-FINAL-AUDIT.md`](audit/SOL-00-FINAL-AUDIT.md); this does
+  not complete the unchecked formal-production gates above.

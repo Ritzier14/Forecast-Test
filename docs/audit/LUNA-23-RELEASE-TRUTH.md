@@ -10,8 +10,9 @@ what is still a release limitation.
 
 The F-13 tracked-artifact cleanup is recorded in
 [`F-13-CLEANUP.md`](F-13-CLEANUP.md). It removes the exact 17 legacy
-release/scratch paths from Git tracking while preserving local copies; the
-parent Sol agent owns the cleanup commit and independent SOL-00 review.
+release/scratch paths from Git tracking while preserving local copies. The
+parent Sol agent completed the cleanup commit and independent SOL-00 review in
+[`SOL-00-FINAL-AUDIT.md`](SOL-00-FINAL-AUDIT.md).
 
 ## Product and version boundary
 

@@ -129,3 +129,11 @@ Actions Windows runner profile.
    verifier script's unchanged default `BaselinePath`.
 
 Final acceptance remains an independent SOL-00 responsibility.
+
+## Independent SOL follow-up
+
+SOL-00 independently verified exact candidate `2c6cd67`, and corrected GitHub
+Actions run `33243769987` / job `99077522610` passed every workflow gate. The
+final acceptance decision and remaining formal-release limitations are recorded
+in [`SOL-00-FINAL-AUDIT.md`](SOL-00-FINAL-AUDIT.md); this remediation packet
+does not claim final SOL acceptance itself.

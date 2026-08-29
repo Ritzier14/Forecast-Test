@@ -643,5 +643,6 @@ semantics, and deferred installer/signing work.
 `LUNA-24-FINDING-MATRIX.md` maps F-00 through F-20 to their fixing packet and
 current disposition. `LUNA_HANDOFF.md` records the clean-build evidence and the
 independent Sol Ultra procedure. F-13 is fixed by its dedicated cleanup packet;
-the parent Sol agent still must independently review the evidence during
-SOL-00, which remains not started.
+`SOL-00-FINAL-AUDIT.md` records the completed independent review and accepts
+the codebase-audit candidate while preserving the separate production-release
+limitations.

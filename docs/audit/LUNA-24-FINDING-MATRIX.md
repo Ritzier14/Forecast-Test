@@ -41,6 +41,7 @@ distribution, and broader user-acceptance items are explicit release
 limitations with role owners in
 [`LUNA-23-RELEASE-TRUTH.md`](LUNA-23-RELEASE-TRUTH.md).
 
-The parent Sol agent must independently verify the cleanup packet, all gates,
-and the complete matrix during SOL-00. This matrix does not claim SOL-00 final
-acceptance.
+The parent Sol agent independently verified the cleanup packet, all gates, and
+the complete matrix during SOL-00. This matrix does not claim SOL-00 final
+acceptance itself; the result is in
+[`SOL-00-FINAL-AUDIT.md`](SOL-00-FINAL-AUDIT.md).

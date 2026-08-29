@@ -242,8 +242,9 @@ roadmap language.
 The final finding disposition and independent-audit inputs are indexed by
 [`LUNA-24-FINDING-MATRIX.md`](audit/LUNA-24-FINDING-MATRIX.md) and
 [`LUNA_HANDOFF.md`](audit/LUNA_HANDOFF.md). F-13 is fixed by the dedicated
-cleanup packet; SOL-00 remains the parent Sol agent's independent review and
-final acceptance gate.
+cleanup packet. SOL-00 independently accepts the codebase-audit candidate in
+[`SOL-00-FINAL-AUDIT.md`](audit/SOL-00-FINAL-AUDIT.md); that verdict does not
+approve the separately documented production-release gates.
 
 The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root

@@ -7,8 +7,9 @@ Recorded: 2026-08-29
 The user explicitly delegated the F-13 decision and final closure to Sol on
 2026-08-29. Sol selected the cleanup option: remove all 17 listed release and
 scratch artifacts from Git tracking in a dedicated reviewable cleanup packet.
-This packet does not claim SOL-00 final acceptance; the parent Sol agent must
-review, verify, commit, push, and perform the independent final audit.
+This packet does not itself claim SOL-00 final acceptance; the parent Sol agent
+subsequently reviewed, verified, committed, pushed, and completed the
+independent final audit.
 
 ## Exact scope
 
@@ -78,4 +79,6 @@ Release build. No local file is deleted by this packet.
 - `git diff --check` passes. All 17 local paths remain present on disk after
   the index-only operation, and all three source fixture paths remain tracked.
 
-SOL-00 remains `Not started` / pending independent parent-agent review.
+At this packet boundary, SOL-00 remains pending independent parent-agent review.
+SOL-00 subsequently completed; see
+[`SOL-00-FINAL-AUDIT.md`](SOL-00-FINAL-AUDIT.md).

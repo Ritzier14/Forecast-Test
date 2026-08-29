@@ -99,6 +99,8 @@ The checks verify the important workbook-derived drilldowns, including:
 - `docs/audit/LUNA-23-RELEASE-TRUTH.md` - as-built version, file-format support, release gates, explicit limits, and deferred release work.
 - `docs/audit/F-13-CLEANUP.md` - authorized exact-scope cleanup, local-copy preservation, recovery, and verification evidence.
 - `docs/audit/LUNA-24-FINDING-MATRIX.md` and `docs/audit/LUNA_HANDOFF.md` - finding dispositions, closure status, deferred-risk register, and the independent Sol Ultra handoff.
+- `docs/audit/LUNA-25-CI-PERFORMANCE.md` - SOL-FAIL-1 reproduction, GitHub Windows baseline provenance, bounded remediation, and recapture policy.
+- `docs/audit/SOL-00-FINAL-AUDIT.md` - independent acceptance evidence, residual release risks, and final codebase-audit verdict.
 
 ## Stack
 
@@ -135,4 +137,4 @@ should go in the matching partial file (or a new one) rather than growing any si
 
 ## Release status
 
-The app has moved past the Alpha 1 starter into a practical release-candidate shape. The main remaining production work is a signed installer/MSIX and rollback channel, a decision on a direct original-workbook `.xlsm` project importer, release-data distribution approval, and broader user acceptance testing against more real projects. The legacy release/`Temp` tracking cleanup is complete as the F-13 packet. The exact as-built boundary is recorded in [`docs/audit/LUNA-23-RELEASE-TRUTH.md`](docs/audit/LUNA-23-RELEASE-TRUTH.md); final independent acceptance status is in [`docs/audit/LUNA_HANDOFF.md`](docs/audit/LUNA_HANDOFF.md).
+The app has moved past the Alpha 1 starter into a practical release-candidate shape, and SOL-00 has accepted the completed codebase audit. The main remaining production work is a signed installer/MSIX and rollback channel, a decision on a direct original-workbook `.xlsm` project importer, release-data distribution approval, and broader user acceptance testing against more real projects. The legacy release/`Temp` tracking cleanup is complete as the F-13 packet. The exact as-built boundary is recorded in [`docs/audit/LUNA-23-RELEASE-TRUTH.md`](docs/audit/LUNA-23-RELEASE-TRUTH.md); independent acceptance and its non-production limitations are in [`docs/audit/SOL-00-FINAL-AUDIT.md`](docs/audit/SOL-00-FINAL-AUDIT.md).

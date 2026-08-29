@@ -1,13 +1,13 @@
 # Luna handoff to Sol Ultra
 
-Handoff state: prepared for independent SOL-00 review; F-13 cleanup is complete
-and final acceptance remains pending the parent Sol audit
+Handoff state: accepted by SOL-00 for codebase-audit closure; formal production
+release limitations remain
 
 Pre-cleanup candidate baseline: `85f3b03` (`docs(audit): prepare LUNA-24 Sol handoff`)
 
-This handoff is an evidence index, not a completion claim. Sol Ultra must
-independently inspect the source, commit history, and gates. Luna's packet
-claims are not substitutes for Sol's acceptance procedure.
+This handoff originated as an evidence index, not a completion claim. Sol Ultra
+independently inspected the source, commit history, and gates; Luna's packet
+claims were not substitutes for Sol's acceptance procedure.
 
 ## Required reading
 
@@ -41,6 +41,12 @@ source/history secret scan, and normal-package data check. The Windows workflow
 in `.github/workflows/verify.yml` invokes the same local verification command
 before its additional supply-chain, secret, and performance gates.
 
+After SOL-FAIL-1 returned the CI performance gate to LUNA-25, exact candidate
+`2c6cd67` passed locked restore, a zero-warning Release build, all 186 discovered
+tests, and all 428 retained smoke assertions from a disposable clean clone.
+GitHub Actions run `33243769987` then passed verification, dependency audit,
+secret scan, the machine-matched performance gate, and evidence upload.
+
 ## F-13 cleanup packet
 
 The user explicitly delegated the F-13 decision and final closure to Sol on
@@ -51,12 +57,13 @@ existing ignore rules match them, and the three source data fixtures remain
 tracked. The exact paths, recovery from `85f3b03`/source inputs, and evidence
 are recorded in [`F-13-CLEANUP.md`](F-13-CLEANUP.md).
 
-The parent Sol agent owns the independent verification, cleanup commit, push,
-and SOL-00 decision. This handoff does not claim final acceptance.
+The parent Sol agent completed the independent verification, cleanup commit,
+push, and SOL-00 decision. The authoritative result is
+[`SOL-00-FINAL-AUDIT.md`](SOL-00-FINAL-AUDIT.md).
 
-## Sol verification obligations
+## Sol verification obligations (completed)
 
-Sol Ultra must:
+Sol Ultra verified the following obligations:
 
 1. inspect the complete diff and commit sequence from the baseline;
 2. use a clean checkout and clean output directory for locked restore, Release
@@ -78,10 +85,11 @@ Sol Ultra must:
 |---|---|---|---|---|
 | No signed installer/MSIX or deployment rollback channel | P2 | Release/build owner | The repository produces a WPF build, not an installer. Verified backups and a prior approved artifact are the manual rollback path. | Before formal production release |
 | Direct original-workbook `.xlsm` project importer is not implemented | P2 | Application owner | The supported boundary is the anonymised startup fixture plus raw transaction CSV/XLSX/XLSM import. | Product decision before replacing the extracted fixture |
-| Release-data distribution approval is pending | P1 | Release-data owner | Hash/provenance review is recorded without exposing values; retain only approved anonymised data in a release package. | Before distribution or formal release |
+| Release-data distribution is not owner-approved | P1, accepted for SOL-00 audit closure only | User / release-data owner | User delegated final closure to Sol; no formal distribution is allowed, and normal package content remains limited to the reviewed anonymised fixture. | 2026-11-29 or before any distribution, whichever occurs first |
 | Broader user acceptance is pending | P2 | Product acceptance owner | Existing workbook-derived and synthetic gates are not a substitute for additional real projects. | Before formal production release |
 | NuGet advisory results are point-in-time | P2 | Release/build owner | Locked graph and zero finding inventory are recorded; rerun the advisory query for each release. | Every release candidate |
 
 The release-data row remains a visible formal-release gate, not a hidden waiver;
-F-13 itself is resolved by the dedicated cleanup packet. The branch is
-prepared for the independent SOL-00 audit, which remains not started here.
+F-13 itself is resolved by the dedicated cleanup packet. SOL-00 accepts the
+codebase-audit candidate without converting any formal-release limitation into
+a completed release gate.
