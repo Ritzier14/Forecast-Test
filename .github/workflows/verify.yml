@@ -38,7 +38,7 @@ jobs:
 
       - name: Performance regression gate
         shell: pwsh
-        run: .\scripts\verify-performance.ps1 -OutputPath 'artifacts/luna22/performance-run.json' -BaselinePath 'docs/audit/LUNA-20-PERFORMANCE-BASELINE.json' -EnforceRegression
+        run: .\scripts\verify-performance.ps1 -OutputPath 'artifacts/luna22/performance-run.json' -BaselinePath 'docs/audit/LUNA-20-PERFORMANCE-CI-BASELINE.json' -EnforceRegression
 
       - name: Upload verification evidence
         if: always()
