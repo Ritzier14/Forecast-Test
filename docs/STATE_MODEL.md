@@ -635,3 +635,11 @@ The as-built release boundary is summarized in
 [`LUNA-23-RELEASE-TRUTH.md`](audit/LUNA-23-RELEASE-TRUTH.md), including the
 independent application/format versions, supported import formats, recovery
 semantics, and deferred installer/signing work.
+
+## 25. LUNA-24 closure and evidence handoff
+
+`LUNA-24-FINDING-MATRIX.md` maps F-00 through F-20 to their fixing packet and
+current disposition. `LUNA_HANDOFF.md` records the clean-build evidence and the
+independent Sol Ultra procedure. F-13 remains a visible P1 approval gate for
+the tracked legacy release/`Temp` artifacts; documenting that gate does not
+remove it or silently accept it.

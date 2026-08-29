@@ -96,6 +96,7 @@ The checks verify the important workbook-derived drilldowns, including:
 - `docs/STATE_MODEL.md` - project state categories, ownership, identities, derived values, dirty tracking, and follow-up boundaries.
 - `docs/TEST_COVERAGE_MAP.md` - complete legacy-harness-to-discovered-test mapping and test isolation rules.
 - `docs/audit/LUNA-23-RELEASE-TRUTH.md` - as-built version, file-format support, release gates, explicit limits, and deferred release work.
+- `docs/audit/LUNA-24-FINDING-MATRIX.md` and `docs/audit/LUNA_HANDOFF.md` - finding dispositions, closure status, deferred-risk register, and the independent Sol Ultra handoff.
 
 ## Stack
 
@@ -132,4 +133,4 @@ should go in the matching partial file (or a new one) rather than growing any si
 
 ## Release status
 
-The app has moved past the Alpha 1 starter into a practical release-candidate shape. The main remaining production work is a signed installer/MSIX and rollback channel, a decision on a direct original-workbook `.xlsm` project importer, release-data/legacy-artifact approval, and broader user acceptance testing against more real projects. The exact as-built boundary is recorded in [`docs/audit/LUNA-23-RELEASE-TRUTH.md`](docs/audit/LUNA-23-RELEASE-TRUTH.md).
+The app has moved past the Alpha 1 starter into a practical release-candidate shape. The main remaining production work is a signed installer/MSIX and rollback channel, a decision on a direct original-workbook `.xlsm` project importer, release-data/legacy-artifact approval, and broader user acceptance testing against more real projects. The exact as-built boundary is recorded in [`docs/audit/LUNA-23-RELEASE-TRUTH.md`](docs/audit/LUNA-23-RELEASE-TRUTH.md); final independent acceptance status is in [`docs/audit/LUNA_HANDOFF.md`](docs/audit/LUNA_HANDOFF.md).

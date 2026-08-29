@@ -109,3 +109,15 @@ limitations or approvals, not undocumented work.
 - [ ] Product acceptance is completed against additional real projects.
 - [ ] Any tracked `release/ProjectCostForecast/` and `Temp/` cleanup is approved
   and executed as its own reviewable change; LUNA-22 deliberately did not do so.
+
+## Closure and independent handoff (LUNA-24)
+
+- [x] Review [`docs/audit/LUNA-24-FINDING-MATRIX.md`](audit/LUNA-24-FINDING-MATRIX.md)
+  to confirm every F-00 through F-20 finding has a packet and disposition.
+- [x] Produce [`docs/audit/LUNA_HANDOFF.md`](audit/LUNA_HANDOFF.md) with the
+  clean-build evidence, independent Sol Ultra procedure, and deferred-risk
+  register.
+- [x] Confirm no unresolved P0 is hidden and that the F-13 P1 approval gate is
+  explicitly visible.
+- [ ] Obtain the F-13 user/release-owner decision before final independent
+  acceptance.

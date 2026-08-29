@@ -238,6 +238,11 @@ constraints, and deferred release work are consolidated in
 the reference when the historical rebuild specification or release notes use
 roadmap language.
 
+The final finding disposition and independent-audit inputs are indexed by
+[`LUNA-24-FINDING-MATRIX.md`](audit/LUNA-24-FINDING-MATRIX.md) and
+[`LUNA_HANDOFF.md`](audit/LUNA_HANDOFF.md). A documented pending approval is
+not treated as a completed release gate.
+
 The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root
 collection and persisted calculated field, records the current identity and
