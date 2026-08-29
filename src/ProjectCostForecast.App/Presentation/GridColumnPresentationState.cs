@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
 
-namespace ProjectCostForecast.App.Models;
+namespace ProjectCostForecast.App;
 
 public static class GridColumnPresentationState
 {

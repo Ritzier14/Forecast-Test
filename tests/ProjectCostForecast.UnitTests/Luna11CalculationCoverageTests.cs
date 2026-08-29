@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using ProjectCostForecast.App;
 using ProjectCostForecast.App.Models;
 using ProjectCostForecast.App.Services;
 using Xunit;

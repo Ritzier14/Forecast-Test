@@ -32,7 +32,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public const string ForecastFreezeFccKey = "FCC";
     public const string ForecastFreezeBudgetKey = "Budget";
     public const string ForecastFreezeBudgetVarianceKey = "BudgetVariance";
-    public const string DefaultForecastFreezeColumnKey = ForecastFreezeCategoryKey;
+    public const string DefaultForecastFreezeColumnKey = AppUserPreferenceDefaults.ForecastFreezeColumnKey;
     public const string ForecastGroupByNoneKey = "None";
     public const string ForecastGroupByTaskKey = "Task";
     public const string ForecastGroupByResourceKey = "Resource";

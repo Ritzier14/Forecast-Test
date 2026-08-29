@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Windows.Data;
 
-namespace ProjectCostForecast.App.Models;
+namespace ProjectCostForecast.App;
 
 public sealed class AccountingNoDecimalsConverter : IValueConverter
 {

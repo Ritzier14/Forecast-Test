@@ -1,8 +1,8 @@
 # State model and source-of-truth contract
 
-Status: LUNA-13 evidence packet, 2026-08-29.
+Status: LUNA-14 evidence packet, 2026-08-29.
 
-This document records the state contract through the project/task/category
+This document records the state contract through the forecast/summary
 presentation boundary. It is a map of the current application, not a claim
 that every current mutation path is already ideal. The next ownership
 packets must use this document as their boundary: LUNA-16A owns the canonical
@@ -61,8 +61,8 @@ The following table covers every root property currently serialized by
 | `BudgetLines` | Authoritative persisted budget inputs/configuration | Stable line `Key` (`P3M`, `LTP_AP`, or a future key); amount identity is line key plus fiscal year | Budget amount edits and active-line selection; report and budget-chart calculations consume it | `IsActive` is ignored runtime state; amounts are persisted. |
 | `ActiveBudgetLineKey` | Project-local presentation/calculation selection | Budget-line key; view model owns selection command | `SetActiveBudgetLine` and budget loading; selects which budget is copied to the legacy fiscal-year view | Persisted because it changes the project’s selected comparison basis. |
 | `ForecastLines` | Authoritative persisted forecast/planning inputs plus persisted derived caches | Current validation identity is normalized task number + resource name + nullable transaction-project scope; row number is a source/display locator | Import, line commands, monthly edits, comments, category/task metadata, and calculation refresh | Nested monthly forecasts, phases, cost lines, comments, and preferences are serialized. Derived fields listed in section 5 are currently also serialized unless ignored. |
-| `ProjectTaskCodes` | Authoritative persisted task metadata and project-local task presentation | `SystemCode` is the task-code identity; display order is not identity | Task-code/category commands and metadata repair; forecast display resolves task names from this collection | Icon keys/colour hexes are plain data. WPF-derived properties are ignored. |
-| `ProjectCategories` | Authoritative persisted category metadata and project-local category presentation | Normalized `Name` is the current category identity | Category commands and metadata repair; forecast reporting-category resolution consumes it | Icon keys/colour hexes are plain data. WPF-derived properties are ignored. |
+| `ProjectTaskCodes` | Authoritative persisted task metadata and project-local task presentation | `SystemCode` is the task-code identity; display order is not identity | Task-code/category commands and metadata repair; forecast display resolves task names from this collection | Icon keys/colour hexes are plain data. WPF projections are materialized by App converters. |
+| `ProjectCategories` | Authoritative persisted category metadata and project-local category presentation | Normalized `Name` is the current category identity | Category commands and metadata repair; forecast reporting-category resolution consumes it | Icon keys/colour hexes are plain data. WPF projections are materialized by App converters. |
 | `ManagementResources` | Authoritative persisted management-planning inputs plus a persisted calculated-rate cache | No central typed key; current matching uses source row/task/resource/project context | Rate override/reset, monthly allocation edits, and import/resource matching; allocations and effective rate feed management forecast views | `SourceLine` is ignored. `CalculatedHourlyRate` is a persisted derived cache; `HourlyRate`, override flag, hours, and allocations are inputs. |
 | `Transactions` | Authoritative persisted raw accounting input | Import duplicate fingerprint from `CsvTransactionService.BuildDuplicateKey`; source row number is a locator and is excluded from that fingerprint | CSV/XLSX/XLSM import and explicit transaction replacement; actual-cost calculation and drilldowns consume it | `LedgerResourceName` is a getter-only derived compatibility surface; current JSON behavior must be preserved or migrated before changing it. |
 | `UnmatchedImportCombinations` | Authoritative persisted import-review history | Current combination is task/manual/project/category/source context; no generated durable ID | Import preview decision and unmatched-review actions | `RecordedAtDisplay` is ignored presentation. |
@@ -120,9 +120,10 @@ must not be treated as interchangeable:
 
 For `MonthlyForecast`, `PeriodLabel`, `PeriodStartDate`, `Amount`, and
 `IsLocked` are currently serialized. `IsLocked` is a persisted workflow/UI
-choice used to prevent editing closed periods. `ActualCostAmount`,
-`IsEditable`, `BackgroundBrush`, and `ForegroundBrush` are derived or WPF
-presentation state; the latter are ignored.
+choice used to prevent editing closed periods. `ActualCostAmount` and
+`IsEditable` are derived plain helpers. The former `BackgroundBrush` and
+`ForegroundBrush` properties were WPF-only row state and are now owned by the
+presentation layer rather than the persisted model.
 
 `ForecastMonthlyComment` persists `PeriodLabel`, `MonthLabel`, `ResourceName`,
 `Text`, and `RecordedAt`. `PeriodSortKey` and `DisplayText` are ignored
@@ -178,14 +179,17 @@ The following values are calculated today but remain in the JSON shape:
 6. Schedule activity CPM/baseline outputs are calculated and excluded with
    `JsonIgnore`.
 7. `MonthlyForecast.ActualCostAmount`, audit/unmatched display strings,
-   comment display/sort values, task/category resolved display values, and
-   WPF brushes/images on the remaining presentation-bearing model candidates
-   are calculated or presentation-only and excluded.
+   comment display/sort values, and task/category resolved display values are
+   calculated or presentation-only and excluded. WPF brushes, images,
+   visibility values, and attached grid state are outside the model candidate
+   set under `src/ProjectCostForecast.App/Presentation`.
 
 LUNA-13 additionally makes `ProjectTaskCode` and `ProjectCategory` keep icon
 keys, colour hex values, and plain fallback inputs only. Their WPF brushes,
 images, and labels are created at the App boundary and therefore cannot enter
-JSON.
+JSON. LUNA-14 applies the same boundary to forecast/summary row projections,
+converters, and attached grid state while leaving true summary values and
+project-local `WorkspaceViewLayout` JSON fields intact.
 
 The compatibility rule is conservative: a persisted cache is not silently
 discarded in LUNA-12. It is documented, characterized, and left available to
@@ -322,11 +326,8 @@ silently turn those preferences into `ProjectDataset` authority.
 
 ## 10. Explicit follow-up extensions
 
-The following items are intentionally not fixed by LUNA-13:
+The following items are intentionally not fixed by LUNA-14:
 
-- LUNA-14: remove remaining WPF media/brush/window dependencies from forecast
-  and summary model candidates and move presentation into presenters,
-  converters, or views.
 - LUNA-16A: make forecast lines and transactions canonical, give mutations one
   entry point, recompute summaries from inputs, and remove persisted derived
   values only through a compatible migration. Decide the typed forecast-line
@@ -375,5 +376,27 @@ boundary:
 
 The task/category editor binds the persisted strings through
 `ProjectMetadataPresentation` converters. This keeps the JSON shape from
-LUNA-05 and leaves the remaining forecast/summary model presentation debt to
-LUNA-14.
+LUNA-05 while the forecast/summary WPF projections are handled by the LUNA-14
+presentation boundary.
+
+## 13. LUNA-14 forecast/summary presentation-boundary evidence
+
+`Luna14ArchitectureTests` records the forecast/summary boundary:
+
+- every C# file directly under `Models` passes the forbidden-reference check;
+  the negative control proves a deliberate `System.Windows` reference fails;
+- `KpiPill`, `WorkspaceViewTab`, `ForecastMonthColumnDefinition`, converters,
+  and attached grid state are located under `Presentation`, while persisted
+  `CategorySummary` and `WorkspaceViewLayout` remain plain model values;
+- monthly lock/editability notifications, forecast-column colours and
+  separators, grid locking/highlighting/status state, KPI comparison
+  visibility, and missing workspace-icon fallback are characterized on an STA
+  thread; and
+- current-format and unversioned legacy fixtures round-trip forecast amounts,
+  lock state, category summaries, and workspace icon/layout values without
+  serializing WPF properties.
+
+This packet removes the WPF dependency from the agreed model candidate set but
+does not change the persisted derived-cache policy or choose the canonical
+forecast/transaction/workspace owners. Those decisions remain with LUNA-16A
+and LUNA-16B.

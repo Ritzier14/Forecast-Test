@@ -135,8 +135,8 @@
             <Setter Property="ColumnHeaderStyle">
                 <Setter.Value>
                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-                        <Setter Property="Background" Value="{Binding Column.(models:GridColumnPresentationState.HeaderBackground), RelativeSource={RelativeSource Self}}" />
-                        <Setter Property="BorderBrush" Value="{Binding Column.(models:GridColumnPresentationState.HeaderBorderBrush), RelativeSource={RelativeSource Self}}" />
+                        <Setter Property="Background" Value="{Binding Column.(local:GridColumnPresentationState.HeaderBackground), RelativeSource={RelativeSource Self}}" />
+                        <Setter Property="BorderBrush" Value="{Binding Column.(local:GridColumnPresentationState.HeaderBorderBrush), RelativeSource={RelativeSource Self}}" />
                         <Setter Property="BorderThickness" Value="0,0,1,1" />
                         <Setter Property="Foreground" Value="#0F172A" />
                         <Setter Property="FontWeight" Value="SemiBold" />
@@ -161,7 +161,7 @@
                                                     BorderBrush="#D6E2EF"
                                                     BorderThickness="1"
                                                     CornerRadius="5">
-                                                <TextBlock Text="{Binding Column.(models:GridColumnPresentationState.IconGlyph), RelativeSource={RelativeSource TemplatedParent}}"
+                                                <TextBlock Text="{Binding Column.(local:GridColumnPresentationState.IconGlyph), RelativeSource={RelativeSource TemplatedParent}}"
                                                            FontSize="10"
                                                            FontWeight="SemiBold"
                                                            Foreground="#64748B"
@@ -400,13 +400,13 @@
                               Margin="-1,0,-1,0">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Task code"
-                                                models:GridColumnPresentationState.IconGlyph="T"
+                                                local:GridColumnPresentationState.IconGlyph="T"
                                                 Binding="{Binding SystemCode, UpdateSourceTrigger=PropertyChanged}"
                                                 Width="128"
                                                 ElementStyle="{StaticResource EditorTextColumnDisplayStyle}"
                                                 EditingElementStyle="{StaticResource EditorTextColumnEditingStyle}" />
                             <DataGridTemplateColumn Header="Task name"
-                                                    models:GridColumnPresentationState.IconGlyph="T"
+                                                    local:GridColumnPresentationState.IconGlyph="T"
                                                     Width="*"
                                                     SortMemberPath="TaskName">
                                 <DataGridTemplateColumn.CellTemplate>
@@ -423,7 +423,7 @@
                                 </DataGridTemplateColumn.CellEditingTemplate>
                             </DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="Imported" Width="112.67" IsReadOnly="True"
-                                                    models:GridColumnPresentationState.IconGlyph="✓">
+                                                    local:GridColumnPresentationState.IconGlyph="✓">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate DataType="{x:Type models:ProjectTaskCode}">
                                         <Grid Height="38"
@@ -449,7 +449,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="Icon" Width="75.33"
-                                                    models:GridColumnPresentationState.IconGlyph="I">
+                                                    local:GridColumnPresentationState.IconGlyph="I">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate DataType="{x:Type models:ProjectTaskCode}">
                                         <Grid Height="38"
@@ -483,7 +483,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="Colour" Width="130"
-                                                    models:GridColumnPresentationState.IconGlyph="C">
+                                                    local:GridColumnPresentationState.IconGlyph="C">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate DataType="{x:Type models:ProjectTaskCode}">
                                         <Grid Height="38"
@@ -547,7 +547,7 @@
                               Margin="-1,0,-1,0">
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="Category"
-                                                    models:GridColumnPresentationState.IconGlyph="T"
+                                                    local:GridColumnPresentationState.IconGlyph="T"
                                                     Width="*"
                                                     SortMemberPath="Name">
                                 <DataGridTemplateColumn.CellTemplate>
@@ -564,7 +564,7 @@
                                 </DataGridTemplateColumn.CellEditingTemplate>
                             </DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="Icon" Width="120"
-                                                    models:GridColumnPresentationState.IconGlyph="I">
+                                                    local:GridColumnPresentationState.IconGlyph="I">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate DataType="{x:Type models:ProjectCategory}">
                                         <Grid Height="38"
@@ -592,7 +592,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="Colour" Width="140"
-                                                    models:GridColumnPresentationState.IconGlyph="C">
+                                                    local:GridColumnPresentationState.IconGlyph="C">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate DataType="{x:Type models:ProjectCategory}">
                                         <Grid Height="38"

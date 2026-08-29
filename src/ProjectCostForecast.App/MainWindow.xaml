@@ -20,10 +20,10 @@
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
     <Window.Resources>
-        <models:ForecastGroupSummaryConverter x:Key="ForecastGroupSummaryConverter" />
-        <models:ForecastGroupMonthSummaryConverter x:Key="ForecastGroupMonthSummaryConverter" />
-        <models:DateOnlyTextConverter x:Key="DateOnlyText" />
-        <models:OutlineIndentConverter x:Key="OutlineIndent" />
+        <local:ForecastGroupSummaryConverter x:Key="ForecastGroupSummaryConverter" />
+        <local:ForecastGroupMonthSummaryConverter x:Key="ForecastGroupMonthSummaryConverter" />
+        <local:DateOnlyTextConverter x:Key="DateOnlyText" />
+        <local:OutlineIndentConverter x:Key="OutlineIndent" />
         <local:FormattedCommentConverter x:Key="FormattedComment" />
         <DataTemplate x:Key="ForecastMonthColumnHeaderTemplate">
             <Grid SnapsToDevicePixels="True">

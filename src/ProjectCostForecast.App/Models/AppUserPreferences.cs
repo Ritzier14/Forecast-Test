@@ -2,6 +2,11 @@ using System;
 
 namespace ProjectCostForecast.App.Models;
 
+public static class AppUserPreferenceDefaults
+{
+    public const string ForecastFreezeColumnKey = "Category";
+}
+
 public sealed class AppUserPreferences
 {
     public bool StartMaximized { get; set; } = true;
@@ -24,7 +29,7 @@ public sealed class AppUserPreferences
     public bool ShowCurrencySymbols { get; set; }
     public int ForecastMonthMillionDecimals { get; set; } = 2;
     public List<int> SelectedCtcMonthForecastYears { get; set; } = [];
-    public string ForecastFreezeColumnKey { get; set; } = ViewModels.MainWindowViewModel.DefaultForecastFreezeColumnKey;
+    public string ForecastFreezeColumnKey { get; set; } = AppUserPreferenceDefaults.ForecastFreezeColumnKey;
     public bool KeepColumnHighlightsAcrossTabs { get; set; }
     public bool ShowVarianceIndicators { get; set; }
     public string SelectedCategorySortOptionKey { get; set; } = "Alphabetical";

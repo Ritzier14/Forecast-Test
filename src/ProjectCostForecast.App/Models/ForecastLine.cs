@@ -1,5 +1,3 @@
-﻿using System.Windows.Media;
-
 namespace ProjectCostForecast.App.Models;
 
 public sealed class ForecastLine : ObservableModel
@@ -273,13 +271,9 @@ public sealed class ForecastTaskCostLine : ObservableModel
 
 public sealed class MonthlyForecast : ObservableModel
 {
-    private static readonly Brush LockedBackgroundBrush = BrushFactory.Frozen(0xF3, 0xF4, 0xF6);
-    private static readonly Brush LockedForegroundBrush = BrushFactory.Frozen(0x94, 0xA3, 0xB8);
     private decimal _amount;
     private decimal _actualCostAmount;
     private bool _isLocked;
-    private Brush _backgroundBrush = Brushes.White;
-    private Brush _foregroundBrush = Brushes.Black;
 
     public event EventHandler<ValueChangedEventArgs<decimal>>? AmountChanged;
 
@@ -313,28 +307,12 @@ public sealed class MonthlyForecast : ObservableModel
         {
             if (SetProperty(ref _isLocked, value))
             {
-                BackgroundBrush = value ? LockedBackgroundBrush : Brushes.White;
-                ForegroundBrush = value ? LockedForegroundBrush : Brushes.Black;
                 OnPropertyChanged(nameof(IsEditable));
             }
         }
     }
 
     public bool IsEditable => !IsLocked;
-
-    [System.Text.Json.Serialization.JsonIgnore]
-    public Brush BackgroundBrush
-    {
-        get => _backgroundBrush;
-        private set => SetProperty(ref _backgroundBrush, value);
-    }
-
-    [System.Text.Json.Serialization.JsonIgnore]
-    public Brush ForegroundBrush
-    {
-        get => _foregroundBrush;
-        private set => SetProperty(ref _foregroundBrush, value);
-    }
 
 }
 

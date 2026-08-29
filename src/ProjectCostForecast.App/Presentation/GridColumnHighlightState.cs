@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace ProjectCostForecast.App.Models;
+namespace ProjectCostForecast.App;
 
 public static class GridColumnHighlightState
 {

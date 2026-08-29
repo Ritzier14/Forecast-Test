@@ -50,6 +50,29 @@ an isolated unobserved task is logged and marked observed so the shell can
 continue. The dispatcher policy presents a generic user message without
 displaying exception details, project values, imported rows, names, or paths.
 
+### Forecast and summary presentation boundary
+
+The `Models` folder is now the agreed candidate set for persisted/domain
+types. `ForecastLine`, `MonthlyForecast`, `CategorySummary`, the true summary
+DTOs, and the other model files contain no `System.Windows`, control, dialog,
+brush, image, visibility, or `MainWindow` dependency. `MonthlyForecast` keeps
+its persisted amount/lock contract and editability notification; its old row
+brush projections were dead UI state and have been removed.
+
+The WPF-only `KpiPill`, `WorkspaceViewTab`, and
+`ForecastMonthColumnDefinition` projections, the attached grid state helpers,
+and the model-folder converters now live under
+`src/ProjectCostForecast.App/Presentation`. `WorkspaceViewLayout` remains the
+plain project-local persisted layout; `WorkspaceViewTab` is the live shell
+projection and its `IconPreview` stays ignored by JSON. The XAML resource and
+attached-property bindings point to the App namespace, preserving the existing
+icons, colours, locking, separators, comparison visibility, and grid behavior.
+
+`Luna14ArchitectureTests` scans every C# file in `Models` for forbidden WPF or
+window references and includes a deliberate negative-control source string,
+so adding a dependency to the agreed candidate set fails the discovered test
+gate.
+
 ## State and refresh rules
 
 - A user operation should enter through one view-model method or command.

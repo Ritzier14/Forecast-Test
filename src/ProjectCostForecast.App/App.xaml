@@ -12,8 +12,8 @@
         <SolidColorBrush x:Key="SoftBorderBrush" Color="#DDE6F0" />
         <SolidColorBrush x:Key="GridLineBrush" Color="#EEF3F8" />
         <SolidColorBrush x:Key="MutedTextBrush" Color="#64748B" />
-        <models:AccountingNoDecimalsConverter x:Key="AccountingNoDecimalsConverter" />
-        <models:NonNegativeDoubleConverter x:Key="NonNegativeDoubleConverter" />
+        <local:AccountingNoDecimalsConverter x:Key="AccountingNoDecimalsConverter" />
+        <local:NonNegativeDoubleConverter x:Key="NonNegativeDoubleConverter" />
 
         <Style x:Key="ScrollBarThumbStyle" TargetType="Thumb">
             <Setter Property="Background" Value="#8B8B8B" />
@@ -466,7 +466,7 @@
                                                     BorderBrush="#EEF3F8"
                                                     BorderThickness="0,1,0,0"
                                                     Padding="10,3">
-                                                <TextBlock Text="{Binding Path=(models:GridSelectionStatus.Text), RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"
+                                                <TextBlock Text="{Binding Path=(local:GridSelectionStatus.Text), RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"
                                                            HorizontalAlignment="Right"
                                                            VerticalAlignment="Center"
                                                            Foreground="#475569"
@@ -514,18 +514,18 @@
                     <ControlTemplate TargetType="{x:Type DataGridColumnHeader}">
                         <Grid SnapsToDevicePixels="True">
                             <Border x:Name="HeaderBackground"
-                                    Background="{Binding Column.(models:GridColumnPresentationState.HeaderBackground), RelativeSource={RelativeSource TemplatedParent}}"
-                                    BorderBrush="{Binding Column.(models:GridColumnPresentationState.HeaderBorderBrush), RelativeSource={RelativeSource TemplatedParent}}"
+                                    Background="{Binding Column.(local:GridColumnPresentationState.HeaderBackground), RelativeSource={RelativeSource TemplatedParent}}"
+                                    BorderBrush="{Binding Column.(local:GridColumnPresentationState.HeaderBorderBrush), RelativeSource={RelativeSource TemplatedParent}}"
                                     BorderThickness="{TemplateBinding BorderThickness}" />
                             <Border x:Name="HeaderHoverOverlay"
                                     Background="#4DDDE8F7"
-                                    BorderBrush="{Binding Column.(models:GridColumnPresentationState.HeaderBorderBrush), RelativeSource={RelativeSource TemplatedParent}}"
+                                    BorderBrush="{Binding Column.(local:GridColumnPresentationState.HeaderBorderBrush), RelativeSource={RelativeSource TemplatedParent}}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     Visibility="Collapsed"
                                     IsHitTestVisible="False" />
                             <Border x:Name="HeaderSortOverlay"
                                     Background="#4DD8E6F8"
-                                    BorderBrush="{Binding Column.(models:GridColumnPresentationState.HeaderBorderBrush), RelativeSource={RelativeSource TemplatedParent}}"
+                                    BorderBrush="{Binding Column.(local:GridColumnPresentationState.HeaderBorderBrush), RelativeSource={RelativeSource TemplatedParent}}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     Visibility="Collapsed"
                                     IsHitTestVisible="False" />
@@ -550,7 +550,7 @@
                                         VerticalAlignment="Center"
                                         Tag="ColumnHeaderIcon"
                                         ToolTip="Right-click to change column icon">
-                                    <TextBlock Text="{Binding Column.(models:GridColumnPresentationState.IconGlyph), RelativeSource={RelativeSource TemplatedParent}}"
+                                    <TextBlock Text="{Binding Column.(local:GridColumnPresentationState.IconGlyph), RelativeSource={RelativeSource TemplatedParent}}"
                                                FontSize="10"
                                                FontWeight="SemiBold"
                                                Foreground="#475569"
@@ -597,7 +597,7 @@
                             <Trigger Property="SortDirection" Value="Descending">
                                 <Setter TargetName="HeaderSortOverlay" Property="Visibility" Value="Visible" />
                             </Trigger>
-                            <DataTrigger Binding="{Binding Column.(models:GridColumnHighlightState.IsHighlighted), RelativeSource={RelativeSource Self}}" Value="True">
+                            <DataTrigger Binding="{Binding Column.(local:GridColumnHighlightState.IsHighlighted), RelativeSource={RelativeSource Self}}" Value="True">
                                 <Setter TargetName="HeaderHighlightOverlay" Property="Visibility" Value="Visible" />
                             </DataTrigger>
                         </ControlTemplate.Triggers>
@@ -616,7 +616,7 @@
             <Setter Property="FontSize" Value="11" />
             <Setter Property="BorderBrush" Value="{StaticResource GridLineBrush}" />
             <Setter Property="BorderThickness" Value="0,0,1,1" />
-            <Setter Property="Background" Value="{Binding Column.(models:GridColumnPresentationState.ColumnBackground), RelativeSource={RelativeSource Self}}" />
+            <Setter Property="Background" Value="{Binding Column.(local:GridColumnPresentationState.ColumnBackground), RelativeSource={RelativeSource Self}}" />
             <Setter Property="Foreground" Value="#0F172A" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Template">
@@ -666,7 +666,7 @@
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
-                            <Border BorderBrush="{Binding Column.(models:GridColumnPresentationState.ColumnBorderBrush), RelativeSource={RelativeSource TemplatedParent}}"
+                            <Border BorderBrush="{Binding Column.(local:GridColumnPresentationState.ColumnBorderBrush), RelativeSource={RelativeSource TemplatedParent}}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     IsHitTestVisible="False" />
                         </Grid>
@@ -674,26 +674,26 @@
                             <MultiDataTrigger>
                                 <MultiDataTrigger.Conditions>
                                     <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource TemplatedParent}}" Value="False" />
-                                    <Condition Binding="{Binding Path=(models:GridHoverState.IsRowHovered), RelativeSource={RelativeSource TemplatedParent}}" Value="True" />
+                                    <Condition Binding="{Binding Path=(local:GridHoverState.IsRowHovered), RelativeSource={RelativeSource TemplatedParent}}" Value="True" />
                                 </MultiDataTrigger.Conditions>
                                 <Setter TargetName="HoverOverlay" Property="Visibility" Value="Visible" />
                             </MultiDataTrigger>
-                            <DataTrigger Binding="{Binding Column.(models:GridColumnHighlightState.IsHighlighted), RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                            <DataTrigger Binding="{Binding Column.(local:GridColumnHighlightState.IsHighlighted), RelativeSource={RelativeSource TemplatedParent}}" Value="True">
                                 <Setter TargetName="HighlightOverlay" Property="Visibility" Value="Visible" />
                             </DataTrigger>
-                            <DataTrigger Binding="{Binding Path=(models:GridColumnHighlightState.IsHighlighted), RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                            <DataTrigger Binding="{Binding Path=(local:GridColumnHighlightState.IsHighlighted), RelativeSource={RelativeSource TemplatedParent}}" Value="True">
                                 <Setter TargetName="HighlightOverlay" Property="Visibility" Value="Visible" />
                             </DataTrigger>
-                            <Trigger Property="models:GridSelectionVisualState.IsCurrentRow" Value="True">
+                            <Trigger Property="local:GridSelectionVisualState.IsCurrentRow" Value="True">
                                 <Setter TargetName="CurrentRowFill" Property="Visibility" Value="Visible" />
                             </Trigger>
-                            <Trigger Property="models:GridSelectionVisualState.IsLockedCell" Value="True">
+                            <Trigger Property="local:GridSelectionVisualState.IsLockedCell" Value="True">
                                 <Setter TargetName="LockedOverlay" Property="Visibility" Value="Visible" />
                             </Trigger>
-                            <Trigger Property="models:GridSelectionVisualState.IsCellSelected" Value="True">
+                            <Trigger Property="local:GridSelectionVisualState.IsCellSelected" Value="True">
                                 <Setter TargetName="SelectionFill" Property="Visibility" Value="Visible" />
                             </Trigger>
-                            <Trigger Property="models:GridSelectionVisualState.IsFillHandleCell" Value="True">
+                            <Trigger Property="local:GridSelectionVisualState.IsFillHandleCell" Value="True">
                                 <Setter TargetName="FillHandle" Property="Visibility" Value="Visible" />
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -704,7 +704,7 @@
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                         <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="False" />
-                        <Condition Binding="{Binding Path=(models:GridHoverState.IsRowHovered), RelativeSource={RelativeSource Self}}" Value="True" />
+                        <Condition Binding="{Binding Path=(local:GridHoverState.IsRowHovered), RelativeSource={RelativeSource Self}}" Value="True" />
                     </MultiDataTrigger.Conditions>
                     <Setter Property="Background" Value="#F3F4F6" />
                 </MultiDataTrigger>
@@ -717,7 +717,7 @@
             <Setter Property="Foreground" Value="#0F172A" />
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="models:GridHoverState.IsRowHovered" Value="True" />
+                    <Setter Property="local:GridHoverState.IsRowHovered" Value="True" />
                     <Setter Property="Background" Value="#F3F4F6" />
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
