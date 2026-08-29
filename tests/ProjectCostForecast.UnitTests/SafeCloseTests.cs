@@ -89,13 +89,19 @@ public sealed class SafeCloseTests
 
         public ProjectDataset Load(string path) => new();
 
-        public void Save(string path, ProjectDataset dataset)
+        public ProjectFileRevision SaveWithRevision(
+            string path,
+            ProjectDataset dataset,
+            ProjectFileRevision? expectedRevision,
+            string operation = "Save project")
         {
             SaveCalls++;
             if (ThrowOnSave)
             {
                 throw new IOException("forced save failure");
             }
+
+            return new ProjectFileRevision(path, 0, "saved");
         }
 
         public string CreateBackup(string path) => string.Empty;

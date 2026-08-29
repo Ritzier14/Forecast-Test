@@ -236,7 +236,11 @@ public sealed class NewMonthTests
 
         public ProjectDataset Load(string path) => new();
 
-        public void Save(string path, ProjectDataset dataset)
+        public ProjectFileRevision SaveWithRevision(
+            string path,
+            ProjectDataset dataset,
+            ProjectFileRevision? expectedRevision,
+            string operation = "Save project")
         {
             SaveCalls++;
             OnSave?.Invoke();
@@ -246,6 +250,7 @@ public sealed class NewMonthTests
             }
 
             SavedDataset = dataset;
+            return new ProjectFileRevision(path, 0, "saved");
         }
 
         public string CreateBackup(string path) => string.Empty;

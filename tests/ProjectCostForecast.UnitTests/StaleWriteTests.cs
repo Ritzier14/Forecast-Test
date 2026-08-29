@@ -8,6 +8,89 @@ namespace ProjectCostForecast.UnitTests;
 
 public sealed class StaleWriteTests
 {
+    private static readonly TimeSpan InterleavingTimeout = TimeSpan.FromSeconds(10);
+
+    [Fact]
+    public async Task Interleaved_revision_writers_allow_the_old_checks_to_both_pass_but_commit_only_one()
+    {
+        using var directory = new TemporaryDirectory();
+        var path = Path.Combine(directory.Root, "project.json");
+        var seedService = new ProjectFileService();
+        seedService.Save(path, CreateDataset("Original"));
+
+        var firstInterleaving = new BlockingWriteInterleaving();
+        var secondInterleaving = new BlockingWriteInterleaving();
+        var firstService = new ProjectFileService(writeInterleaving: firstInterleaving);
+        var secondService = new ProjectFileService(writeInterleaving: secondInterleaving);
+        var firstSession = firstService.LoadWithRevision(path);
+        var secondSession = secondService.LoadWithRevision(path);
+
+        Assert.Equal(firstSession.Revision, secondSession.Revision);
+        firstSession.Dataset.Header.ProjectTitle = "First writer";
+        secondSession.Dataset.Header.ProjectTitle = "Second writer";
+
+        Task<ProjectFileRevision>? firstSave = null;
+        Task<ProjectFileRevision>? secondSave = null;
+        try
+        {
+            firstSave = Task.Run(() => firstService.SaveWithRevision(
+                path,
+                firstSession.Dataset,
+                firstSession.Revision,
+                "First save"));
+
+            await AwaitWithDiagnosticTimeoutAsync(
+                firstInterleaving.AfterExpectedRevisionCheckReached.Task,
+                "the first writer to reach its post-revision-check barrier");
+            Assert.False(firstInterleaving.ReleaseSignal.Task.IsCompleted);
+
+            // The second service enters while the first writer is paused, but its
+            // revision check cannot run until the shared writer boundary opens.
+            secondSave = Task.Run(() => secondService.SaveWithRevision(
+                path,
+                secondSession.Dataset,
+                secondSession.Revision,
+                "Second save"));
+            await AwaitWithDiagnosticTimeoutAsync(
+                secondInterleaving.BeforeWriterLockReached.Task,
+                "the second writer to reach its pre-lock barrier");
+
+            // This is the deterministic interleaving that the old check-then-write
+            // shape exposed: the first writer has passed its check and the second
+            // writer would also pass a check against the still-original bytes.
+            var revisionDuringPause = secondService.GetRevision(path);
+            Assert.True(firstSession.Revision!.Matches(revisionDuringPause));
+            Assert.True(secondSession.Revision!.Matches(revisionDuringPause));
+
+            firstInterleaving.Release();
+            var winningRevision = await AwaitWithDiagnosticTimeoutAsync(
+                firstSave,
+                "the first writer to commit after its release signal");
+
+            // The second writer now owns the boundary, observes the first commit,
+            // and reports the actual winning revision instead of overwriting it.
+            secondInterleaving.Release();
+            var conflict = await Assert.ThrowsAsync<ProjectFileConflictException>(async () =>
+            {
+                _ = await AwaitWithDiagnosticTimeoutAsync(
+                    secondSave,
+                    "the second writer to reject the stale revision after its release signal");
+            });
+
+            Assert.Equal(winningRevision, conflict.ActualRevision);
+            Assert.Equal("First writer", new ProjectFileService().Load(path).Header.ProjectTitle);
+        }
+        finally
+        {
+            // Assertions and regressions must not strand either writer at its
+            // injected barrier. Release both first, then observe both tasks
+            // within one bounded cleanup window so CI cannot wait forever.
+            firstInterleaving.Release();
+            secondInterleaving.Release();
+            await ObserveSpawnedTasksForCleanupAsync(firstSave, secondSave);
+        }
+    }
+
     [Fact]
     public void Two_project_sessions_reject_a_stale_write_without_overwriting_newer_file()
     {
@@ -151,6 +234,92 @@ public sealed class StaleWriteTests
         public void Save(AppUserPreferences preferences)
         {
             _preferences = preferences;
+        }
+    }
+
+    private static async Task AwaitWithDiagnosticTimeoutAsync(Task task, string diagnostic)
+    {
+        try
+        {
+            await task.WaitAsync(InterleavingTimeout);
+        }
+        catch (TimeoutException ex)
+        {
+            throw new TimeoutException(
+                $"Timed out after {InterleavingTimeout.TotalSeconds:0} seconds waiting for {diagnostic}.",
+                ex);
+        }
+    }
+
+    private static async Task<T> AwaitWithDiagnosticTimeoutAsync<T>(Task<T> task, string diagnostic)
+    {
+        try
+        {
+            return await task.WaitAsync(InterleavingTimeout);
+        }
+        catch (TimeoutException ex)
+        {
+            throw new TimeoutException(
+                $"Timed out after {InterleavingTimeout.TotalSeconds:0} seconds waiting for {diagnostic}.",
+                ex);
+        }
+    }
+
+    private static async Task ObserveSpawnedTasksForCleanupAsync(params Task?[] tasks)
+    {
+        var observers = tasks
+            .Where(task => task is not null)
+            .Select(task => ObserveTaskFailureAsync(task!));
+
+        try
+        {
+            await Task.WhenAll(observers).WaitAsync(InterleavingTimeout);
+        }
+        catch (TimeoutException)
+        {
+            // The test's diagnostic wait reports a stalled production path.
+            // Cleanup itself stays bounded and must not replace that failure.
+        }
+    }
+
+    private static async Task ObserveTaskFailureAsync(Task task)
+    {
+        try
+        {
+            await task;
+        }
+        catch
+        {
+            // The test body owns assertions about task outcomes. This observer
+            // only prevents cleanup from masking them or leaving faults unseen.
+        }
+    }
+
+    private sealed class BlockingWriteInterleaving : IProjectFileWriteInterleaving
+    {
+        public TaskCompletionSource<bool> BeforeWriterLockReached { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource<bool> AfterExpectedRevisionCheckReached { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource<bool> ReleaseSignal { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void BeforeWriterLock(string fullPath)
+        {
+            BeforeWriterLockReached.TrySetResult(true);
+        }
+
+        public void AfterExpectedRevisionCheck(string fullPath)
+        {
+            AfterExpectedRevisionCheckReached.TrySetResult(true);
+            ReleaseSignal.Task.GetAwaiter().GetResult();
+        }
+
+        public void Release()
+        {
+            ReleaseSignal.TrySetResult(true);
         }
     }
 

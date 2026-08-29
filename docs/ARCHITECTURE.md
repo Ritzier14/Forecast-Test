@@ -24,6 +24,29 @@ Domain and calculation code must not acquire new dependencies on `Window`, `Data
 
 Storage is accessed through `IProjectFileService` and `IUserPreferencesService`. JSON writes go to a unique temporary file in the destination directory, are flushed, and then replace the destination. Project backups use collision-safe names, are verified through the project migration/validation boundary, and follow a bounded retention policy. `DiagnosticsService` is a best-effort local rolling log; it records operation and exception type with sanitized context, and its write failures never mask the original failure. Malformed preferences are quarantined before defaults are loaded.
 
+Revision-aware project writes use `ProjectFileWriteLock`, a named Windows
+`Local` mutex whose name is a hash of the canonical full destination path.
+`ProjectFileService.SaveWithRevision` prepares, migrates, and validates the
+candidate before acquiring that boundary; while it is held, it reads the
+actual revision, compares the expected content hash, and performs the existing
+flushed temporary-file replacement. This serializes the check and replacement
+for cooperating `ProjectFileService` instances in the same process or Windows
+interactive session, including separate app processes that can open the same
+named mutex. An abandoned mutex is recovered as an owned boundary because the
+replacement is atomic; acquisition and release failures surface as the typed
+`ProjectFileWriteLockException`.
+
+This is deliberately not a universal filesystem compare-and-swap. A
+non-cooperating writer that does not take the named boundary can still race
+with the check/replacement, although it cannot produce a partially-written
+JSON file through the existing atomic writer. A different host, or a network
+filesystem without a shared Windows mutex namespace, has no shared boundary.
+The application-facing `IProjectFileService` exposes only
+`SaveWithRevision`; the concrete `ProjectFileService.Save` remains an explicit
+unconditional initialization/test convenience and is not reachable through
+that interface. The workflow's existing backup-before-save, migration,
+validation, conflict, Reload, Save As, and Cancel behavior remains unchanged.
+
 Project open/save use cases are coordinated by the headless `ProjectFileWorkflow`.
 It depends on `IProjectFilePicker` and `IProjectPrompt` for paths, user
 decisions, and notifications, and returns explicit succeeded/cancelled/failed

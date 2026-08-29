@@ -11,6 +11,7 @@ public sealed class ProjectFileService : IProjectFileService
     private readonly ValidationService _validationService;
     private readonly ProjectBackupPolicy _backupPolicy;
     private readonly IClock _clock;
+    private readonly IProjectFileWriteInterleaving _writeInterleaving;
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -24,6 +25,23 @@ public sealed class ProjectFileService : IProjectFileService
         ProjectBackupPolicy? backupPolicy = null,
         Func<DateTime>? utcNow = null,
         IClock? clock = null)
+        : this(
+            NoOpProjectFileWriteInterleaving.Instance,
+            migrationPipeline,
+            validationService,
+            backupPolicy,
+            utcNow,
+            clock)
+    {
+    }
+
+    internal ProjectFileService(
+        IProjectFileWriteInterleaving writeInterleaving,
+        ProjectDatasetMigrationPipeline? migrationPipeline = null,
+        ValidationService? validationService = null,
+        ProjectBackupPolicy? backupPolicy = null,
+        Func<DateTime>? utcNow = null,
+        IClock? clock = null)
     {
         _migrationPipeline = migrationPipeline ?? new ProjectDatasetMigrationPipeline();
         _validationService = validationService ?? new ValidationService();
@@ -31,6 +49,7 @@ public sealed class ProjectFileService : IProjectFileService
         _clock = clock ?? (utcNow is null
             ? SystemClock.Instance
             : DateTimeContract.FromLegacyUtcFactory(utcNow));
+        _writeInterleaving = writeInterleaving ?? throw new ArgumentNullException(nameof(writeInterleaving));
         DateTimeContract.AddJsonConverters(_jsonOptions);
     }
 
@@ -39,6 +58,13 @@ public sealed class ProjectFileService : IProjectFileService
         return LoadWithRevision(path).Dataset;
     }
 
+    /// <summary>
+    /// Explicitly initializes or overwrites a project without an expected
+    /// revision. Normal application workflows receive only
+    /// <see cref="IProjectFileService"/> and must use its revision-aware save;
+    /// this concrete convenience remains for initialization, tests, and other
+    /// explicitly unconditional callers.
+    /// </summary>
     public void Save(string path, ProjectDataset dataset)
     {
         _ = SaveWithRevision(path, dataset, expectedRevision: null);
@@ -76,14 +102,19 @@ public sealed class ProjectFileService : IProjectFileService
         var prepared = _migrationPipeline.PrepareForSave(dataset).Dataset;
         EnsureValid(prepared, operation);
 
-        var actualRevision = GetRevision(path);
+        var fullPath = Path.GetFullPath(path);
+        _writeInterleaving.BeforeWriterLock(fullPath);
+        using var writeLock = ProjectFileWriteLock.Acquire(fullPath);
+
+        var actualRevision = GetRevision(fullPath);
         if (expectedRevision is not null && !expectedRevision.Matches(actualRevision))
         {
-            throw new ProjectFileConflictException(path, operation, expectedRevision, actualRevision);
+            throw new ProjectFileConflictException(fullPath, operation, expectedRevision, actualRevision);
         }
 
-        AtomicJsonFile.Write(path, prepared, _jsonOptions);
-        return ProjectFileRevision.Capture(path);
+        _writeInterleaving.AfterExpectedRevisionCheck(fullPath);
+        AtomicJsonFile.Write(fullPath, prepared, _jsonOptions);
+        return ProjectFileRevision.Capture(fullPath);
     }
 
     public string CreateBackup(string path)

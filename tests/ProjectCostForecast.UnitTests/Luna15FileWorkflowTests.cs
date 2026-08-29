@@ -377,7 +377,15 @@ public sealed class Luna15FileWorkflowTests
                 ?? new ProjectFileLoadResult(CreateDataset("Loaded project"), null);
         }
 
-        public void Save(string path, ProjectDataset dataset)
+        public string CreateBackup(string path) => string.Empty;
+
+        public ProjectFileRevision? GetRevision(string path) => CurrentRevision;
+
+        public ProjectFileRevision SaveWithRevision(
+            string path,
+            ProjectDataset dataset,
+            ProjectFileRevision? expectedRevision,
+            string operation = "Save project")
         {
             SaveCalls++;
             LastSavedDataset = dataset;
@@ -385,20 +393,10 @@ public sealed class Luna15FileWorkflowTests
             {
                 throw new IOException("forced save failure");
             }
-        }
 
-        public string CreateBackup(string path) => string.Empty;
-
-        public ProjectFileRevision? GetRevision(string path) => CurrentRevision;
-
-        public ProjectFileRevision? SaveWithRevision(
-            string path,
-            ProjectDataset dataset,
-            ProjectFileRevision? expectedRevision,
-            string operation = "Save project")
-        {
-            Save(path, dataset);
-            return ReturnedRevision;
+            return ReturnedRevision
+                ?? expectedRevision
+                ?? new ProjectFileRevision(path, 0, "saved");
         }
     }
 

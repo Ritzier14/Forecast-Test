@@ -304,8 +304,13 @@ public sealed class ImportBoundaryTests
     {
         public ProjectDataset Load(string path) => CreateDataset();
 
-        public void Save(string path, ProjectDataset dataset)
+        public ProjectFileRevision SaveWithRevision(
+            string path,
+            ProjectDataset dataset,
+            ProjectFileRevision? expectedRevision,
+            string operation = "Save project")
         {
+            return new ProjectFileRevision(path, 0, "saved");
         }
 
         public string CreateBackup(string path) => string.Empty;

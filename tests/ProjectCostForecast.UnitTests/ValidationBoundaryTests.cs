@@ -254,9 +254,14 @@ public sealed class ValidationBoundaryTests
 
         public ProjectDataset Load(string path) => CreateValidDataset();
 
-        public void Save(string path, ProjectDataset dataset)
+        public ProjectFileRevision SaveWithRevision(
+            string path,
+            ProjectDataset dataset,
+            ProjectFileRevision? expectedRevision,
+            string operation = "Save project")
         {
             SaveCalls++;
+            return new ProjectFileRevision(path, 0, "saved");
         }
 
         public string CreateBackup(string path) => string.Empty;

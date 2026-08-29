@@ -139,6 +139,29 @@ Acceptance:
   behavior remain green; and
 - focused tests, full verification, retained smoke, and `git diff --check` pass.
 
+Implementation status: complete from clean baseline `db0625d`; the working
+tree contains only this packet's changes, and no commit or push was performed.
+
+Implementation evidence: `ProjectFileWriteLock` uses a named Windows `Local`
+mutex keyed by the canonical full destination path hash, so cooperating
+in-process and same-session app-process instances share one writer boundary
+without a forever-growing path-lock dictionary. Revision inspection and
+`AtomicJsonFile` replacement occur inside that boundary. The lock reports
+typed acquisition/release failures and exposes recovered abandoned ownership
+internally; recovery is safe because replacement remains atomic. The internal
+instance-scoped `IProjectFileWriteInterleaving` seam pauses a writer after its
+expected-revision check without a global mutable test hook. The application
+interface now requires the concrete revision-aware save operation and no
+longer exposes unconditional `Save` or its unsafe default implementation.
+
+The deterministic stale-write characterization enters a second writer while
+the first is paused, proves both original revision tokens would pass the old
+check-only window, and then proves the second writer receives the first
+writer's actual revision as `ProjectFileConflictException` instead of
+committing. The guarantee is limited to cooperating instances in the same
+Windows interactive mutex namespace; non-cooperating external writers and
+cross-host/network filesystem races are not claimed to be CAS-protected.
+
 ### LUNA-26C — MainWindow deferred-work lifetime closure
 
 Depends on: LUNA-26B complete.
@@ -212,6 +235,6 @@ that larger migration is already complete.
 | Packet | Status | Evidence |
 |---|---|---|
 | LUNA-26A | Complete | Model dependency closure with one canonical fiscal parser; 46 focused tests, 213 discovered tests, and 428 retained smoke assertions pass |
-| LUNA-26B | Pending | Revision-safe persistence boundary |
+| LUNA-26B | Complete | Revision-safe persistence boundary; deterministic interleaving conflict evidence and typed same-session writer boundary |
 | LUNA-26C | Pending | MainWindow deferred-work lifetime closure |
 | SOL-01 | Pending | Independent post-SOL architecture review |
