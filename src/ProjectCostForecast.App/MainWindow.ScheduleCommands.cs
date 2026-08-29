@@ -244,8 +244,20 @@ public partial class MainWindow
         }
 
         _scheduleComparisonWindow = new ScheduleComparisonWindow(viewModel) { Owner = this };
-        _scheduleComparisonWindow.Closed += (_, _) => _scheduleComparisonWindow = null;
+        _scheduleComparisonWindow.Closed += ScheduleComparisonWindow_Closed;
         _scheduleComparisonWindow.Show();
+    }
+
+    private void ScheduleComparisonWindow_Closed(object? sender, EventArgs e)
+    {
+        if (sender is ScheduleComparisonWindow window)
+        {
+            window.Closed -= ScheduleComparisonWindow_Closed;
+            if (ReferenceEquals(_scheduleComparisonWindow, window))
+            {
+                _scheduleComparisonWindow = null;
+            }
+        }
     }
 
     private void ScheduleActivityAddPredecessor_Click(object sender, RoutedEventArgs e)

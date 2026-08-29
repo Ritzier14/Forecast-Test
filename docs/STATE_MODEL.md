@@ -477,3 +477,24 @@ current financial or schedule calculation.
 The focused suite also proves that a queued refresh coordinator callback is a
 safe no-op after disposal. Child-window async ownership remains LUNA-18B, and
 binding trace capture remains LUNA-18C.
+
+## 17. LUNA-18B child-window async evidence
+
+`Luna18BChildWindowTests` records the observed task boundary used by schedule
+comparison:
+
+- `ScheduleComparisonWindow` uses named load, selection, and close handlers;
+  it no longer passes an `async` lambda to `Dispatcher.BeginInvoke`;
+- each refresh is an observed task, superseded refreshes are cancelled, and
+  close cancels and awaits the active task set before disposing its lifetime;
+- cancellation produces a quiet expected outcome, while non-cancellation
+  exceptions produce a failed outcome and a sanitized diagnostics callback;
+  and
+- all UI writes re-check the window lifetime and request token after the
+  background calculation, while the MainWindow detaches its child close
+  handler and closes the child before disposing its view model.
+
+Other child windows were reviewed in this packet: their dispatcher work is
+synchronous UI positioning or editing and has no background task boundary;
+the binding trace gate and any broader child-window extraction remain
+LUNA-18C and later UI work.

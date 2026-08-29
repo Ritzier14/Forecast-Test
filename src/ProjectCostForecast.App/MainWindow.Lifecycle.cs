@@ -71,6 +71,7 @@ public partial class MainWindow
         UnwireGanttSubscriptions();
         UnwireViewModelSubscriptions();
         CancelPendingWindowWork();
+        _scheduleComparisonWindow?.Close();
         if (DataContext is MainWindowViewModel viewModel)
         {
             viewModel.Dispose();

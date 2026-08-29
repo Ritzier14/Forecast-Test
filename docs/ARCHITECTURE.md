@@ -155,6 +155,15 @@ the view model, stopping its preference/search timers and aborting queued
 refresh or schedule work. Reopening the same window reattaches handlers and
 restores transient visual state without repeating the initial column rebuild.
 
+Child-window asynchronous work must use an observed task boundary. The
+schedule comparison window owns a lifetime cancellation source, one source per
+refresh request, and the set of active refresh tasks. A newer request cancels
+the previous source; close cancels and awaits the active tasks before
+disposing the lifetime source. Cancellation is handled separately from
+failures, and failures are sent to the diagnostics service before any error
+message is shown. UI assignment is allowed only while both the window and its
+request are active.
+
 The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root
 collection and persisted calculated field, records the current identity and

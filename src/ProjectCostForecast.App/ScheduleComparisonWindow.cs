@@ -17,11 +17,16 @@ public sealed class ScheduleComparisonWindow : Window
     private readonly TextBlock _summaryText;
     private readonly ComboBox _baselineSelector;
     private readonly IReadOnlyList<string> _baselineNames;
+    private readonly IDiagnosticsService _diagnostics;
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
+    private readonly HashSet<Task> _refreshTasks = [];
     private CancellationTokenSource? _refreshCancellation;
+    private bool _isClosed;
 
-    public ScheduleComparisonWindow(MainWindowViewModel viewModel)
+    public ScheduleComparisonWindow(MainWindowViewModel viewModel, IDiagnosticsService? diagnostics = null)
     {
         _viewModel = viewModel;
+        _diagnostics = diagnostics ?? new DiagnosticsService();
         Title = "Programme and baseline comparison";
         Width = 1280;
         Height = 720;
@@ -46,13 +51,7 @@ public sealed class ScheduleComparisonWindow : Window
             ItemsSource = _baselineNames,
             SelectedItem = _viewModel.ActiveScheduleBaselineName
         };
-        _baselineSelector.SelectionChanged += (_, _) =>
-        {
-            if (_baselineSelector.SelectedItem is string)
-            {
-                QueueRefreshRows();
-            }
-        };
+        _baselineSelector.SelectionChanged += BaselineSelector_SelectionChanged;
         DockPanel.SetDock(_baselineSelector, Dock.Right);
         toolbar.Children.Add(_baselineSelector);
         toolbar.Children.Add(_summaryText);
@@ -75,8 +74,8 @@ public sealed class ScheduleComparisonWindow : Window
         root.Children.Add(comparison);
 
         Content = root;
-        Loaded += (_, _) => QueueRefreshRows();
-        Closed += (_, _) => _refreshCancellation?.Cancel();
+        Loaded += ScheduleComparisonWindow_Loaded;
+        Closed += ScheduleComparisonWindow_Closed;
     }
 
     private DataGrid BuildGrid(string label, bool isBaseline)
@@ -102,63 +101,160 @@ public sealed class ScheduleComparisonWindow : Window
         return grid;
     }
 
-    private void QueueRefreshRows()
+    private async void ScheduleComparisonWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        await RunRefreshAsync();
+    }
+
+    private async void BaselineSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_baselineSelector.SelectedItem is string)
+        {
+            await RunRefreshAsync();
+        }
+    }
+
+    private async void ScheduleComparisonWindow_Closed(object? sender, EventArgs e)
+    {
+        if (_isClosed)
+        {
+            return;
+        }
+
+        _isClosed = true;
+        _lifetimeCancellation.Cancel();
         _refreshCancellation?.Cancel();
-        _refreshCancellation = new CancellationTokenSource();
-        var cancellationToken = _refreshCancellation.Token;
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(async () => await RefreshRowsAsync(cancellationToken)));
+        Loaded -= ScheduleComparisonWindow_Loaded;
+        Closed -= ScheduleComparisonWindow_Closed;
+        _baselineSelector.SelectionChanged -= BaselineSelector_SelectionChanged;
+
+        var pendingRefreshes = _refreshTasks.ToArray();
+        try
+        {
+            if (pendingRefreshes.Length > 0)
+            {
+                await Task.WhenAll(pendingRefreshes);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Closing is an expected cancellation boundary.
+        }
+        catch (Exception exception)
+        {
+            _diagnostics.RecordException(
+                "schedule-comparison.close",
+                exception,
+                "A schedule comparison refresh failed while the window was closing.");
+        }
+        finally
+        {
+            _refreshCancellation?.Dispose();
+            _refreshCancellation = null;
+            _lifetimeCancellation.Dispose();
+            _refreshTasks.Clear();
+        }
+    }
+
+    private async Task RunRefreshAsync()
+    {
+        if (_isClosed)
+        {
+            return;
+        }
+
+        _refreshCancellation?.Cancel();
+        var refreshCancellation = new CancellationTokenSource();
+        _refreshCancellation = refreshCancellation;
+        var refreshTask = ObservedAsyncOperation.RunAsync(
+            RefreshRowsAsync,
+            refreshCancellation.Token,
+            exception => _diagnostics.RecordException(
+                "schedule-comparison.refresh",
+                exception,
+                "Schedule comparison refresh failed before the result could be applied."));
+        _refreshTasks.Add(refreshTask);
+        try
+        {
+            var result = await refreshTask;
+            if (result.Status == ObservedAsyncOperationStatus.Failed && !_isClosed)
+            {
+                _summaryText.Text = "Comparison could not be loaded. See the local diagnostics log.";
+            }
+        }
+        finally
+        {
+            _refreshTasks.Remove(refreshTask);
+            if (ReferenceEquals(_refreshCancellation, refreshCancellation))
+            {
+                _refreshCancellation = null;
+            }
+
+            refreshCancellation.Dispose();
+        }
     }
 
     private async Task RefreshRowsAsync(CancellationToken cancellationToken)
     {
         using var loadMeasure = GridPerformanceDiagnostics.Measure("schedule-comparison-load");
-        try
+        if (!IsRefreshActive(cancellationToken))
         {
-            var baselineName = _baselineSelector.SelectedItem as string ?? _viewModel.ActiveScheduleBaselineName;
-            var baseline = _viewModel.ScheduleDataRef.Baselines.FirstOrDefault(item =>
-                string.Equals(item.Name, baselineName, StringComparison.OrdinalIgnoreCase));
-            var snapshots = _viewModel.ScheduleActivities.Select(activity =>
-            {
-                var entry = baseline?.FindEntry(activity.Id);
-                var calendar = _viewModel.ScheduleDataRef.ResolveCalendar(activity.CalendarId);
-                return new ScheduleComparisonSnapshot(
-                    activity.Id,
-                    activity.Name,
-                    activity.EarlyStart,
-                    activity.EarlyFinish,
-                    activity.TotalFloatDays,
-                    activity.PercentComplete,
-                    activity.IsCritical,
-                    entry?.Start,
-                    entry?.Finish,
-                    calendar);
-            }).ToList();
+            return;
+        }
 
-            _summaryText.Text = $"Loading comparison for {snapshots.Count:N0} activities...";
-            var rows = await Task.Run(() => snapshots.Select(snapshot =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var variance = snapshot.BaselineFinish is { } baselineFinish && snapshot.CurrentFinish is { } currentFinish
-                    ? SchedulingService.CountWorkingDaysSigned(snapshot.Calendar, baselineFinish, currentFinish)
-                    : (int?)null;
-                return new ScheduleComparisonRow(snapshot, variance);
-            }).ToList(), cancellationToken);
+        var baselineName = _baselineSelector.SelectedItem as string ?? _viewModel.ActiveScheduleBaselineName;
+        var baseline = _viewModel.ScheduleDataRef.Baselines.FirstOrDefault(item =>
+            string.Equals(item.Name, baselineName, StringComparison.OrdinalIgnoreCase));
+        var snapshots = _viewModel.ScheduleActivities.Select(activity =>
+        {
+            var entry = baseline?.FindEntry(activity.Id);
+            var calendar = _viewModel.ScheduleDataRef.ResolveCalendar(activity.CalendarId);
+            return new ScheduleComparisonSnapshot(
+                activity.Id,
+                activity.Name,
+                activity.EarlyStart,
+                activity.EarlyFinish,
+                activity.TotalFloatDays,
+                activity.PercentComplete,
+                activity.IsCritical,
+                entry?.Start,
+                entry?.Finish,
+                calendar);
+        }).ToList();
 
+        if (!IsRefreshActive(cancellationToken))
+        {
+            return;
+        }
+
+        _summaryText.Text = $"Loading comparison for {snapshots.Count:N0} activities...";
+        var rows = await Task.Run(() => snapshots.Select(snapshot =>
+        {
             cancellationToken.ThrowIfCancellationRequested();
-            _currentGrid.ItemsSource = rows;
-            _baselineGrid.ItemsSource = rows;
-            var slipping = rows.Count(row => row.VarianceDays > 0);
-            var ahead = rows.Count(row => row.VarianceDays < 0);
-            _summaryText.Text = baseline is null
-                ? "No active baseline captured yet. Capture a baseline before comparing."
-                : $"Baseline: {baseline.Name}   Slipping: {slipping}   Ahead: {ahead}   Critical: {snapshots.Count(activity => activity.IsCritical)}";
-        }
-        catch (OperationCanceledException)
+            var variance = snapshot.BaselineFinish is { } baselineFinish && snapshot.CurrentFinish is { } currentFinish
+                ? SchedulingService.CountWorkingDaysSigned(snapshot.Calendar, baselineFinish, currentFinish)
+                : (int?)null;
+            return new ScheduleComparisonRow(snapshot, variance);
+        }).ToList(), cancellationToken);
+
+        if (!IsRefreshActive(cancellationToken))
         {
-            // A newer baseline selection or a closing window superseded this refresh.
+            return;
         }
+
+        _currentGrid.ItemsSource = rows;
+        _baselineGrid.ItemsSource = rows;
+        var slipping = rows.Count(row => row.VarianceDays > 0);
+        var ahead = rows.Count(row => row.VarianceDays < 0);
+        _summaryText.Text = baseline is null
+            ? "No active baseline captured yet. Capture a baseline before comparing."
+            : $"Baseline: {baseline.Name}   Slipping: {slipping}   Ahead: {ahead}   Critical: {snapshots.Count(activity => activity.IsCritical)}";
     }
+
+    private bool IsRefreshActive(CancellationToken cancellationToken) =>
+        !_isClosed
+        && !_lifetimeCancellation.IsCancellationRequested
+        && !cancellationToken.IsCancellationRequested;
 
     private sealed record ScheduleComparisonSnapshot(
         string Id,
