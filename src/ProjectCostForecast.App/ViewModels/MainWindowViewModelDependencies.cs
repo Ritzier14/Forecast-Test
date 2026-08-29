@@ -1,4 +1,5 @@
 using ProjectCostForecast.App.Models;
+using ProjectCostForecast.App.Presentation;
 using ProjectCostForecast.App.Services;
 
 namespace ProjectCostForecast.App.ViewModels;
@@ -14,6 +15,8 @@ public sealed class MainWindowViewModelDependencies
     public ProjectDatasetCloner ProjectDatasetCloner { get; init; } = new();
     public ProjectDatasetMigrationPipeline ProjectDatasetMigrationPipeline { get; init; } = new();
     public IProjectFileService ProjectFileService { get; init; } = new ProjectFileService();
+    public IProjectFilePicker ProjectFilePicker { get; init; } = new WpfProjectFilePicker();
+    public IProjectPrompt ProjectPrompt { get; init; } = new WpfProjectPrompt();
     public CsvTransactionService CsvTransactionService { get; init; } = new();
     public ValidationService ValidationService { get; init; } = new();
     public IUserPreferencesService UserPreferencesService { get; init; } = new UserPreferencesService();
@@ -29,6 +32,8 @@ public sealed class MainWindowViewModelDependencies
         ArgumentNullException.ThrowIfNull(ProjectDatasetCloner);
         ArgumentNullException.ThrowIfNull(ProjectDatasetMigrationPipeline);
         ArgumentNullException.ThrowIfNull(ProjectFileService);
+        ArgumentNullException.ThrowIfNull(ProjectFilePicker);
+        ArgumentNullException.ThrowIfNull(ProjectPrompt);
         ArgumentNullException.ThrowIfNull(CsvTransactionService);
         ArgumentNullException.ThrowIfNull(ValidationService);
         ArgumentNullException.ThrowIfNull(UserPreferencesService);

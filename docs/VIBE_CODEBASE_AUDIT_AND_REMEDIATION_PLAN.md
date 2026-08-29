@@ -866,7 +866,7 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | LUNA-12 | Complete | `docs/STATE_MODEL.md`, five focused characterization tests, persisted-collection/derived-cache inventory, identity and dirty-tracking map; full discovered suite passes with 91 tests plus the retained legacy smoke gate |
 | LUNA-13 | Complete | `ProjectMetadataPresentation` converters own task/category WPF projections; five focused tests, 96 discovered tests, and all 428 retained legacy smoke assertions pass |
 | LUNA-14 | Complete | Forecast/summary WPF projections, attached grid state, and model-folder converters moved to `Presentation`; architecture negative control plus 7 focused tests, 103 discovered tests, and all 428 retained legacy smoke assertions pass |
-| LUNA-15A | Not started | |
+| LUNA-15A | Complete | `ProjectFileWorkflow`, WPF picker/prompt adapters, explicit operation results, and 10 headless open/save/session-preservation tests; Release verification passes with 113 discovered tests plus the retained smoke harness |
 | LUNA-15B | Not started | |
 | LUNA-16A | Not started | |
 | LUNA-16B | Not started | |

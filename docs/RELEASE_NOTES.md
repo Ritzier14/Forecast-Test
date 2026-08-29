@@ -28,6 +28,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - State/source-of-truth contract covering every project dataset collection, persisted calculated field, identity rule, dirty-tracking seam, serialization boundary, and explicit LUNA-16A/LUNA-16B follow-up.
 - Project and task/category metadata presentation moved into App-level WPF converters; persisted icon keys and colour hex values remain plain JSON data.
 - Forecast and summary WPF projections, attached grid state, and model-folder converters moved into the App presentation boundary; persisted forecast, summary, and workspace layout values remain unchanged.
+- Project open/save/save-as decisions moved into the headless `ProjectFileWorkflow`; WPF file-picker and prompt adapters preserve the existing dialogs while enabling cancellation, validation, I/O, and stale-file conflict tests without a real window.
 
 ### Verified
 
@@ -43,6 +44,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - The LUNA-12 state characterization suite round-trips editable nested project state, proves known monthly/contingency/budget dirty boundaries, and confirms schedule-derived outputs remain runtime-only.
 - The LUNA-13 characterization suite proves the persisted task/category models have no WPF or `MainWindow` dependency, preserves icon/colour fallback behavior, and round-trips current and legacy project fixtures.
 - The LUNA-14 architecture suite proves the model candidate set has no WPF/window/control references, rejects a deliberate forbidden reference, preserves forecast/grid/KPI/workspace presentation behavior, and round-trips current and legacy forecast/summary fixtures.
+- The LUNA-15A workflow suite proves open/save success, cancellation, validation failure, I/O failure, stale-file conflict decisions, audit rollback, and active-session/dirty-state preservation with 10 headless tests.
 
 ### Remaining Before A Formal Production Release
 

@@ -52,7 +52,8 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private readonly ProjectDatasetCloner _projectDatasetCloner;
     private readonly ProjectDatasetMigrationPipeline _projectDatasetMigrationPipeline;
     private readonly IProjectFileService _projectFileService;
-    private readonly Func<ProjectSaveConflict, SaveConflictDecision> _saveConflictDecisionHandler;
+    private readonly IProjectPrompt _projectPrompt;
+    private readonly ProjectFileWorkflow _projectFileWorkflow;
     private readonly CsvTransactionService _csvTransactionService;
     private readonly ValidationService _validationService;
     private readonly IUserPreferencesService _userPreferencesService;
@@ -155,12 +156,19 @@ public sealed partial class MainWindowViewModel : NotifyObject
         _projectDatasetCloner = dependencies.ProjectDatasetCloner;
         _projectDatasetMigrationPipeline = dependencies.ProjectDatasetMigrationPipeline;
         _projectFileService = dependencies.ProjectFileService;
-        _saveConflictDecisionHandler = dependencies.SaveConflictDecisionHandler ?? ShowSaveConflictDecision;
+        _projectPrompt = dependencies.ProjectPrompt;
         _csvTransactionService = dependencies.CsvTransactionService;
         _validationService = dependencies.ValidationService;
         _userPreferencesService = dependencies.UserPreferencesService;
         _schedulingService = dependencies.SchedulingService;
         _forecastCurveService = dependencies.ForecastCurveService;
+        _projectFileWorkflow = new ProjectFileWorkflow(
+            _projectFileService,
+            dependencies.ProjectFilePicker,
+            _projectPrompt,
+            _projectDatasetMigrationPipeline,
+            _validationService,
+            dependencies.SaveConflictDecisionHandler);
         _newMonthOperation = new NewMonthOperation(_calculationService, _projectDatasetCloner, _clock);
 
         _preferenceSaveTimer = new DispatcherTimer(DispatcherPriority.Background)

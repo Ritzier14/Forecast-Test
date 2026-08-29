@@ -24,6 +24,17 @@ Domain and calculation code must not acquire new dependencies on `Window`, `Data
 
 Storage is accessed through `IProjectFileService` and `IUserPreferencesService`. JSON writes go to a unique temporary file in the destination directory, are flushed, and then replace the destination. Project backups use collision-safe names, are verified through the project migration/validation boundary, and follow a bounded retention policy. `DiagnosticsService` is a best-effort local rolling log; it records operation and exception type with sanitized context, and its write failures never mask the original failure. Malformed preferences are quarantined before defaults are loaded.
 
+Project open/save use cases are coordinated by the headless `ProjectFileWorkflow`.
+It depends on `IProjectFilePicker` and `IProjectPrompt` for paths, user
+decisions, and notifications, and returns explicit succeeded/cancelled/failed
+operation results. The workflow owns validation, Save As routing, content-hash
+conflict handling, reload, and rollback of a caller-provided pre-save mutation.
+`WpfProjectFilePicker` and `WpfProjectPrompt` are the only presentation
+adapters used by the project open/save workflow; they construct its dialogs or
+display its messages and do not own persistence or session state. Import/export
+and recovery dialogs remain separate follow-up concerns under LUNA-15B or their
+existing recovery packet.
+
 CSV/XLSX/XLSM files are untrusted boundaries. `CsvTransactionService` applies explicit compressed-file, uncompressed-workbook, worksheet, row, column, cell, and cell-text limits before returning a complete import batch; cancellation or parse failure returns no partial batch. Re-import uses the existing transaction duplicate key and skips matching rows, so an all-duplicate import leaves project state unchanged. Formula-like text is neutralized only while writing CSV output; canonical model and JSON values are never rewritten for spreadsheet safety.
 
 Date/time behavior follows `docs/DATE_TIME_CONTRACT.md`: fiscal and schedule calendar values are `DateOnly` NZ business dates, durable audit/snapshot/preference instants are UTC `DateTimeOffset` values, and display conversion uses `Pacific/Auckland` with `en-NZ`. Current workflow time enters through `IClock`; model constructors use explicit sentinels rather than ambient time. JSON converters accept legacy offset-free NZ-local timestamps and normalize persisted output to invariant UTC without changing fiscal-period dates.
