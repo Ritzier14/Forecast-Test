@@ -341,7 +341,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
 
     public ProjectHeader Header => _dataset.Header;
     public IClock Clock => _clock;
-    public ObservableCollection<ForecastLine> ForecastLines { get; }
+    public BatchObservableCollection<ForecastLine> ForecastLines { get; private set; }
     public ObservableCollection<ProjectTaskCode> ProjectTaskCodes { get; }
     public ObservableCollection<ProjectCategory> ProjectCategories { get; }
     public IReadOnlyList<string> ProjectCategoryNames => ProjectCategories
@@ -354,7 +354,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public ObservableCollection<ManagementResourceTableRow> ManagementResourceAllocationRows { get; }
     public ObservableCollection<ManagementResourceTableRow> ManagementResourceHoursRows { get; }
     public ObservableCollection<ManagementResourceTableRow> ManagementResourceCostRows { get; }
-    public ObservableCollection<CostTransaction> Transactions { get; }
+    public BatchObservableCollection<CostTransaction> Transactions { get; private set; }
     public ObservableCollection<CategorySummary> CategorySummaries { get; }
     public ObservableCollection<ContingencyEntry> ContingencyEntries { get; }
     public ObservableCollection<PhaseItem> Phases { get; }
@@ -406,8 +406,8 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public ObservableCollection<PivotResultColumn> PivotResultColumns { get; }
     public ObservableCollection<PivotResultRow> PivotResultRows { get; }
     public ObservableCollection<UserForecastCurvePreset> UserForecastCurvePresets { get; }
-    public ICollectionView ForecastLinesView { get; }
-    public ICollectionView RawTransactionsView { get; }
+    public ICollectionView ForecastLinesView { get; private set; }
+    public ICollectionView RawTransactionsView { get; private set; }
     public ICollectionView LedgerTransactionsView { get; }
     public ICollectionView ResourceSummariesView { get; }
     public ICollectionView CategorySummariesView { get; }

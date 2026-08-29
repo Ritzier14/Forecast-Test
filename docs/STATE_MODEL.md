@@ -1,6 +1,6 @@
 # State model and source-of-truth contract
 
-Status: LUNA-14 evidence packet, 2026-08-29.
+Status: LUNA-16A evidence packet, 2026-08-29.
 
 This document records the state contract through the forecast/summary
 presentation boundary. It is a map of the current application, not a claim
@@ -20,11 +20,11 @@ Every value in the project workflow belongs to one of these categories:
 | Presentation preference | A project-local or user-local choice about layout, visibility, ordering, colours, filters, or display context. A project-local preference may affect which configured budget or columns are shown, but it is not financial source data. | Project-local preferences live under `ProjectDataset`; application-wide preferences live in the separate user-preferences file. |
 | Transient UI state | Selection, editing, view-model wrappers, WPF objects, chart geometry, validation rows, and other state that can be rebuilt from the previous categories. | Not stored in the project JSON. |
 
-The durable project boundary is `ProjectDataset`. The live view-model
-collections are projections of that document while a project is open. The
-current implementation still mirrors several lists and synchronizes them in
-`SyncDatasetFromCollections`; that implementation detail is deliberately
-visible here so LUNA-16A and LUNA-16B can remove it safely.
+The durable project boundary is `ProjectDataset`. `ForecastLines` and
+`Transactions` are observable collections owned by that document while a
+project is open, and the view model exposes those same collection instances.
+The remaining view-model collections are projections or feature-specific
+working state and continue to synchronize through their existing boundaries.
 
 ## 2. Ownership rules
 
@@ -60,11 +60,11 @@ The following table covers every root property currently serialized by
 | `FiscalYearBudgets` | Derived persisted compatibility mirror of the active budget line | Fiscal-year label; maintained by budget synchronization | Loaded as the legacy budget shape and regenerated from the active `BudgetLines` entry | Retained for old files and consumers; do not remove without a migration. |
 | `BudgetLines` | Authoritative persisted budget inputs/configuration | Stable line `Key` (`P3M`, `LTP_AP`, or a future key); amount identity is line key plus fiscal year | Budget amount edits and active-line selection; report and budget-chart calculations consume it | `IsActive` is ignored runtime state; amounts are persisted. |
 | `ActiveBudgetLineKey` | Project-local presentation/calculation selection | Budget-line key; view model owns selection command | `SetActiveBudgetLine` and budget loading; selects which budget is copied to the legacy fiscal-year view | Persisted because it changes the project’s selected comparison basis. |
-| `ForecastLines` | Authoritative persisted forecast/planning inputs plus persisted derived caches | Current validation identity is normalized task number + resource name + nullable transaction-project scope; row number is a source/display locator | Import, line commands, monthly edits, comments, category/task metadata, and calculation refresh | Nested monthly forecasts, phases, cost lines, comments, and preferences are serialized. Derived fields listed in section 5 are currently also serialized unless ignored. |
+| `ForecastLines` | Authoritative persisted forecast/planning inputs plus persisted derived caches; the dataset-owned `BatchObservableCollection` is the live canonical collection | Current validation identity is normalized task number + resource name + nullable transaction-project scope; row number is a source/display locator | Import, line commands, monthly edits, comments, category/task metadata, and calculation refresh; the view model exposes the same collection except while a saved-month projection is active | Nested monthly forecasts, phases, cost lines, comments, and preferences are serialized. Derived fields listed in section 5 are currently also serialized unless ignored. |
 | `ProjectTaskCodes` | Authoritative persisted task metadata and project-local task presentation | `SystemCode` is the task-code identity; display order is not identity | Task-code/category commands and metadata repair; forecast display resolves task names from this collection | Icon keys/colour hexes are plain data. WPF projections are materialized by App converters. |
 | `ProjectCategories` | Authoritative persisted category metadata and project-local category presentation | Normalized `Name` is the current category identity | Category commands and metadata repair; forecast reporting-category resolution consumes it | Icon keys/colour hexes are plain data. WPF projections are materialized by App converters. |
 | `ManagementResources` | Authoritative persisted management-planning inputs plus a persisted calculated-rate cache | No central typed key; current matching uses source row/task/resource/project context | Rate override/reset, monthly allocation edits, and import/resource matching; allocations and effective rate feed management forecast views | `SourceLine` is ignored. `CalculatedHourlyRate` is a persisted derived cache; `HourlyRate`, override flag, hours, and allocations are inputs. |
-| `Transactions` | Authoritative persisted raw accounting input | Import duplicate fingerprint from `CsvTransactionService.BuildDuplicateKey`; source row number is a locator and is excluded from that fingerprint | CSV/XLSX/XLSM import and explicit transaction replacement; actual-cost calculation and drilldowns consume it | `LedgerResourceName` is a getter-only derived compatibility surface; current JSON behavior must be preserved or migrated before changing it. |
+| `Transactions` | Authoritative persisted raw accounting input; the dataset-owned `BatchObservableCollection` is the live canonical collection | Import duplicate fingerprint from `CsvTransactionService.BuildDuplicateKey`; source row number is a locator and is excluded from that fingerprint | CSV/XLSX/XLSM import and explicit transaction replacement; actual-cost calculation and drilldowns consume the same collection exposed by the view model | `LedgerResourceName` is a getter-only derived compatibility surface; current JSON behavior must be preserved or migrated before changing it. |
 | `UnmatchedImportCombinations` | Authoritative persisted import-review history | Current combination is task/manual/project/category/source context; no generated durable ID | Import preview decision and unmatched-review actions | `RecordedAtDisplay` is ignored presentation. |
 | `ContingencyEntries` | Authoritative persisted contingency records with a currently persisted derived remaining value | No generated ID; current row identity is date/context and collection position | Contingency collection/item tracking and contingency edit commands | `RemainingContingency` is treated as a derived compatibility value today even though its setter is public and it is serialized. |
 | `CategorySummaries` | Derived persisted calculation cache | Reporting category/project code; rebuilt from forecast lines | `CalculationService.Recalculate` and view-model refresh | All fields are derived; retain shape until a migration and compatibility decision remove the cache. |
@@ -226,7 +226,8 @@ The intended operation sequence is:
 
 ```text
 view/action -> MainWindowViewModel mutation gateway
-            -> SyncDatasetFromCollections (where a mirror exists)
+            -> canonical `ProjectDataset.ForecastLines` / `Transactions`
+               (remaining mirrors use `SyncDatasetFromCollections`)
             -> CalculationService or SchedulingService
             -> derived projections and validation refresh
             -> IsDirty = true and audit/status update
@@ -242,20 +243,21 @@ Current coverage is intentionally recorded as follows:
 | Budget amounts | Loaded `FiscalYearBudgetAmount.PropertyChanged` is subscribed; amount edits sync both budget representations, refresh reports/charts, and mark dirty. | Direct changes to a newly replaced nested amount list are unsafe until subscription ownership is centralized. |
 | Management resources | Resource edit paths and management allocation operations explicitly notify/recalculate; live table rows wrap dataset resources. | Nested allocation lists and arbitrary direct item edits do not have one generic persisted-edit boundary. |
 | Schedule | Public schedule commands and schedule input properties call `MarkScheduleDirtyAndRecalculate`; activity subscriptions are attached during schedule load. | Calendar/baseline/nested collection lifecycle and all direct object edits need the LUNA-16B replacement contract. |
-| Transactions | Import and explicit collection operations own mutation and dirty state. | `CostTransaction` is not an observable model, so direct property changes do not raise a dirty event. |
+| Transactions | The dataset-owned observable collection is exposed directly; import owns batch mutation and dirty state. | `CostTransaction` is not an observable model, so direct property changes do not raise a dirty event; unsupported direct collection edits remain outside the mutation gateway. |
 | Task/category metadata and phases | Commands/load/metadata-repair paths explicitly rebuild dependent views. | Direct edits to arbitrary items are not globally observed. |
 | Comments, snapshots, unmatched records, audit history | Feature commands add/update records and set dirty as appropriate. | Direct list/item mutation is not a supported generic boundary. |
 | Workspace layouts and tab order | Workspace commands/build-layout paths synchronize project-local preference state. | A `WorkspaceViewTab`/nested list property change does not universally mark the project dirty by itself. |
 | Header, period configuration, dictionaries, and root flags | Specialized view-model paths mutate dataset-owned values directly. | They do not all flow through `SyncDatasetFromCollections`; this is an explicit ownership seam for later packets. |
 
-`SyncDatasetFromCollections` currently copies forecast lines, task codes,
-categories, management resources, transactions, category summaries,
-contingency entries, phases, saved snapshots, unmatched records, audit events,
-workspace layouts, selected CTC years, and display flags, then delegates budget
-and schedule synchronization. `Header`, `ForecastPeriods`, and several
-project-local dictionaries/tab-order values remain dataset-owned and are
-updated by specialized paths. This difference must not be erased from tests
-until a canonical owner is chosen.
+`SyncDatasetFromCollections` still copies the non-financial view-model
+projections (task/category metadata, management resources, contingency entries,
+phases, snapshots, unmatched records, audit events, workspace layouts, selected
+CTC years, and display flags), then delegates budget and schedule
+synchronization. It deliberately does not copy forecast lines, transactions,
+or category summaries: the first two are already dataset-owned canonical
+collections, and the last is a calculation-owned cache rebuilt from them.
+`Header`, `ForecastPeriods`, and several project-local dictionaries/tab-order
+values remain dataset-owned and are updated by specialized paths.
 
 ## 8. Recalculation dependencies
 
@@ -309,8 +311,10 @@ Project load follows this contract:
 
 Project save follows this contract:
 
-1. The view-model operation synchronizes live projections to its dataset
-   boundary and checks the revision when saving an existing path.
+1. The view-model operation synchronizes remaining live projections to the
+   dataset boundary; forecast lines and transactions are already owned by the
+   dataset, and the calculation service refreshes their derived caches before
+   the revision is checked for an existing path.
 2. `ProjectFileService` prepares the dataset for the current format, validates
    it, creates the approved backup/revision boundary, and writes JSON through
    the atomic file service.
@@ -326,12 +330,12 @@ silently turn those preferences into `ProjectDataset` authority.
 
 ## 10. Explicit follow-up extensions
 
-The following items are intentionally not fixed by LUNA-14:
+The following items are intentionally not fixed by LUNA-14 or LUNA-16A:
 
-- LUNA-16A: make forecast lines and transactions canonical, give mutations one
-  entry point, recompute summaries from inputs, and remove persisted derived
-  values only through a compatible migration. Decide the typed forecast-line
-  identity and transaction replacement semantics.
+- LUNA-16A follow-up: remove or explicitly version persisted derived caches
+  through a future compatible migration, and decide the typed forecast-line
+  identity and transaction replacement semantics. The live ownership and
+  recomputation boundary are complete in this packet.
 - LUNA-16B: apply the ownership rules to schedule, workspace, and snapshot
   state; attach/detach nested item subscriptions exactly once; prove dirty
   coverage for every persisted edit; and keep project-local presentation
@@ -397,6 +401,29 @@ presentation boundary.
   serializing WPF properties.
 
 This packet removes the WPF dependency from the agreed model candidate set but
-does not change the persisted derived-cache policy or choose the canonical
-forecast/transaction/workspace owners. Those decisions remain with LUNA-16A
-and LUNA-16B.
+does not change the persisted derived-cache policy; cache removal remains the
+explicit LUNA-16A follow-up above. Canonical forecast/transaction ownership is
+now covered by the next evidence section, while schedule/workspace ownership
+remains with LUNA-16B.
+
+## 14. LUNA-16A canonical-state evidence
+
+`Luna16CanonicalStateTests` records the ownership and compatibility boundary:
+
+- the view model exposes the exact dataset-owned observable forecast-line and
+  transaction collections, so a normal live session has one financial
+  collection owner rather than two lists synchronized in both directions;
+- monthly forecast mutation enters the existing view-model event gateway,
+  recalculates line and category totals from the canonical inputs, and marks
+  the session dirty;
+- stale persisted category-summary values are replaced on load by
+  `CalculationService` output, while the existing compatibility JSON field is
+  retained; save also refreshes the cache before writing; and
+- saved-month viewing swaps only an explicit display collection. The live
+  dataset collection and object identities remain intact and are restored
+  without stale rows when the view closes.
+
+Initial cost-load snapshot generation now calculates on a cloned dataset, so
+period cut-offs never replace the live transaction collection. The project
+JSON remains an array-compatible format; only the in-process collection
+implementation is observable.

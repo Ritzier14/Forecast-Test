@@ -7,7 +7,7 @@ namespace ProjectCostForecast.App.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     private readonly Dictionary<MonthlyForecast, (SavedMonthForecastLine SnapshotLine, ForecastLine DisplayLine)> _savedMonthForecastLookup = [];
-    private List<ForecastLine>? _workingForecastLinesBeforeSavedMonthView;
+    private readonly BatchObservableCollection<ForecastLine> _savedMonthDisplayLines = [];
     private ForecastLine? _workingSelectedForecastLineBeforeSavedMonthView;
     private SavedMonthSnapshot? _viewedSavedMonthSnapshot;
     private bool _isSavedMonthViewLocked;
@@ -50,7 +50,6 @@ public sealed partial class MainWindowViewModel
         }
 
         UnsubscribeMonthlyForecastEvents();
-        _workingForecastLinesBeforeSavedMonthView = ForecastLines.ToList();
         _workingSelectedForecastLineBeforeSavedMonthView = SelectedForecastLine;
         _workingForecastFiltersBeforeSavedMonthView = CaptureSavedMonthForecastFilterState();
         ApplySavedMonthForecastFilters();
@@ -60,7 +59,9 @@ public sealed partial class MainWindowViewModel
         var displayLines = snapshot.ForecastLines
             .Select(CreateSavedMonthDisplayLine)
             .ToList();
-        ReplaceCollection(ForecastLines, displayLines);
+        _savedMonthDisplayLines.ReplaceWith(displayLines);
+        SetForecastLinesProjection(_savedMonthDisplayLines);
+        ApplyForecastGrouping();
         foreach (var line in displayLines)
         {
             foreach (var forecast in line.MonthlyForecasts)
@@ -127,15 +128,15 @@ public sealed partial class MainWindowViewModel
         }
 
         UnsubscribeSavedMonthForecastEvents();
-        var workingLines = _workingForecastLinesBeforeSavedMonthView ?? [];
-        ReplaceCollection(ForecastLines, workingLines);
+        SetForecastLinesProjection(_dataset.ForecastLines);
+        ApplyForecastGrouping();
+        _savedMonthDisplayLines.Clear();
         SubscribeMonthlyForecastEvents();
         SelectedForecastLine = _workingSelectedForecastLineBeforeSavedMonthView is { } previousSelection
             && ForecastLines.Contains(previousSelection)
                 ? previousSelection
                 : ForecastLines.FirstOrDefault();
 
-        _workingForecastLinesBeforeSavedMonthView = null;
         _workingSelectedForecastLineBeforeSavedMonthView = null;
         _viewedSavedMonthSnapshot = null;
         RestoreSavedMonthForecastFilters();
@@ -257,7 +258,7 @@ public sealed partial class MainWindowViewModel
     private void ResetSavedMonthViewStateForDatasetLoad()
     {
         UnsubscribeSavedMonthForecastEvents();
-        _workingForecastLinesBeforeSavedMonthView = null;
+        _savedMonthDisplayLines.Clear();
         _workingSelectedForecastLineBeforeSavedMonthView = null;
         _workingForecastFiltersBeforeSavedMonthView = null;
         _viewedSavedMonthSnapshot = null;

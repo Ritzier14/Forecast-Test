@@ -30,6 +30,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - Forecast and summary WPF projections, attached grid state, and model-folder converters moved into the App presentation boundary; persisted forecast, summary, and workspace layout values remain unchanged.
 - Project open/save/save-as decisions moved into the headless `ProjectFileWorkflow`; WPF file-picker and prompt adapters preserve the existing dialogs while enabling cancellation, validation, I/O, and stale-file conflict tests without a real window.
 - Import/export path selection, cost-centre mapping, auto-create preview, unmatched-import review, and backup-restore path selection moved behind the headless `IImportExportInteraction`; staged import edits commit only after the final validation succeeds.
+- Forecast lines and transactions now use dataset-owned observable collections exposed directly by the view model; saved-month viewing uses a separate display projection and initial cost-load snapshots calculate on cloned state.
 
 ### Verified
 
@@ -47,6 +48,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - The LUNA-14 architecture suite proves the model candidate set has no WPF/window/control references, rejects a deliberate forbidden reference, preserves forecast/grid/KPI/workspace presentation behavior, and round-trips current and legacy forecast/summary fixtures.
 - The LUNA-15A workflow suite proves open/save success, cancellation, validation failure, I/O failure, stale-file conflict decisions, audit rollback, and active-session/dirty-state preservation with 10 headless tests.
 - The LUNA-15B workflow suite proves import/export cancellation and failure reporting, headless mapping and preview decisions, no partial transaction/mapping mutation before commit, unmatched review routing, and the absence of direct file-dialog/window dependencies from `MainWindowViewModel.ProjectIO.cs`.
+- The LUNA-16A suite proves canonical financial collection identity, derived category-cache rebuilding from inputs, legacy-fixture total parity, and saved-month projection isolation/restoration.
 
 ### Remaining Before A Formal Production Release
 

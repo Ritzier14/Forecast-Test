@@ -386,9 +386,6 @@ public sealed partial class MainWindowViewModel
 
     private void SyncDatasetFromCollections()
     {
-        _dataset.ForecastLines = IsViewingSavedMonth
-            ? (_workingForecastLinesBeforeSavedMonthView ?? _dataset.ForecastLines).ToList()
-            : ForecastLines.ToList();
         _dataset.ProjectTaskCodes = ProjectTaskCodes
             .OrderBy(task => task.DisplayOrder)
             .ToList();
@@ -396,8 +393,6 @@ public sealed partial class MainWindowViewModel
             .OrderBy(category => category.DisplayOrder)
             .ToList();
         _dataset.ManagementResources = ManagementResources.ToList();
-        _dataset.Transactions = Transactions.ToList();
-        _dataset.CategorySummaries = CategorySummaries.ToList();
         _dataset.ContingencyEntries = ContingencyEntries.ToList();
         _dataset.Phases = Phases.ToList();
         _dataset.SavedMonthSnapshots = SavedMonthSnapshots.OrderBy(snapshot => snapshot.SavedAt).ToList();

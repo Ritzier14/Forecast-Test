@@ -153,11 +153,11 @@ public sealed class ProjectDatasetMigrationPipeline
         dataset.ForecastPeriods = EnsureList(dataset.ForecastPeriods, ref changed);
         dataset.FiscalYearBudgets = EnsureList(dataset.FiscalYearBudgets, ref changed);
         dataset.BudgetLines = EnsureList(dataset.BudgetLines, ref changed);
-        dataset.ForecastLines = EnsureList(dataset.ForecastLines, ref changed);
+        dataset.ForecastLines = EnsureCollection(dataset.ForecastLines, ref changed);
         dataset.ProjectTaskCodes = EnsureList(dataset.ProjectTaskCodes, ref changed);
         dataset.ProjectCategories = EnsureList(dataset.ProjectCategories, ref changed);
         dataset.ManagementResources = EnsureList(dataset.ManagementResources, ref changed);
-        dataset.Transactions = EnsureList(dataset.Transactions, ref changed);
+        dataset.Transactions = EnsureCollection(dataset.Transactions, ref changed);
         dataset.UnmatchedImportCombinations = EnsureList(dataset.UnmatchedImportCombinations, ref changed);
         dataset.ContingencyEntries = EnsureList(dataset.ContingencyEntries, ref changed);
         dataset.CategorySummaries = EnsureList(dataset.CategorySummaries, ref changed);
@@ -353,6 +353,19 @@ public sealed class ProjectDatasetMigrationPipeline
     }
 
     private static List<T> EnsureList<T>(List<T>? values, ref bool changed)
+    {
+        if (values is not null)
+        {
+            return values;
+        }
+
+        changed = true;
+        return [];
+    }
+
+    private static BatchObservableCollection<T> EnsureCollection<T>(
+        BatchObservableCollection<T>? values,
+        ref bool changed)
     {
         if (values is not null)
         {

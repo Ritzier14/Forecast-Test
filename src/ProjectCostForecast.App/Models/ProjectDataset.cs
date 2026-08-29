@@ -12,11 +12,15 @@ public sealed class ProjectDataset
     public List<FiscalYearBudget> FiscalYearBudgets { get; set; } = [];
     public List<FiscalYearBudgetLine> BudgetLines { get; set; } = [];
     public string ActiveBudgetLineKey { get; set; } = "LTP_AP";
-    public List<ForecastLine> ForecastLines { get; set; } = [];
+    // These collections are observable because they are the canonical live
+    // financial state exposed by the view model while a project is open. The
+    // JSON shape remains an array; the collection type is an in-process
+    // ownership/detail and is not a second projection.
+    public BatchObservableCollection<ForecastLine> ForecastLines { get; set; } = [];
     public List<ProjectTaskCode> ProjectTaskCodes { get; set; } = [];
     public List<ProjectCategory> ProjectCategories { get; set; } = [];
     public List<ManagementResource> ManagementResources { get; set; } = [];
-    public List<CostTransaction> Transactions { get; set; } = [];
+    public BatchObservableCollection<CostTransaction> Transactions { get; set; } = [];
     public List<UnmatchedImportCombination> UnmatchedImportCombinations { get; set; } = [];
     public List<ContingencyEntry> ContingencyEntries { get; set; } = [];
     public List<CategorySummary> CategorySummaries { get; set; } = [];

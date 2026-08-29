@@ -298,7 +298,7 @@ public sealed partial class MainWindowViewModel
             .ToDictionary(group => group.Key, group => group.Sum(item => item.Amount));
 
         IEnumerable<ForecastLine> forecastLines = IsViewingSavedMonth
-            ? _workingForecastLinesBeforeSavedMonthView ?? []
+            ? _dataset.ForecastLines
             : ForecastLines;
         var forecastByMonth = forecastLines
             .SelectMany(line => line.MonthlyForecasts)

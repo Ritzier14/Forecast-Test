@@ -91,8 +91,8 @@ public sealed class InitialCostLoadService
                 ImportNotes = "Initial actual-cost load packaged with the application. One cumulative saved month has been created for each period in the source data."
             },
             ForecastPeriods = periods,
-            Transactions = transactions,
-            ForecastLines = BuildForecastLines(transactions, periods),
+            Transactions = new(transactions),
+            ForecastLines = new(BuildForecastLines(transactions, periods)),
             AuditEvents =
             [
                 new AuditEvent
@@ -235,7 +235,7 @@ public sealed class InitialCostLoadService
 
     private List<SavedMonthSnapshot> BuildMonthlySnapshots(ProjectDataset dataset)
     {
-        var allTransactions = dataset.Transactions;
+        var allTransactions = dataset.Transactions.ToList();
         var currentPeriod = dataset.Header.CurrentPeriod;
         var snapshots = new List<SavedMonthSnapshot>();
 
@@ -246,9 +246,9 @@ public sealed class InitialCostLoadService
         {
             var period = month.Key;
             var cutoff = FiscalPeriod.SortKey(period);
-            dataset.Transactions = allTransactions
+            dataset.Transactions.ReplaceWith(allTransactions
                 .Where(transaction => FiscalPeriod.SortKey(transaction.FyPeriod) <= cutoff)
-                .ToList();
+                .ToList());
             dataset.Header.CurrentPeriod = period;
             _calculationService.Recalculate(dataset);
 
@@ -261,7 +261,7 @@ public sealed class InitialCostLoadService
             snapshots.Add(CreateSnapshot(dataset, period, savedAt));
         }
 
-        dataset.Transactions = allTransactions;
+        dataset.Transactions.ReplaceWith(allTransactions);
         dataset.Header.CurrentPeriod = currentPeriod;
         _calculationService.Recalculate(dataset);
         return snapshots.OrderByDescending(snapshot => FiscalPeriod.SortKey(snapshot.Period)).ToList();

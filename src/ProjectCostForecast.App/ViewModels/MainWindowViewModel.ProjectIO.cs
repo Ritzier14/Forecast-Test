@@ -65,12 +65,16 @@ public sealed partial class MainWindowViewModel
     private bool SaveProject(bool showError = true)
     {
         SyncDatasetFromCollections();
+        _calculationService.Recalculate(_dataset);
+        ReplaceCollection(CategorySummaries, _dataset.CategorySummaries);
         return SaveDataset(_dataset, showError);
     }
 
     private bool SaveProjectAs(bool showError = true)
     {
         SyncDatasetFromCollections();
+        _calculationService.Recalculate(_dataset);
+        ReplaceCollection(CategorySummaries, _dataset.CategorySummaries);
         return SaveDatasetAs(_dataset, showError);
     }
 
@@ -371,9 +375,7 @@ public sealed partial class MainWindowViewModel
 
             SyncDatasetFromCollections();
             var stagedDataset = _projectDatasetCloner.Clone(_dataset);
-            stagedDataset.Transactions = (stagedDataset.Transactions ?? [])
-                .Concat(newTransactions)
-                .ToList();
+            stagedDataset.Transactions.AddRange(newTransactions);
             if (!TryBlockOperation("Import transactions", stagedDataset, showError, _importExportInteraction.ShowError))
             {
                 return;
@@ -475,36 +477,21 @@ public sealed partial class MainWindowViewModel
         }
 
         SyncDatasetFromCollections();
-        var originalTransactions = _dataset.Transactions;
-        var originalCurrentPeriod = Header.CurrentPeriod;
+        var stagedDataset = _projectDatasetCloner.Clone(_dataset);
+        var allTransactions = stagedDataset.Transactions.ToList();
         var snapshots = new List<SavedMonthSnapshot>();
 
-        try
+        foreach (var period in periods)
         {
-            foreach (var period in periods)
+            var cutoffSortKey = FiscalPeriod.SortKey(period);
+            stagedDataset.Transactions.ReplaceWith(allTransactions.Where(transaction =>
             {
-                var cutoffSortKey = FiscalPeriod.SortKey(period);
-                _dataset.Transactions = Transactions
-                    .Where(transaction =>
-                    {
-                        var transactionSortKey = FiscalPeriod.SortKey(transaction.FyPeriod);
-                        return transactionSortKey != int.MaxValue && transactionSortKey <= cutoffSortKey;
-                    })
-                    .ToList();
-                Header.CurrentPeriod = period;
-                _calculationService.Recalculate(_dataset);
-                ReplaceCollection(ForecastLines, _dataset.ForecastLines);
-
-                snapshots.Add(BuildSavedMonthSnapshot(period));
-            }
-        }
-        finally
-        {
-            _dataset.Transactions = originalTransactions;
-            Header.CurrentPeriod = originalCurrentPeriod;
-            _calculationService.Recalculate(_dataset);
-            ReplaceCollection(ForecastLines, _dataset.ForecastLines);
-            OnPropertyChanged(nameof(Header));
+                var transactionSortKey = FiscalPeriod.SortKey(transaction.FyPeriod);
+                return transactionSortKey != int.MaxValue && transactionSortKey <= cutoffSortKey;
+            }));
+            stagedDataset.Header.CurrentPeriod = period;
+            _calculationService.Recalculate(stagedDataset);
+            snapshots.Add(_newMonthOperation.BuildSnapshot(period, stagedDataset.ForecastLines));
         }
 
         foreach (var snapshot in snapshots.OrderBy(snapshot => FiscalPeriod.SortKey(snapshot.Period)))

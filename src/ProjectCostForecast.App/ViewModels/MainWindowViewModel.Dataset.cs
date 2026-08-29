@@ -23,16 +23,15 @@ public sealed partial class MainWindowViewModel
         ResetSavedMonthViewStateForDatasetLoad();
         UnsubscribeMonthlyForecastEvents();
         _dataset = normalization.Dataset;
+        SetFinancialCollections(_dataset);
         InitializeWorkspaceViews(_dataset.WorkspaceViews);
         RefreshCurrentWorkspaceViews();
         InitializeTaskCategoryMetadata();
         ApplyClosedForecastPeriodRule();
         _calculationService.Recalculate(_dataset);
 
-        ReplaceCollection(ForecastLines, _dataset.ForecastLines);
         RebuildTaskCodeReviewRows();
         LoadManagementResources(_dataset.ManagementResources);
-        ReplaceCollection(Transactions, _dataset.Transactions);
         LoadBudgetLinesFromDataset();
         ReplaceContingencyEntries(_dataset.ContingencyEntries);
         ReplaceCollection(Phases, _dataset.Phases);
@@ -53,6 +52,29 @@ public sealed partial class MainWindowViewModel
         SelectedForecastLine = ForecastLines.FirstOrDefault();
         IsDirty = markDirty || normalization.DataChanged;
         ApplyUserPreferences();
+    }
+
+    private void SetFinancialCollections(ProjectDataset dataset)
+    {
+        ArgumentNullException.ThrowIfNull(dataset);
+
+        SetForecastLinesProjection(dataset.ForecastLines);
+        Transactions = dataset.Transactions;
+        RawTransactionsView = CollectionViewSource.GetDefaultView(Transactions);
+        RawTransactionsView.Filter = FilterTransaction;
+        OnPropertyChanged(nameof(Transactions));
+        OnPropertyChanged(nameof(RawTransactionsView));
+    }
+
+    private void SetForecastLinesProjection(BatchObservableCollection<ForecastLine> lines)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+
+        ForecastLines = lines;
+        ForecastLinesView = CollectionViewSource.GetDefaultView(ForecastLines);
+        ForecastLinesView.Filter = FilterForecastLine;
+        OnPropertyChanged(nameof(ForecastLines));
+        OnPropertyChanged(nameof(ForecastLinesView));
     }
 
     public void ToggleCtcMonthForecastColumns()

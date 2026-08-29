@@ -91,6 +91,23 @@ window references and includes a deliberate negative-control source string,
 so adding a dependency to the agreed candidate set fails the discovered test
 gate.
 
+### Canonical financial state boundary
+
+`ProjectDataset.ForecastLines` and `ProjectDataset.Transactions` are the
+canonical live financial collections. They use the model-layer batch
+observable collection so `MainWindowViewModel` can expose the same instances
+to WPF without maintaining a second authoritative list or copying them during
+`SyncDatasetFromCollections`. `CalculationService` remains the sole owner of
+forecast-line derived values and the persisted category-summary compatibility
+cache; resource and fiscal projections are rebuilt from those canonical inputs.
+
+Saved-month viewing uses a separate display collection and swaps only the
+active forecast presentation/view. It never replaces or edits the live
+dataset collection. Initial cost-load period snapshots use a cloned dataset for
+the same isolation guarantee. Persisted derived caches remain in the format
+for backward compatibility and are refreshed from inputs before application
+saves; their removal requires a future versioned migration.
+
 ## State and refresh rules
 
 - A user operation should enter through one view-model method or command.
@@ -100,11 +117,11 @@ gate.
 - Every editable persisted collection must track item and collection changes, update affected totals, and set `IsDirty`.
 - Subscriptions owned by a window must be named, idempotent, detached when the data context changes, and detached when the window unloads.
 
-The pre-refactor state inventory and ownership boundary is recorded in
+The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root
 collection and persisted calculated field, records the current identity and
-dirty-tracking seams, and names LUNA-16A/LUNA-16B as the owners of the future
-canonical forecast/transaction and schedule/workspace state decisions.
+dirty-tracking seams, and records the LUNA-16A canonical forecast/transaction
+decision plus the remaining LUNA-16B schedule/workspace state work.
 
 ## Feature boundaries
 
