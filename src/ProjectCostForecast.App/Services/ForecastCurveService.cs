@@ -31,42 +31,7 @@ public sealed class ForecastCurveService
     /// so the result always sums exactly to the requested total.
     /// </summary>
     public static List<decimal> Distribute(decimal total, int periodCount, ForecastCurveProfile profile)
-    {
-        if (periodCount <= 0)
-        {
-            return [];
-        }
-
-        if (periodCount == 1)
-        {
-            return [decimal.Round(total, 2, MidpointRounding.AwayFromZero)];
-        }
-
-        var weights = new double[periodCount];
-        var weightSum = 0d;
-        for (var index = 0; index < periodCount; index++)
-        {
-            weights[index] = Weight(profile, index, periodCount);
-            weightSum += weights[index];
-        }
-
-        var amounts = new List<decimal>(periodCount);
-        decimal allocated = 0;
-        var largestIndex = 0;
-        for (var index = 0; index < periodCount; index++)
-        {
-            var amount = decimal.Round(total * (decimal)(weights[index] / weightSum), 2, MidpointRounding.AwayFromZero);
-            amounts.Add(amount);
-            allocated += amount;
-            if (Math.Abs(amount) > Math.Abs(amounts[largestIndex]))
-            {
-                largestIndex = index;
-            }
-        }
-
-        amounts[largestIndex] += total - allocated;
-        return amounts;
-    }
+        => ForecastCurveMath.Distribute(total, periodCount, profile).ToList();
 
     public int ApplyCurve(
         ForecastLine line,
@@ -88,34 +53,5 @@ public sealed class ForecastCurveService
 
         line.NotifyMonthForecastValuesChanged();
         return editableMonths.Count;
-    }
-
-    private static double Weight(ForecastCurveProfile profile, int index, int periodCount)
-    {
-        // Mid-point of the period on a normalised 0..1 timeline.
-        var t = (index + 0.5) / periodCount;
-        return profile switch
-        {
-            ForecastCurveProfile.FrontLoaded => 2.0 * (1.0 - t),
-            ForecastCurveProfile.BackLoaded => 2.0 * t,
-            ForecastCurveProfile.Bell => Math.Sin(Math.PI * t),
-            ForecastCurveProfile.SCurve => SCurveWeight(index, periodCount),
-            _ => 1.0
-        };
-    }
-
-    private static double SCurveWeight(int index, int periodCount)
-    {
-        // Per-period weight is the slice of a logistic cumulative curve, which gives the
-        // classic construction S-curve when the amounts are accumulated.
-        const double steepness = 8.0;
-        var start = Logistic((double)index / periodCount, steepness);
-        var end = Logistic((double)(index + 1) / periodCount, steepness);
-        return end - start;
-    }
-
-    private static double Logistic(double x, double steepness)
-    {
-        return 1.0 / (1.0 + Math.Exp(-steepness * (x - 0.5)));
     }
 }

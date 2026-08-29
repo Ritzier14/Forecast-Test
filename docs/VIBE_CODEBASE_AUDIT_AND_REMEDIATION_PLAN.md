@@ -876,7 +876,7 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | LUNA-18C | Complete | Scoped WPF binding-error listener and representative STA smoke path cover forecast, resources/ledger, schedule, monthly report, and saved-month surfaces; 3 focused tests pass with zero unexpected binding errors, plus the retained 428-assertion smoke gate |
 | LUNA-19A | Complete | `RightClickGridPanBehavior` and `RightClickGridPanSession` consolidate MainWindow, cost-centre mapping, and task/category editor grid panning; 5 focused tests and full verification pass with 151 discovered tests plus the retained legacy smoke gate |
 | LUNA-19B | Complete | `ReportCanvasDragController`, `IReportCanvasObjectHost`, `ReportCanvasObjectPositioning`, `ColorValueParser`, `ColorPalette`, and the shared frozen default header gradient consolidate the report-canvas and colour paths; 15 focused tests and full verification pass with 166 discovered tests plus the retained legacy smoke gate |
-| LUNA-19C | Not started | |
+| LUNA-19C | Complete | `ForecastCurveMath` is the canonical allocator for preview and applied forecasts; 9 focused tests and full verification pass with 175 discovered tests plus the retained legacy smoke gate |
 | LUNA-20 | Not started | |
 | LUNA-21 | Not started | |
 | LUNA-22 | Not started | Requires explicit approval before removing tracked artifacts |

@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using ProjectCostForecast.App.Models;
+using ProjectCostForecast.App.Services;
 using ProjectCostForecast.App.ViewModels;
 
 namespace ProjectCostForecast.App;
@@ -1082,27 +1083,60 @@ public static class ForecastCurvePresets
             return existingValues.ToList();
         }
 
-        var total = existingValues.Sum();
-        if (total == 0)
-        {
-            return Enumerable.Repeat(0m, existingValues.Count).ToList();
-        }
-
-        var weights = Enumerable.Range(0, existingValues.Count).Select(index => preset switch
-        {
-            SCurve => Logistic(index + 1d, existingValues.Count) - Logistic(index, existingValues.Count),
-            LazyCurve => Math.Sin(Math.PI * (index + 0.5d) / existingValues.Count),
-            FrontHeavy => existingValues.Count - index,
-            BackHeavy => index + 1d,
-            _ => 1d
-        }).ToList();
-        var weightTotal = weights.Sum();
-        var result = weights.Select(weight => Math.Round(total * (decimal)(weight / weightTotal), 0)).ToList();
-        result[^1] += total - result.Sum();
-        return result;
+        return ForecastCurveMath.Distribute(
+            existingValues.Sum(),
+            existingValues.Count,
+            ToProfile(preset));
     }
 
-    public static IReadOnlyList<decimal> CaptureShape(IReadOnlyList<decimal> values)
+    public static IReadOnlyList<decimal> CaptureShape(IReadOnlyList<decimal> values) =>
+        ForecastCurveMath.CaptureNormalizedShape(values);
+
+    public static IReadOnlyList<decimal> ApplyUserPreset(UserForecastCurvePreset preset, IReadOnlyList<decimal> existingValues) =>
+        ForecastCurveMath.ApplyNormalizedShape(existingValues, preset.Weights);
+
+    private static ForecastCurveProfile ToProfile(string preset)
+    {
+        return preset switch
+        {
+            SCurve => ForecastCurveProfile.SCurve,
+            LazyCurve => ForecastCurveProfile.Bell,
+            FrontHeavy => ForecastCurveProfile.FrontLoaded,
+            BackHeavy => ForecastCurveProfile.BackLoaded,
+            _ => ForecastCurveProfile.Linear
+        };
+    }
+}
+
+public static class ForecastCurveMath
+{
+    /// <summary>
+    /// Creates the canonical financial allocation used by both the committed
+    /// forecast command and the curve editor preview. Values are rounded to
+    /// cents and any residual is assigned to the largest allocated period.
+    /// </summary>
+    public static decimal[] Distribute(decimal total, int periodCount, ForecastCurveProfile profile)
+    {
+        if (periodCount <= 0)
+        {
+            return [];
+        }
+
+        if (periodCount == 1)
+        {
+            return [decimal.Round(total, 2, MidpointRounding.AwayFromZero)];
+        }
+
+        var weights = new decimal[periodCount];
+        for (var index = 0; index < periodCount; index++)
+        {
+            weights[index] = (decimal)GetWeight(profile, index, periodCount);
+        }
+
+        return Allocate(total, weights);
+    }
+
+    public static IReadOnlyList<decimal> CaptureNormalizedShape(IReadOnlyList<decimal> values)
     {
         if (values.Count == 0)
         {
@@ -1123,14 +1157,16 @@ public static class ForecastCurvePresets
         return result;
     }
 
-    public static IReadOnlyList<decimal> ApplyUserPreset(UserForecastCurvePreset preset, IReadOnlyList<decimal> existingValues)
+    public static IReadOnlyList<decimal> ApplyNormalizedShape(
+        IReadOnlyList<decimal> existingValues,
+        IReadOnlyList<decimal> normalizedShape)
     {
         if (existingValues.Count == 0)
         {
             return [];
         }
 
-        if (preset.Weights.Count == 0)
+        if (normalizedShape.Count == 0)
         {
             return existingValues.ToList();
         }
@@ -1141,59 +1177,9 @@ public static class ForecastCurvePresets
             return Enumerable.Repeat(0m, existingValues.Count).ToList();
         }
 
-        var weights = ResampleWeights(preset.Weights, existingValues.Count);
-        var result = weights.Select(weight => Math.Round(targetTotal * weight, 0)).ToList();
-        result[^1] += targetTotal - result.Sum();
-        return result;
+        return Allocate(targetTotal, ResampleWeights(normalizedShape, existingValues.Count));
     }
 
-    private static List<decimal> ResampleWeights(IReadOnlyList<decimal> weights, int targetCount)
-    {
-        if (weights.Count == targetCount)
-        {
-            return weights.ToList();
-        }
-
-        if (targetCount == 1)
-        {
-            return [1m];
-        }
-
-        if (weights.Count == 1)
-        {
-            return Enumerable.Repeat(Math.Round(1m / targetCount, 8), targetCount).ToList();
-        }
-
-        var result = new List<decimal>(targetCount);
-        for (var index = 0; index < targetCount; index++)
-        {
-            var position = (double)index * (weights.Count - 1) / (targetCount - 1);
-            var left = (int)Math.Floor(position);
-            var right = Math.Min(weights.Count - 1, left + 1);
-            var blend = (decimal)(position - left);
-            result.Add(Math.Round(weights[left] + ((weights[right] - weights[left]) * blend), 8));
-        }
-
-        var total = result.Sum();
-        if (total == 0)
-        {
-            return Enumerable.Repeat(Math.Round(1m / targetCount, 8), targetCount).ToList();
-        }
-
-        result = result.Select(weight => Math.Round(weight / total, 8)).ToList();
-        result[^1] += 1m - result.Sum();
-        return result;
-    }
-
-    private static double Logistic(double boundary, int count)
-    {
-        var x = ((boundary / count) - 0.5d) * 10d;
-        return 1d / (1d + Math.Exp(-x));
-    }
-}
-
-public static class ForecastCurveMath
-{
     public static decimal[] BuildCumulative(IEnumerable<decimal> monthlyValues)
     {
         var total = 0m;
@@ -1416,5 +1402,108 @@ public static class ForecastCurveMath
                 values[target] += remaining;
             }
         }
+    }
+
+    private static decimal[] Allocate(decimal total, IReadOnlyList<decimal> weights)
+    {
+        if (weights.Count == 0)
+        {
+            return [];
+        }
+
+        var weightTotal = weights.Sum();
+        if (weightTotal <= 0)
+        {
+            weightTotal = weights.Count;
+            weights = Enumerable.Repeat(1m, weights.Count).ToArray();
+        }
+
+        var amounts = new decimal[weights.Count];
+        decimal allocated = 0;
+        var largestIndex = 0;
+        for (var index = 0; index < weights.Count; index++)
+        {
+            amounts[index] = decimal.Round(
+                total * (weights[index] / weightTotal),
+                2,
+                MidpointRounding.AwayFromZero);
+            allocated += amounts[index];
+            if (Math.Abs(amounts[index]) > Math.Abs(amounts[largestIndex]))
+            {
+                largestIndex = index;
+            }
+        }
+
+        amounts[largestIndex] += total - allocated;
+        return amounts;
+    }
+
+    private static List<decimal> ResampleWeights(IReadOnlyList<decimal> weights, int targetCount)
+    {
+        if (targetCount <= 0)
+        {
+            return [];
+        }
+
+        if (weights.Count == targetCount)
+        {
+            return weights.ToList();
+        }
+
+        if (targetCount == 1)
+        {
+            return [1m];
+        }
+
+        if (weights.Count == 1)
+        {
+            return Enumerable.Repeat(Math.Round(1m / targetCount, 8), targetCount).ToList();
+        }
+
+        var result = new List<decimal>(targetCount);
+        for (var index = 0; index < targetCount; index++)
+        {
+            var position = (double)index * (weights.Count - 1) / (targetCount - 1);
+            var left = (int)Math.Floor(position);
+            var right = Math.Min(weights.Count - 1, left + 1);
+            var blend = (decimal)(position - left);
+            result.Add(Math.Round(weights[left] + ((weights[right] - weights[left]) * blend), 8));
+        }
+
+        var total = result.Sum();
+        if (total == 0)
+        {
+            return Enumerable.Repeat(Math.Round(1m / targetCount, 8), targetCount).ToList();
+        }
+
+        result = result.Select(weight => Math.Round(weight / total, 8)).ToList();
+        result[^1] += 1m - result.Sum();
+        return result;
+    }
+
+    private static double GetWeight(ForecastCurveProfile profile, int index, int periodCount)
+    {
+        var t = (index + 0.5) / periodCount;
+        return profile switch
+        {
+            ForecastCurveProfile.FrontLoaded => 2.0 * (1.0 - t),
+            ForecastCurveProfile.BackLoaded => 2.0 * t,
+            ForecastCurveProfile.Bell => Math.Sin(Math.PI * t),
+            ForecastCurveProfile.SCurve => SCurveWeight(index, periodCount),
+            _ => 1.0
+        };
+    }
+
+    private static double SCurveWeight(int index, int periodCount)
+    {
+        const double steepness = 8.0;
+        var start = Logistic((double)index / periodCount, steepness);
+        var end = Logistic((double)(index + 1) / periodCount, steepness);
+        return end - start;
+    }
+
+    private static double Logistic(double x, double steepness)
+    {
+        return 1.0 / (1.0 + Math.Exp(-steepness * (x - 0.5)));
     }
 }

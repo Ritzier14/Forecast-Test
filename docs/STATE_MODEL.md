@@ -549,3 +549,19 @@ shared metadata labels and icon colour options. `BrushFactory` adapts parsed
 values to WPF `Color`/brush instances and exposes the one frozen default header
 gradient used by the main grid, task/category editor, and header colour picker;
 no domain or persisted colour type references WPF.
+
+## 21. LUNA-19C canonical forecast-curve math evidence
+
+`ForecastCurveMath.Distribute` is the canonical pure financial allocator.
+`ForecastCurveService.Distribute` and `ForecastCurvePresets.Apply` both
+delegate to it, so a selected curve preview and the committed forecast use
+the same normalized period weights, two-decimal rounding, and largest-period
+residual rule. User-defined shapes also pass through the same allocator after
+normalization and any required resampling.
+
+The focused boundary suite proves zero periods, one period, invalid profiles,
+negative totals, exact rounding residuals, total preservation, existing-curve
+identity, and user-shape application. The existing cumulative-marker and
+interactive smoothing methods remain display/interaction math; their axis
+scaling and whole-unit pointer-edit behavior are intentionally not reused as
+financial allocation rules.

@@ -190,6 +190,15 @@ normalized by the WPF-free `ColorValueParser`; `BrushFactory` is the only
 boundary that turns those values into WPF brushes and owns the shared default
 header gradient. Common colour labels and icon swatches use `ColorPalette`.
 
+Forecast curve allocation has one pure financial boundary in
+`ForecastCurveMath`. `ForecastCurveService` uses it when applying a curve to
+editable forecast months, and `ForecastCurvePresets` uses the same allocator
+for editor previews and saved user shapes. The allocator rounds financial
+values to cents and preserves the requested total by assigning any residual
+to the largest period. Cumulative markers and their interactive smoothing
+remain separate display/interaction math, so chart scaling and pointer edits
+do not redefine committed financial allocation.
+
 The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root
 collection and persisted calculated field, records the current identity and
