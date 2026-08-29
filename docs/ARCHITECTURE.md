@@ -164,6 +164,14 @@ failures, and failures are sent to the diagnostics service before any error
 message is shown. UI assignment is allowed only while both the window and its
 request are active.
 
+The WPF binding gate is test-scoped rather than a production-wide trace
+suppression. `WpfBindingErrorCapture` attaches to
+`PresentationTraceSources.DataBindingSource` only for the representative
+smoke path, prefixes each captured error with its surface name, and restores
+the previous trace level on disposal. The path exercises the main forecast,
+resources/ledger, schedule, monthly report, and saved-month surfaces; no
+framework noise or application binding errors required an allow-list.
+
 The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root
 collection and persisted calculated field, records the current identity and

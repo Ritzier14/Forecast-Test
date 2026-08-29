@@ -476,7 +476,7 @@ current financial or schedule calculation.
 
 The focused suite also proves that a queued refresh coordinator callback is a
 safe no-op after disposal. Child-window async ownership remains LUNA-18B, and
-binding trace capture remains LUNA-18C.
+binding trace capture is recorded below.
 
 ## 17. LUNA-18B child-window async evidence
 
@@ -496,5 +496,23 @@ comparison:
 
 Other child windows were reviewed in this packet: their dispatcher work is
 synchronous UI positioning or editing and has no background task boundary;
-the binding trace gate and any broader child-window extraction remain
-LUNA-18C and later UI work.
+the binding trace gate is recorded below, while broader child-window extraction
+remains later UI work.
+
+## 18. LUNA-18C WPF binding-error gate evidence
+
+`Luna18CBindingErrorTests` records the scoped binding diagnostics boundary:
+
+- `WpfBindingErrorCapture` listens to the WPF data-binding trace source only
+  while a test scope is active, captures error messages with the supplied
+  surface name, and restores the prior trace level and listener collection on
+  disposal;
+- the gate proves a synthetic missing-path error retains both the binding path
+  and surface label, so an actual smoke failure is actionable rather than a
+  count-only assertion;
+- the representative STA smoke path constructs the main window and visits the
+  main forecast, resources, ledger, schedule, monthly report, and saved-month
+  views before closing and returning to the current month; and
+- the path produced zero unexpected binding errors, so no framework-noise
+  allow-list was added. The application’s existing image resource lookup was
+  made assembly-qualified for deterministic test-host resolution.

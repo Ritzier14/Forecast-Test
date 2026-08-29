@@ -425,7 +425,9 @@ public partial class MainWindow : Window
 
         var fileName = _forecastGroupsExpanded ? "ic_collapse_20.png" : "ic_expand_all_16.png";
         ForecastGroupToggleIcon.Source = new System.Windows.Media.Imaging.BitmapImage(
-            new Uri($"pack://application:,,,/Assets/Icons/png/{fileName}", UriKind.Absolute));
+            new Uri(
+                $"pack://application:,,,/{typeof(MainWindow).Assembly.GetName().Name};component/Assets/Icons/png/{fileName}",
+                UriKind.Absolute));
         ForecastGroupToggleButton.ToolTip = _forecastGroupsExpanded
             ? "Collapse all task groups"
             : "Expand all task groups";

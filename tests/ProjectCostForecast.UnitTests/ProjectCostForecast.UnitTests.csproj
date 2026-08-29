@@ -26,4 +26,14 @@
   <ItemGroup>
     <None Update="Fixtures\ProjectFiles\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- MainWindow uses application-relative image URIs. The WPF test host
+         owns ResourceAssembly, so link the app resources into that assembly
+         for the representative window smoke path. -->
+    <Resource Include="..\..\src\ProjectCostForecast.App\Assets\Icons\png\*.png"
+              Link="Assets\Icons\png\%(Filename)%(Extension)" />
+    <Resource Include="..\..\src\ProjectCostForecast.App\Assets\Backgrounds\*.png"
+              Link="Assets\Backgrounds\%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>

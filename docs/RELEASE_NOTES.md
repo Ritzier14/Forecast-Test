@@ -34,6 +34,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - Schedule activities/calendars/baselines, saved-month history, and project-local workspace layouts now have explicit dataset-owned collection boundaries; reload-safe subscription tracking detaches old schedule/workspace objects, while application-wide preferences remain separate.
 - Refresh work now enters a coalescing `RefreshCoordinator` with explicit projection targets, phase counters/timings, one end-of-batch spreadsheet refresh, and dispatcher-coalesced dynamic grid-column rebuilds.
 - Forecast-grid refreshes preserve stable selection/current-cell identity, scroll offsets, active editor text, filters, and task-group expansion when the underlying items and columns remain available.
+- A scoped WPF binding-error capture gate now covers the main forecast, resources/ledger, schedule, monthly report, and saved-month smoke surfaces without globally suppressing binding diagnostics.
 
 ### Verified
 
@@ -56,6 +57,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - The LUNA-17 suite proves merged refresh requests, batch-held refreshes, one calculation/pivot path for a full refresh, stable filter/resource/line selection, and the measured refresh phase contract; the Release verifier also covers the retained 428-assertion smoke gate.
 - The LUNA-18A suite proves one named MainWindow lifecycle owner, matching routed/grid/scroll detachment, generation-guarded dispatcher work, and view-model timer/refresh disposal; the Release verifier also covers the retained 428-assertion smoke gate.
 - The LUNA-18B suite proves observed schedule-comparison refresh tasks, separate cancellation/failure handling, close-time cancellation and awaiting, stale-write suppression, diagnostics routing, and child close-handler detachment; the Release verifier also covers the retained 428-assertion smoke gate.
+- The LUNA-18C suite proves scoped WPF binding trace capture, actionable surface/path diagnostics, and zero unexpected binding errors across the representative main-window smoke path; the Release verifier also covers the retained 428-assertion smoke gate.
 
 ### Remaining Before A Formal Production Release
 
