@@ -134,11 +134,24 @@ its own preference-file boundary and changing it does not dirty a project.
 - Every editable persisted collection must track item and collection changes, update affected totals, and set `IsDirty`.
 - Subscriptions owned by a window must be named, idempotent, detached when the data context changes, and detached when the window unloads.
 
+`RefreshCoordinator` is the application refresh boundary. A user operation submits
+one `RefreshRequest` with explicit projection flags; overlapping requests merge
+before dispatcher execution, and spreadsheet edit batches hold the request until
+the batch closes. `RefreshDiagnostics` records request/coalescing/execution
+counts and phase durations for calculation, calculated views, collection views,
+raw-transaction pivots, grid columns, totals, ledger, grouping, and filter lists.
+The forecast grid captures stable item/column identity, selection, scroll offsets,
+active editor text, and group expansion before dynamic column replacement and
+restores each value only when its identity still exists. Filter values remain in
+the view model, while dispatcher-queued column rebuilds prevent collection and
+property notifications from rebuilding the same grid more than once per turn.
+
 The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root
 collection and persisted calculated field, records the current identity and
 dirty-tracking seams, and records the LUNA-16A canonical forecast/transaction
-decision plus the remaining LUNA-16B schedule/workspace state work.
+decision, the LUNA-16B schedule/workspace state boundary, and the LUNA-17
+refresh-preservation contract.
 
 ## Feature boundaries
 

@@ -17,22 +17,30 @@ public sealed partial class MainWindowViewModel
 {
     private void RecalculateAndRefresh(bool markDirty, string reason, bool rebuildFilterLists = true)
     {
-        SyncDatasetFromCollections();
-        ApplyClosedForecastPeriodRule();
-        _calculationService.Recalculate(_dataset);
-        RebuildCalculatedViews(rebuildFilterLists);
-        RefreshViewsAndTotals();
-        IsDirty = markDirty || IsDirty;
-        StatusText = $"{reason}. {ValidationIssueCount} validation issue(s).";
+        RequestRefresh(new RefreshRequest(
+            ViewRefreshProjections | RefreshProjection.CalculatedViews | RefreshProjection.Totals | RefreshProjection.Ledger,
+            reason,
+            Recalculate: true,
+            RebuildFilterLists: rebuildFilterLists,
+            MarkDirty: markDirty));
     }
 
     private void RebuildCalculatedViews(bool rebuildFilterLists)
     {
+        _refreshCoordinator.Measure(
+            RefreshPhase.CalculatedViews,
+            () => RebuildCalculatedViewsCore(rebuildFilterLists));
+    }
+
+    private void RebuildCalculatedViewsCore(bool rebuildFilterLists)
+    {
+        var selectedResourceName = SelectedResourceSummary?.ResourceName;
         RebuildForecastLineLookups();
         RebuildTaskCodeReviewRows();
         InvalidatePivotFilterValues();
         ReplaceCollection(CategorySummaries, _dataset.CategorySummaries);
         ReplaceCollection(ResourceSummaries, BuildResourceSummaries(_dataset.Transactions, _dataset.ForecastLines));
+        RestoreSelectedResourceSummary(selectedResourceName);
         ReplaceCollection(FiscalYearReportLines, _calculationService.BuildFiscalYearReport(_dataset));
         ReplaceCollection(ActualsPeriodSummaries, _calculationService.BuildActualsPeriodSummaries(_dataset.Transactions));
         RebuildMonthlyPivotTables();
@@ -41,10 +49,34 @@ public sealed partial class MainWindowViewModel
         ApplyForecastPeriodLockStates();
         if (rebuildFilterLists)
         {
-            RebuildFilterLists();
+            _refreshCoordinator.Measure(RefreshPhase.FilterLists, RebuildFilterLists);
         }
 
         RefreshValidation(syncDataset: false);
+    }
+
+    private void RestoreSelectedResourceSummary(string? resourceName)
+    {
+        if (string.IsNullOrWhiteSpace(resourceName))
+        {
+            if (_selectedResourceSummary is not null)
+            {
+                _selectedResourceSummary = null;
+                OnPropertyChanged(nameof(SelectedResourceSummary));
+            }
+
+            return;
+        }
+
+        var restored = ResourceSummaries.FirstOrDefault(summary =>
+            string.Equals(summary.ResourceName, resourceName, StringComparison.OrdinalIgnoreCase));
+        if (ReferenceEquals(_selectedResourceSummary, restored))
+        {
+            return;
+        }
+
+        _selectedResourceSummary = restored;
+        OnPropertyChanged(nameof(SelectedResourceSummary));
     }
 
     private bool IsForecastEditTransactionActive()
@@ -55,24 +87,7 @@ public sealed partial class MainWindowViewModel
 
     private void QueueDeferredViewRefresh()
     {
-        if (_viewRefreshQueued)
-        {
-            return;
-        }
-
-        _viewRefreshQueued = true;
-        Application.Current.Dispatcher.BeginInvoke(() =>
-        {
-            _viewRefreshQueued = false;
-            if (IsForecastEditTransactionActive())
-            {
-                QueueDeferredViewRefresh();
-                return;
-            }
-
-            RefreshViews(ForecastLinesView, RawTransactionsView, ResourceSummariesView);
-            RebuildRawTransactionsPivotTable();
-        }, DispatcherPriority.ApplicationIdle);
+        RequestRefresh(new RefreshRequest(ViewRefreshProjections | RefreshProjection.RawTransactionsPivot));
     }
 
     private void RefreshForecastAndTransactionViews()
@@ -82,8 +97,10 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        RefreshViews(ForecastLinesView, RawTransactionsView);
-        RebuildRawTransactionsPivotTable();
+        RequestRefresh(new RefreshRequest(
+            RefreshProjection.ForecastLinesView
+            | RefreshProjection.RawTransactionsView
+            | RefreshProjection.RawTransactionsPivot));
     }
 
     private void RefreshSearchViews()
@@ -93,14 +110,17 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        RefreshViews(ForecastLinesView, RawTransactionsView);
+        RequestRefresh(new RefreshRequest(
+            RefreshProjection.ForecastLinesView
+            | RefreshProjection.RawTransactionsView
+            | RefreshProjection.RawTransactionsPivot));
     }
 
     private void RefreshForecastLinesView()
     {
         if (!_suppressFilterRefresh)
         {
-            RefreshView(ForecastLinesView);
+            RequestRefresh(new RefreshRequest(RefreshProjection.ForecastLinesView));
         }
     }
 
@@ -108,8 +128,9 @@ public sealed partial class MainWindowViewModel
     {
         if (!_suppressFilterRefresh)
         {
-            RefreshView(RawTransactionsView);
-            RebuildRawTransactionsPivotTable();
+            RequestRefresh(new RefreshRequest(
+                RefreshProjection.RawTransactionsView
+                | RefreshProjection.RawTransactionsPivot));
         }
     }
 
@@ -286,7 +307,10 @@ public sealed partial class MainWindowViewModel
             _suppressFilterRefresh = false;
         }
 
-        RefreshViews(ForecastLinesView, RawTransactionsView);
+        RequestRefresh(new RefreshRequest(
+            RefreshProjection.ForecastLinesView
+            | RefreshProjection.RawTransactionsView
+            | RefreshProjection.RawTransactionsPivot));
     }
 
     private void ClearAllRecords(bool newProject = false)
@@ -393,43 +417,30 @@ public sealed partial class MainWindowViewModel
 
     private void ApplyForecastGroupingCore()
     {
-        using (ForecastLinesView.DeferRefresh())
+        _refreshCoordinator.Measure(RefreshPhase.ForecastGrouping, () =>
         {
-            ForecastLinesView.GroupDescriptions.Clear();
-            switch (ForecastGroupByKey)
+            using (ForecastLinesView.DeferRefresh())
             {
-                case ForecastGroupByTaskKey:
-                    ForecastLinesView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ForecastLine.TaskNumber)));
-                    break;
-                case ForecastGroupByResourceKey:
-                    ForecastLinesView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ForecastLine.ResourceName)));
-                    break;
-                case ForecastGroupByCategoryKey:
-                    ForecastLinesView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ForecastLine.ReportingCategory)));
-                    break;
+                ForecastLinesView.GroupDescriptions.Clear();
+                switch (ForecastGroupByKey)
+                {
+                    case ForecastGroupByTaskKey:
+                        ForecastLinesView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ForecastLine.TaskNumber)));
+                        break;
+                    case ForecastGroupByResourceKey:
+                        ForecastLinesView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ForecastLine.ResourceName)));
+                        break;
+                    case ForecastGroupByCategoryKey:
+                        ForecastLinesView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ForecastLine.ReportingCategory)));
+                        break;
+                }
             }
-        }
+        });
     }
 
     private void QueueDeferredForecastGrouping()
     {
-        if (_forecastGroupingQueued)
-        {
-            return;
-        }
-
-        _forecastGroupingQueued = true;
-        Application.Current.Dispatcher.BeginInvoke(() =>
-        {
-            _forecastGroupingQueued = false;
-            if (IsForecastEditTransactionActive())
-            {
-                QueueDeferredForecastGrouping();
-                return;
-            }
-
-            ApplyForecastGroupingCore();
-        }, DispatcherPriority.ApplicationIdle);
+        RequestRefresh(new RefreshRequest(RefreshProjection.ForecastGrouping));
     }
 
     private void ApplyCategorySorting()

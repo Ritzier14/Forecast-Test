@@ -32,6 +32,8 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - Import/export path selection, cost-centre mapping, auto-create preview, unmatched-import review, and backup-restore path selection moved behind the headless `IImportExportInteraction`; staged import edits commit only after the final validation succeeds.
 - Forecast lines and transactions now use dataset-owned observable collections exposed directly by the view model; saved-month viewing uses a separate display projection and initial cost-load snapshots calculate on cloned state.
 - Schedule activities/calendars/baselines, saved-month history, and project-local workspace layouts now have explicit dataset-owned collection boundaries; reload-safe subscription tracking detaches old schedule/workspace objects, while application-wide preferences remain separate.
+- Refresh work now enters a coalescing `RefreshCoordinator` with explicit projection targets, phase counters/timings, one end-of-batch spreadsheet refresh, and dispatcher-coalesced dynamic grid-column rebuilds.
+- Forecast-grid refreshes preserve stable selection/current-cell identity, scroll offsets, active editor text, filters, and task-group expansion when the underlying items and columns remain available.
 
 ### Verified
 
@@ -51,6 +53,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - The LUNA-15B workflow suite proves import/export cancellation and failure reporting, headless mapping and preview decisions, no partial transaction/mapping mutation before commit, unmatched review routing, and the absence of direct file-dialog/window dependencies from `MainWindowViewModel.ProjectIO.cs`.
 - The LUNA-16A suite proves canonical financial collection identity, derived category-cache rebuilding from inputs, legacy-fixture total parity, and saved-month projection isolation/restoration.
 - The LUNA-16B suite proves schedule/snapshot collection identity, idempotent replacement subscription tracking, dirty coverage for supported persisted editors, preference separation, and old-project subscription detachment.
+- The LUNA-17 suite proves merged refresh requests, batch-held refreshes, one calculation/pivot path for a full refresh, stable filter/resource/line selection, and the measured refresh phase contract; the Release verifier also covers the retained 428-assertion smoke gate.
 
 ### Remaining Before A Formal Production Release
 

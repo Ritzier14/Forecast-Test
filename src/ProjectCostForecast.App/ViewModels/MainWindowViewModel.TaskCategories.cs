@@ -124,15 +124,16 @@ public sealed partial class MainWindowViewModel
         RefreshForecastLineTaskCategoryResolution();
         OnPropertyChanged(nameof(ProjectTaskCodes));
         OnPropertyChanged(nameof(ProjectCategoryNames));
-        _calculationService.Recalculate(_dataset);
-        ReplaceCollection(CategorySummaries, _dataset.CategorySummaries);
-        RebuildCalculatedViews(rebuildFilterLists: true);
-        RebuildTaskCodeReviewRows();
-        ApplyForecastGrouping();
-        if (markDirty)
-        {
-            IsDirty = true;
-        }
+        RequestRefresh(new RefreshRequest(
+            ViewRefreshProjections
+            | RefreshProjection.CalculatedViews
+            | RefreshProjection.Totals
+            | RefreshProjection.Ledger
+            | RefreshProjection.ForecastGrouping,
+            "Task and category metadata updated",
+            Recalculate: true,
+            RebuildFilterLists: true,
+            MarkDirty: markDirty));
     }
 
     public void SetForecastLineReportingCategory(ForecastLine line, string category)

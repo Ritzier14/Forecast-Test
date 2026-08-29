@@ -349,8 +349,10 @@ The following items are intentionally not fixed by LUNA-14 or LUNA-16B:
   baseline-entry, snapshot, and report-canvas list mutation if those become
   supported public session APIs. The current packet owns the root collections,
   supported editor gateways, and project-load subscription lifetime.
-- LUNA-17: coalesce recalculation and projection refreshes after ownership is
-  clear.
+- LUNA-17 follow-up: retain the `RefreshCoordinator` phase counters and extend
+  the deterministic UI harness as new projection surfaces are added. The core
+  refresh merge, grid-column coalescing, and forecast-grid state restoration are
+  complete in this packet.
 - LUNA-18A/B: audit window lifetime, dispatcher work, cancellation, and
   subscription disposal.
 

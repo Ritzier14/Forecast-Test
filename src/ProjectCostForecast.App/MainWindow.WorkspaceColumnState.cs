@@ -110,13 +110,10 @@ public partial class MainWindow
     }
 
     private void ViewModelPivotColumns_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-        => RebuildMonthlyPivotColumns();
+        => QueueRebuildMonthlyPivotColumns();
 
     private void ViewModelForecastColumns_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        RebuildForecastGridColumns();
-        ConfigureSelectedMonthlyForecastGrid();
-    }
+        => QueueRebuildForecastGridColumns();
 
     private void ViewModelMonthlyForecastAcrossRows_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
@@ -127,7 +124,53 @@ public partial class MainWindow
     }
 
     private void ViewModelBudgetFiscalYears_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-        => RebuildBudgetGridColumns();
+        => QueueRebuildBudgetGridColumns();
+
+    private void QueueRebuildMonthlyPivotColumns()
+    {
+        if (_monthlyPivotColumnsRebuildQueued)
+        {
+            return;
+        }
+
+        _monthlyPivotColumnsRebuildQueued = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(() =>
+        {
+            _monthlyPivotColumnsRebuildQueued = false;
+            RebuildMonthlyPivotColumns();
+        }));
+    }
+
+    private void QueueRebuildForecastGridColumns()
+    {
+        if (_forecastGridColumnsRebuildQueued)
+        {
+            return;
+        }
+
+        _forecastGridColumnsRebuildQueued = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(() =>
+        {
+            _forecastGridColumnsRebuildQueued = false;
+            RebuildForecastGridColumns();
+            ConfigureSelectedMonthlyForecastGrid();
+        }));
+    }
+
+    private void QueueRebuildBudgetGridColumns()
+    {
+        if (_budgetGridColumnsRebuildQueued)
+        {
+            return;
+        }
+
+        _budgetGridColumnsRebuildQueued = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(() =>
+        {
+            _budgetGridColumnsRebuildQueued = false;
+            RebuildBudgetGridColumns();
+        }));
+    }
 
     private void SubscribedViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -149,13 +192,13 @@ public partial class MainWindow
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowCurrencySymbols), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ForecastMonthMillionDecimals), StringComparison.Ordinal))
         {
-            RebuildForecastGridColumns();
+            QueueRebuildForecastGridColumns();
         }
 
         if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.IsViewingSavedMonth), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.ShowCurrencySymbols), StringComparison.Ordinal))
         {
-            RebuildBudgetGridColumns();
+            QueueRebuildBudgetGridColumns();
         }
 
         if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ForecastFreezeColumnKey), StringComparison.Ordinal))

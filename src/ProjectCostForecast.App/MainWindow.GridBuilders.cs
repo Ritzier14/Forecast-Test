@@ -39,10 +39,13 @@ public partial class MainWindow
             return;
         }
 
-        ConfigureMonthlyPivotGrid(RawTransactionsMonthlyPivotGrid, viewModel.RawTransactionsMonthlyPivotPeriods);
-        ConfigureMonthlyPivotGrid(LedgerMonthlyPivotGrid, viewModel.LedgerMonthlyPivotPeriods);
-        ConfigureCategoryMonthlyPivotGrid(CategoryMonthlyPivotGrid, viewModel.MonthlyPivotPeriods);
-        ConfigureCustomPivotGrid(CustomPivotGrid, viewModel.PivotResultColumns);
+        viewModel.MeasureRefreshPhase(Services.RefreshPhase.GridColumns, () =>
+        {
+            ConfigureMonthlyPivotGrid(RawTransactionsMonthlyPivotGrid, viewModel.RawTransactionsMonthlyPivotPeriods);
+            ConfigureMonthlyPivotGrid(LedgerMonthlyPivotGrid, viewModel.LedgerMonthlyPivotPeriods);
+            ConfigureCategoryMonthlyPivotGrid(CategoryMonthlyPivotGrid, viewModel.MonthlyPivotPeriods);
+            ConfigureCustomPivotGrid(CustomPivotGrid, viewModel.PivotResultColumns);
+        });
         ApplyDefaultColumnPresentation(this);
         ApplyForecastColumnHighlightState();
         QueueApplyCurrentWorkspaceViewColumnState();
@@ -61,10 +64,14 @@ public partial class MainWindow
             return;
         }
 
-        using (GridPerformanceDiagnostics.Measure("forecast-grid-column-rebuild"))
+        var refreshState = CaptureForecastGridRefreshState(ForecastLinesGrid);
+        viewModel.MeasureRefreshPhase(Services.RefreshPhase.GridColumns, () =>
         {
-            ConfigureForecastGrid(ForecastLinesGrid, viewModel, headerTemplate);
-        }
+            using (GridPerformanceDiagnostics.Measure("forecast-grid-column-rebuild"))
+            {
+                ConfigureForecastGrid(ForecastLinesGrid, viewModel, headerTemplate);
+            }
+        });
 
         // The management tab duplicates the complete month range across three
         // grids. Building those hidden columns during forecast startup used to
@@ -83,6 +90,7 @@ public partial class MainWindow
         QueueSpreadsheetSelectionUpdate(ForecastLinesGrid, refreshAllVisuals: true);
         QueueApplyCurrentWorkspaceViewColumnState();
         RefreshForecastGridStatePills();
+        RestoreForecastGridRefreshState(ForecastLinesGrid, refreshState);
     }
 
     private void EnsureManagementResourceGridColumns()

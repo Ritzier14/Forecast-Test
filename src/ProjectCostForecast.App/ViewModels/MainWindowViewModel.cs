@@ -94,11 +94,8 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private Geometry _ledgerBudgetChartGeometry = Geometry.Empty;
     private double _ledgerChartCanvasWidth = LedgerChartMinWidth;
     private DateOnly? _forecastEditLockCutoffDate;
-    private bool _viewRefreshQueued;
     private readonly DispatcherTimer _searchRefreshTimer;
     private readonly DispatcherTimer _preferenceSaveTimer;
-    private bool _forecastGroupingQueued;
-    private bool _ledgerRefreshQueued;
     private bool _suppressPivotRefresh;
     private bool _suppressFilterRefresh;
     private bool _pivotFilterValuesDirty = true;
@@ -173,6 +170,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
             _validationService,
             dependencies.SaveConflictDecisionHandler);
         _newMonthOperation = new NewMonthOperation(_calculationService, _projectDatasetCloner, _clock);
+        _refreshCoordinator = new RefreshCoordinator(ScheduleRefreshWork, ExecuteRefreshRequest);
         _scheduleActivitySubscriptions = new(
             ScheduleActivity_PropertyChanged,
             ScheduleActivityCollectionChanged);

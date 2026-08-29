@@ -16,9 +16,6 @@ namespace ProjectCostForecast.App.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     private int _pendingSpreadsheetAuditChangeCount;
-    private bool _spreadsheetRefreshQueued;
-    private string _pendingSpreadsheetRefreshStatus = string.Empty;
-    private bool _pendingSpreadsheetRebuildFilterLists;
 
     private void MonthlyForecastAmountChanged(object? sender, ValueChangedEventArgs<decimal> e)
     {
@@ -93,18 +90,10 @@ public sealed partial class MainWindowViewModel
 
     private void RefreshViewsAndTotals()
     {
-        if (IsForecastEditTransactionActive())
-        {
-            QueueDeferredViewRefresh();
-        }
-        else
-        {
-            RefreshViews(ForecastLinesView, RawTransactionsView, ResourceSummariesView);
-            RebuildRawTransactionsPivotTable();
-        }
-
-        NotifyTotalsChanged();
-        NotifyLedgerChanged();
+        RequestRefresh(new RefreshRequest(
+            ViewRefreshProjections
+            | RefreshProjection.Totals
+            | RefreshProjection.Ledger));
         OnPropertyChanged(nameof(TransactionCount));
         OnPropertyChanged(nameof(ForecastLineCount));
         CommandManager.InvalidateRequerySuggested();
@@ -123,6 +112,12 @@ public sealed partial class MainWindowViewModel
 
         if (changedLines.Count == 0)
         {
+            return;
+        }
+
+        if (_spreadsheetEditBatchDepth > 0)
+        {
+            _spreadsheetEditBatchChanged = true;
             return;
         }
 
@@ -178,96 +173,73 @@ public sealed partial class MainWindowViewModel
     public void BeginSpreadsheetEditBatch()
     {
         _spreadsheetEditBatchDepth++;
+        _refreshCoordinator.BeginBatch();
     }
 
     public void EndSpreadsheetEditBatch(string status, bool changed, bool rebuildFilterLists = true)
     {
-        if (IsViewingSavedMonth)
+        try
         {
+            if (IsViewingSavedMonth)
+            {
+                if (_spreadsheetEditBatchDepth > 0)
+                {
+                    _spreadsheetEditBatchDepth--;
+                }
+
+                if (changed)
+                {
+                    IsDirty = true;
+                    StatusText = status;
+                }
+
+                _spreadsheetEditBatchChanged = false;
+                _pendingSpreadsheetAuditChangeCount = 0;
+                return;
+            }
+
+            _spreadsheetEditBatchChanged |= changed;
             if (_spreadsheetEditBatchDepth > 0)
             {
                 _spreadsheetEditBatchDepth--;
             }
 
-            if (changed)
+            if (_spreadsheetEditBatchDepth == 0 && _spreadsheetEditBatchChanged)
             {
-                IsDirty = true;
-                StatusText = status;
+                _spreadsheetEditBatchChanged = false;
+                if (_pendingSpreadsheetAuditChangeCount > 0)
+                {
+                    AddAuditEvent(
+                        "MonthlyForecast",
+                        "Bulk edit",
+                        "Cells changed",
+                        string.Empty,
+                        _pendingSpreadsheetAuditChangeCount.ToString(),
+                        status);
+                    _pendingSpreadsheetAuditChangeCount = 0;
+                }
+
+                QueueSpreadsheetRefresh(status, rebuildFilterLists);
             }
-
-            _spreadsheetEditBatchChanged = false;
-            _pendingSpreadsheetAuditChangeCount = 0;
-            return;
         }
-
-        _spreadsheetEditBatchChanged |= changed;
-        if (_spreadsheetEditBatchDepth > 0)
+        finally
         {
-            _spreadsheetEditBatchDepth--;
-        }
-
-        if (_spreadsheetEditBatchDepth == 0 && _spreadsheetEditBatchChanged)
-        {
-            _spreadsheetEditBatchChanged = false;
-            if (_pendingSpreadsheetAuditChangeCount > 0)
-            {
-                AddAuditEvent(
-                    "MonthlyForecast",
-                    "Bulk edit",
-                    "Cells changed",
-                    string.Empty,
-                    _pendingSpreadsheetAuditChangeCount.ToString(),
-                    status);
-                _pendingSpreadsheetAuditChangeCount = 0;
-            }
-
-            QueueSpreadsheetRefresh(status, rebuildFilterLists);
+            _refreshCoordinator.EndBatch();
         }
     }
 
     private void QueueSpreadsheetRefresh(string status, bool rebuildFilterLists)
     {
-        _pendingSpreadsheetRefreshStatus = status;
-        _pendingSpreadsheetRebuildFilterLists |= rebuildFilterLists;
-        IsDirty = true;
-        StatusText = status;
-        if (_spreadsheetRefreshQueued)
-        {
-            return;
-        }
-
-        _spreadsheetRefreshQueued = true;
-        Application.Current.Dispatcher.BeginInvoke(() =>
-        {
-            _spreadsheetRefreshQueued = false;
-            var pendingStatus = _pendingSpreadsheetRefreshStatus;
-            var pendingRebuild = _pendingSpreadsheetRebuildFilterLists;
-            _pendingSpreadsheetRefreshStatus = string.Empty;
-            _pendingSpreadsheetRebuildFilterLists = false;
-            if (pendingRebuild)
-            {
-                RecalculateAndRefresh(markDirty: true, reason: pendingStatus, pendingRebuild);
-            }
-            else
-            {
-                RefreshSpreadsheetEditDependents(pendingStatus);
-            }
-        }, DispatcherPriority.ApplicationIdle);
-    }
-
-    private void RefreshSpreadsheetEditDependents(string status)
-    {
-        SyncDatasetFromCollections();
-        ApplyClosedForecastPeriodRule();
-        _calculationService.Recalculate(_dataset);
-        ReplaceCollection(CategorySummaries, _dataset.CategorySummaries);
-        RebuildMonthlyPivotTables();
-        RebuildCustomPivot();
-        RebuildMonthlyReport();
-        RefreshValidation(syncDataset: false);
-        NotifyTotalsChanged();
-        IsDirty = true;
-        StatusText = $"{status}. {ValidationIssueCount} validation issue(s).";
+        RequestRefresh(new RefreshRequest(
+            ViewRefreshProjections
+            | RefreshProjection.RawTransactionsPivot
+            | RefreshProjection.CalculatedViews
+            | RefreshProjection.Totals
+            | RefreshProjection.Ledger,
+            status,
+            Recalculate: true,
+            RebuildFilterLists: rebuildFilterLists,
+            MarkDirty: true));
     }
 
     private void RecalculateTotals()
@@ -340,24 +312,7 @@ public sealed partial class MainWindowViewModel
 
     private void QueueLedgerChanged()
     {
-        if (_ledgerRefreshQueued)
-        {
-            return;
-        }
-
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is null || dispatcher.HasShutdownStarted)
-        {
-            NotifyLedgerChanged();
-            return;
-        }
-
-        _ledgerRefreshQueued = true;
-        dispatcher.BeginInvoke(() =>
-        {
-            _ledgerRefreshQueued = false;
-            NotifyLedgerChanged();
-        }, DispatcherPriority.Background);
+        RequestRefresh(new RefreshRequest(RefreshProjection.Ledger));
     }
 
     private void RebuildFilterLists()

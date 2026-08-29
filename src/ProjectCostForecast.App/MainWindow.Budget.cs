@@ -17,50 +17,53 @@ public partial class MainWindow
             return;
         }
 
-        BudgetGrid.Columns.Clear();
-        BudgetGrid.Columns.Add(new DataGridTextColumn
+        viewModel.MeasureRefreshPhase(Services.RefreshPhase.GridColumns, () =>
         {
-            Header = "Budget line",
-            Binding = new Binding(nameof(FiscalYearBudgetLine.Name)),
-            Width = 150,
-            IsReadOnly = true,
-            ElementStyle = CreatePlainTextStyle(10)
-        });
-
-        for (var index = 0; index < viewModel.BudgetFiscalYears.Count; index++)
-        {
-            var fiscalYear = viewModel.BudgetFiscalYears[index];
+            BudgetGrid.Columns.Clear();
             BudgetGrid.Columns.Add(new DataGridTextColumn
             {
-                Header = fiscalYear,
-                Binding = new Binding($"Amounts[{index}].Amount")
-                {
-                    Mode = BindingMode.TwoWay,
-                    UpdateSourceTrigger = UpdateSourceTrigger.LostFocus,
-                    Converter = AccountingConverter
-                },
-                Width = 112,
-                MinWidth = 90,
-                IsReadOnly = viewModel.IsViewingSavedMonth,
-                ElementStyle = CreateNumericTextStyle(),
-                EditingElementStyle = CreateBudgetEditingTextStyle()
+                Header = "Budget line",
+                Binding = new Binding(nameof(FiscalYearBudgetLine.Name)),
+                Width = 150,
+                IsReadOnly = true,
+                ElementStyle = CreatePlainTextStyle(10)
             });
-        }
 
-        BudgetGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Total",
-            Binding = BuildAccountingBinding(nameof(FiscalYearBudgetLine.Total), viewModel.ShowCurrencySymbols),
-            Width = 125,
-            IsReadOnly = true,
-            ElementStyle = CreateNumericTextStyle()
-        });
-        BudgetGrid.Columns.Add(new DataGridCheckBoxColumn
-        {
-            Header = "Active",
-            Binding = new Binding(nameof(FiscalYearBudgetLine.IsActive)),
-            Width = 72,
-            IsReadOnly = true
+            for (var index = 0; index < viewModel.BudgetFiscalYears.Count; index++)
+            {
+                var fiscalYear = viewModel.BudgetFiscalYears[index];
+                BudgetGrid.Columns.Add(new DataGridTextColumn
+                {
+                    Header = fiscalYear,
+                    Binding = new Binding($"Amounts[{index}].Amount")
+                    {
+                        Mode = BindingMode.TwoWay,
+                        UpdateSourceTrigger = UpdateSourceTrigger.LostFocus,
+                        Converter = AccountingConverter
+                    },
+                    Width = 112,
+                    MinWidth = 90,
+                    IsReadOnly = viewModel.IsViewingSavedMonth,
+                    ElementStyle = CreateNumericTextStyle(),
+                    EditingElementStyle = CreateBudgetEditingTextStyle()
+                });
+            }
+
+            BudgetGrid.Columns.Add(new DataGridTextColumn
+            {
+                Header = "Total",
+                Binding = BuildAccountingBinding(nameof(FiscalYearBudgetLine.Total), viewModel.ShowCurrencySymbols),
+                Width = 125,
+                IsReadOnly = true,
+                ElementStyle = CreateNumericTextStyle()
+            });
+            BudgetGrid.Columns.Add(new DataGridCheckBoxColumn
+            {
+                Header = "Active",
+                Binding = new Binding(nameof(FiscalYearBudgetLine.IsActive)),
+                Width = 72,
+                IsReadOnly = true
+            });
         });
     }
 

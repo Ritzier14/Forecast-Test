@@ -138,6 +138,11 @@ public partial class MainWindow : Window
     private bool _leftNavigationCollapsed;
     private bool _detailWorkspaceViewColumnStateQueued;
     private bool _forecastGroupsExpanded = true;
+    private bool _monthlyPivotColumnsRebuildQueued;
+    private bool _forecastGridColumnsRebuildQueued;
+    private bool _budgetGridColumnsRebuildQueued;
+    private bool _forecastGroupExpansionRestoreQueued;
+    private ForecastGridRefreshState? _pendingForecastGridRefreshState;
     private bool _applyingWorkspaceColumnState;
     private readonly HashSet<DataGrid> _workspaceColumnStateTrackedGrids = [];
     private readonly HashSet<DataGridColumn> _workspaceColumnStateTrackedColumns = [];

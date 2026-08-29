@@ -122,6 +122,13 @@ public sealed partial class MainWindowViewModel
 
     private void RebuildRawTransactionsPivotTable()
     {
+        _refreshCoordinator.Measure(
+            RefreshPhase.RawTransactionsPivot,
+            RebuildRawTransactionsPivotTableCore);
+    }
+
+    private void RebuildRawTransactionsPivotTableCore()
+    {
         var visibleTransactions = RawTransactionsView.Cast<object>()
             .OfType<CostTransaction>()
             .OrderBy(transaction => FiscalPeriod.SortKey(transaction.FyPeriod))

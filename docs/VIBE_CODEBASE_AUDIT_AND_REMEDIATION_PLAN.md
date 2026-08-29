@@ -870,7 +870,7 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | LUNA-15B | Complete | `IImportExportInteraction`, WPF import/review adapter, cloned import staging, 10 focused headless tests, and no direct file-dialog/window dependencies in `MainWindowViewModel.ProjectIO.cs`; Release verification passes with 123 discovered tests plus the retained smoke harness |
 | LUNA-16A | Complete | Dataset-owned observable forecast/transaction collections, cloned initial-load snapshot staging, calculation-owned derived summaries, saved-month projection isolation, and 5 focused canonical-state tests; full verification passes with 128 discovered tests plus the retained legacy smoke gate |
 | LUNA-16B | Complete | Dataset-owned schedule/snapshot collections, idempotent activity/calendar/baseline subscription tracking, project-local workspace preference tracking, application-preference separation, and 4 focused reload/dirty/replacement tests; Release verification records 132 discovered tests plus the retained legacy smoke gate |
-| LUNA-17 | Not started | |
+| LUNA-17 | Complete | `RefreshCoordinator` merges explicit projection requests and spreadsheet batches; dispatcher-coalesced grid rebuilds and forecast-grid selection/scroll/editor/group restoration are covered by the focused refresh suite; Release verification passes with 135 discovered tests plus the retained legacy smoke gate |
 | LUNA-18A | Not started | |
 | LUNA-18B | Not started | |
 | LUNA-18C | Not started | |
