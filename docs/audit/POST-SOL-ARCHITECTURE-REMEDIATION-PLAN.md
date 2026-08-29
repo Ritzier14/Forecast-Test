@@ -164,24 +164,57 @@ cross-host/network filesystem races are not claimed to be CAS-protected.
 
 ### LUNA-26C — MainWindow deferred-work lifetime closure
 
+Status: split into LUNA-26C.1 and LUNA-26C.2 after the complete source
+inventory found 33 raw dispatcher scheduling sites across ten MainWindow
+partials, plus the one owned call in `MainWindow.Lifecycle.cs`. A single packet
+would exceed the six-production-file contract.
+
+### LUNA-26C.1 — lifecycle, edit, and data-mutation callbacks
+
 Depends on: LUNA-26B complete.
 
 Scope:
 
-- inventory every MainWindow dispatcher schedule site;
-- route it through the lifetime helper or retain and abort its operation;
-- cover nested schedules, unload, close, and data-context replacement; and
-- add a static architecture guard with one explicit helper-only allowance.
+- invalidate the MainWindow lifetime generation when `DataContext` changes so
+  callbacks captured for the old view model cannot run;
+- keep `MainWindow.Lifecycle.cs` as the only dispatcher scheduling owner;
+- route raw work in `MainWindow.ForecastGridInteraction.cs`,
+  `MainWindow.GridBuilders.cs`, `MainWindow.ManagementResources.cs`,
+  `MainWindow.ScheduleCommands.cs`, and
+  `MainWindow.SpreadsheetGridInteraction.cs` through that owner; and
+- characterize nested edit/focus schedules plus unload, close, and data-context
+  replacement races.
 
 Acceptance:
 
-- queued MainWindow work cannot mutate controls or an old view model after its
-  lifetime generation changes;
-- ordinary focus/edit/menu timing behavior remains characterized;
+- queued edit, recalculation, category, schedule, and spreadsheet callbacks are
+  no-ops after unload, close, or data-context generation replacement;
+- nested callbacks retain the same lifetime protection;
+- the selected five non-lifecycle partials contain no raw dispatcher schedule;
+- ordinary focus/edit timing and existing lifecycle behavior remain green; and
+- focused tests, full verification, retained smoke, and `git diff --check` pass.
+
+### LUNA-26C.2 — menu, workspace, shell, and final architecture gate
+
+Depends on: LUNA-26C.1 complete.
+
+Scope:
+
+- route raw work in `MainWindow.ColumnMenus.cs`, `MainWindow.GridFilters.cs`,
+  `MainWindow.WindowChrome.cs`, `MainWindow.WorkspaceColumnState.cs`, and
+  `MainWindow.WorkspacePanels.cs` through the lifetime owner;
+- preserve menu reopening, submenu focus, drag-state reset, workspace editor
+  focus, current-row refresh, and deferred panel layout timing; and
+- add the final static architecture guard allowing a raw dispatcher schedule
+  only inside `QueueMainWindowWork` in `MainWindow.Lifecycle.cs`.
+
+Acceptance:
+
 - no raw MainWindow dispatcher scheduling remains outside the owned helper;
+- menu/workspace/shell callbacks are suppressed after lifetime invalidation;
 - representative WPF binding diagnostics stay clean; and
-- focused tests, full verification, retained smoke, performance gate, and
-  `git diff --check` pass.
+- focused tests, full verification, retained smoke, deterministic performance
+  regression gate, and `git diff --check` pass.
 
 ## Packet operating contract
 
@@ -205,8 +238,9 @@ or compatibility-harness controls to obtain a pass.
 
 ## SOL-01 — independent post-SOL architecture review
 
-Sol Ultra receives the clean candidate only after LUNA-26A through LUNA-26C are
-complete. Sol independently re-reads the prior claims intersected by ARCH-01
+Sol Ultra receives the clean candidate only after LUNA-26A, LUNA-26B,
+LUNA-26C.1, and LUNA-26C.2 are complete. Sol independently re-reads the prior
+claims intersected by ARCH-01
 through ARCH-03, reviews the full diff and commit sequence, runs locked clean
 verification and the retained smoke harness, exercises the interleaved writer
 and stale-dispatch races, repeats the WPF binding and performance gates, and
@@ -236,5 +270,6 @@ that larger migration is already complete.
 |---|---|---|
 | LUNA-26A | Complete | Model dependency closure with one canonical fiscal parser; 46 focused tests, 213 discovered tests, and 428 retained smoke assertions pass |
 | LUNA-26B | Complete | Revision-safe persistence boundary; deterministic interleaving conflict evidence and typed same-session writer boundary |
-| LUNA-26C | Pending | MainWindow deferred-work lifetime closure |
+| LUNA-26C.1 | Pending | Lifecycle, edit, and data-mutation deferred-work closure |
+| LUNA-26C.2 | Pending | Menu, workspace, shell, and final dispatcher architecture gate |
 | SOL-01 | Pending | Independent post-SOL architecture review |
