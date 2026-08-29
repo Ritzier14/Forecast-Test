@@ -38,6 +38,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - Right-click grid panning now uses one shared attached behavior across the main, cost-centre mapping, and task/category editor grids, with bounded two-axis scrolling and drag-safe context-menu handling.
 - Monthly report cards now share one canvas drag/position controller, while hexadecimal colour parsing, labels, and the default header gradient use one tested presentation boundary.
 - Forecast curve previews and applied forecasts now share the pure `ForecastCurveMath` allocator, including profile weights, cent rounding, residual assignment, and user-shape resampling.
+- LUNA-20 adds deterministic small/normal/stress performance workloads, JSON/CSV size recording, refresh-phase evidence, and an opt-in p95 regression verifier.
 
 ### Verified
 
@@ -64,6 +65,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - The LUNA-19A suite proves the shared grid-pan threshold, direction and bounds policy, disabled-axis behavior, cancellation lifecycle, and three-surface wiring; the Release verifier also covers the retained 428-assertion smoke gate.
 - The LUNA-19B suite proves supported hex normalization, shared colour labels and default-gradient construction, canvas position bounds, shared controller wiring, z-order restoration, and WPF parser/brush separation; the Release verifier also covers the retained 428-assertion smoke gate.
 - The LUNA-19C suite proves preview/application curve parity across profiles, boundary and negative inputs, exact rounding residuals, total preservation, user-shape allocation, and removal of duplicate profile formulas; the Release verifier also covers the retained 428-assertion smoke gate.
+- The LUNA-20 performance verifier records 21 scenarios across three synthetic datasets on the same Release environment, proves all workload correctness checks, and passes the p95 baseline threshold of baseline plus `max(10 ms, 25%)`; normal grid-edit refresh p95 is 202.276 ms versus 228.502 ms baseline.
 
 ### Remaining Before A Formal Production Release
 

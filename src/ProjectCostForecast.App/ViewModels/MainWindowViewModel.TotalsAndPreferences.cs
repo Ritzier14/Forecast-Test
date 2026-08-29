@@ -232,7 +232,6 @@ public sealed partial class MainWindowViewModel
     {
         RequestRefresh(new RefreshRequest(
             ViewRefreshProjections
-            | RefreshProjection.RawTransactionsPivot
             | RefreshProjection.CalculatedViews
             | RefreshProjection.Totals
             | RefreshProjection.Ledger,

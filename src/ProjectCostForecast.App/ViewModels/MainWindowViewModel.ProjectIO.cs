@@ -427,7 +427,10 @@ public sealed partial class MainWindowViewModel
                 importReason += $"; created {initialCostLoadSnapshotCount} saved month snapshot(s)";
             }
 
-            RecalculateAndRefresh(markDirty: true, reason: importReason);
+            RecalculateAndRefresh(
+                markDirty: true,
+                reason: importReason,
+                includeRawTransactionsPivot: true);
         }
         catch (Exception ex)
         {

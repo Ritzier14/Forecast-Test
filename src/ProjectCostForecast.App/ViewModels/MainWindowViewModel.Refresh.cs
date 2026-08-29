@@ -88,7 +88,10 @@ public sealed partial class MainWindowViewModel
 
         if (projections.HasFlag(RefreshProjection.CalculatedViews))
         {
-            RebuildCalculatedViews(request.RebuildFilterLists);
+            RebuildCalculatedViews(
+                request.RebuildFilterLists,
+                projections.HasFlag(RefreshProjection.RawTransactionsPivot));
+            projections &= ~RefreshProjection.RawTransactionsPivot;
         }
 
         if (projections.HasFlag(RefreshProjection.ForecastGrouping))

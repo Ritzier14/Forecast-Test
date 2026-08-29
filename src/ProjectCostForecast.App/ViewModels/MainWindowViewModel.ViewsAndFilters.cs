@@ -15,24 +15,38 @@ namespace ProjectCostForecast.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
-    private void RecalculateAndRefresh(bool markDirty, string reason, bool rebuildFilterLists = true)
+    private void RecalculateAndRefresh(
+        bool markDirty,
+        string reason,
+        bool rebuildFilterLists = true,
+        bool includeRawTransactionsPivot = false)
     {
+        var projections =
+            ViewRefreshProjections
+            | RefreshProjection.CalculatedViews
+            | RefreshProjection.Totals
+            | RefreshProjection.Ledger;
+        if (includeRawTransactionsPivot)
+        {
+            projections |= RefreshProjection.RawTransactionsPivot;
+        }
+
         RequestRefresh(new RefreshRequest(
-            ViewRefreshProjections | RefreshProjection.CalculatedViews | RefreshProjection.Totals | RefreshProjection.Ledger,
+            projections,
             reason,
             Recalculate: true,
             RebuildFilterLists: rebuildFilterLists,
             MarkDirty: markDirty));
     }
 
-    private void RebuildCalculatedViews(bool rebuildFilterLists)
+    private void RebuildCalculatedViews(bool rebuildFilterLists, bool rebuildRawTransactionsPivot = true)
     {
         _refreshCoordinator.Measure(
             RefreshPhase.CalculatedViews,
-            () => RebuildCalculatedViewsCore(rebuildFilterLists));
+            () => RebuildCalculatedViewsCore(rebuildFilterLists, rebuildRawTransactionsPivot));
     }
 
-    private void RebuildCalculatedViewsCore(bool rebuildFilterLists)
+    private void RebuildCalculatedViewsCore(bool rebuildFilterLists, bool rebuildRawTransactionsPivot)
     {
         var selectedResourceName = SelectedResourceSummary?.ResourceName;
         RebuildForecastLineLookups();
@@ -43,7 +57,7 @@ public sealed partial class MainWindowViewModel
         RestoreSelectedResourceSummary(selectedResourceName);
         ReplaceCollection(FiscalYearReportLines, _calculationService.BuildFiscalYearReport(_dataset));
         ReplaceCollection(ActualsPeriodSummaries, _calculationService.BuildActualsPeriodSummaries(_dataset.Transactions));
-        RebuildMonthlyPivotTables();
+        RebuildMonthlyPivotTables(rebuildRawTransactionsPivot);
         RebuildCustomPivot();
         RebuildMonthlyReport();
         ApplyForecastPeriodLockStates();

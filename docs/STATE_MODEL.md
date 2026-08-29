@@ -565,3 +565,31 @@ identity, and user-shape application. The existing cumulative-marker and
 interactive smoothing methods remain display/interaction math; their axis
 scaling and whole-unit pointer-edit behavior are intentionally not reused as
 financial allocation rules.
+
+## 22. LUNA-20 performance baseline and targeted refresh evidence
+
+`Luna20PerformanceRunner` creates deterministic synthetic workloads with these
+recorded sizes:
+
+- small: 50 forecast lines, 500 transactions, 18 periods, 100 activities;
+  754,586-byte project JSON and 81,007-byte CSV;
+- normal: 500 forecast lines, 20,000 transactions, 36 periods, 1,000
+  activities; 20,832,873-byte project JSON and 3,235,255-byte CSV; and
+- stress: 2,000 forecast lines, 100,000 transactions, 60 periods, 2,500
+  activities; 107,294,499-byte project JSON and 16,185,256-byte CSV.
+
+The runner measures startup, load, save, CSV import, full recalculation, and
+schedule calculation for every profile, plus normal-profile grid refresh,
+workspace switching, and repeated open/close memory work. The baseline and
+post-change JSON artifacts use the same Windows 10/.NET 8 Release environment,
+three timing iterations, and five memory cycles. The verifier requires all 21
+scenarios and compares p95 values against baseline plus `max(10 ms, 25%)`.
+
+Refresh ownership is now explicit: a forecast-only spreadsheet edit requests
+calculated views, totals, ledger, and collection projections without rebuilding
+the raw-transaction pivot. Import and manual full recalculation explicitly
+retain the pivot dependency. The post-change normal grid-edit report recorded
+202.276 ms p95 versus 228.502 ms baseline; the raw-pivot phase occurred once
+for initial construction rather than once per five forecast edits. The focused
+contract test and the full 176-test suite preserve the calculation and refresh
+state behavior.

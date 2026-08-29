@@ -15,7 +15,7 @@ namespace ProjectCostForecast.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
-    private void RebuildMonthlyPivotTables()
+    private void RebuildMonthlyPivotTables(bool rebuildRawTransactionsPivot = true)
     {
         var periods = _dataset.ForecastPeriods
             .Select(period => period.Label)
@@ -78,7 +78,10 @@ public sealed partial class MainWindowViewModel
             })
             .OrderBy(row => row.ProjectCode)
             .ToList());
-        RebuildRawTransactionsPivotTable();
+        if (rebuildRawTransactionsPivot)
+        {
+            RebuildRawTransactionsPivotTable();
+        }
     }
 
     private void RebuildLedgerTransactionViews()

@@ -199,12 +199,22 @@ to the largest period. Cumulative markers and their interactive smoothing
 remain separate display/interaction math, so chart scaling and pointer edits
 do not redefine committed financial allocation.
 
+Performance evidence has an explicit opt-in gate in
+[`scripts/verify-performance.ps1`](../scripts/verify-performance.ps1). It builds
+Release, runs the headless LUNA-20 workload over deterministic small, normal,
+and stress datasets, records dataset byte sizes and p95 timings in
+[`docs/audit`](audit), and compares every scenario with the baseline using the
+documented `max(10 ms, 25%)` tolerance. Forecast-only spreadsheet refreshes
+omit the unrelated raw-transaction pivot; imports and manual full recalculation
+retain that dependency. `RefreshDiagnostics` records the phase counters used
+to prove both paths.
+
 The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root
 collection and persisted calculated field, records the current identity and
 dirty-tracking seams, and records the LUNA-16A canonical forecast/transaction
-decision, the LUNA-16B schedule/workspace state boundary, and the LUNA-17
-refresh-preservation contract.
+decision, the LUNA-16B schedule/workspace state boundary, the LUNA-17
+refresh-preservation contract, and the LUNA-20 targeted refresh evidence.
 
 ## Feature boundaries
 
@@ -236,6 +246,7 @@ Every architecture change must keep these gates green:
 1. `.\scripts\verify.ps1` as the authoritative entry point: Release build followed by the discovered tests in `tests/ProjectCostForecast.UnitTests`.
 2. project save/load and CSV/XLSX/XLSM import/export boundary checks.
 3. scheduling correctness, deterministic WPF interaction checks, and the characterized large-schedule/calculation timing checks.
-4. a large-data refresh benchmark as soon as refresh coordination is extracted.
+4. `.\scripts\verify-performance.ps1 -EnforceRegression` for the deterministic
+   LUNA-20 workload baseline and p95 regression threshold.
 
 `docs/TEST_COVERAGE_MAP.md` maps all 428 logical assertions from the original console harness to named discovered tests. The executable in `tests/ProjectCostForecast.Tests` remains unchanged as an opt-in compatibility smoke check invoked with `-RunLegacySmoke`; it is deliberately not a second default test gate and must not be retired without explicit user approval.

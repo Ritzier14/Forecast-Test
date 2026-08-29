@@ -307,7 +307,12 @@ public sealed partial class MainWindowViewModel : NotifyObject, IDisposable
         RestoreProjectBackupCommand = new RelayCommand(_ => RestoreProjectBackup());
         ImportCsvCommand = new RelayCommand(_ => ImportCsv(), _ => !IsViewingSavedMonth);
         ExportTransactionsCommand = new RelayCommand(_ => ExportTransactions());
-        RecalculateCommand = new RelayCommand(_ => RecalculateAndRefresh(markDirty: true, reason: "Manual recalculation"), _ => !IsViewingSavedMonth);
+        RecalculateCommand = new RelayCommand(
+            _ => RecalculateAndRefresh(
+                markDirty: true,
+                reason: "Manual recalculation",
+                includeRawTransactionsPivot: true),
+            _ => !IsViewingSavedMonth);
         AddWorkspaceViewCommand = new RelayCommand(_ => AddWorkspaceView());
         AddDetailWorkspaceViewCommand = new RelayCommand(_ => AddDetailWorkspaceView());
         AddForecastRowCommand = new RelayCommand(_ => InsertForecastLine(null, below: true), _ => !IsViewingSavedMonth);

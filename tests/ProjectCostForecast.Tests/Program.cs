@@ -14,6 +14,12 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 
+if (args.Any(argument => string.Equals(argument, "--luna20", StringComparison.OrdinalIgnoreCase)))
+{
+    Luna20PerformanceRunner.Run(args);
+    return;
+}
+
 var root = FindRepositoryRoot();
 var dataPath = Path.Combine(root, "src", "ProjectCostForecast.App", "Data", "SampleData.json");
 var initialCostLoadPath = Path.Combine(root, "src", "ProjectCostForecast.App", "Data", "data_anonymised.xlsx");

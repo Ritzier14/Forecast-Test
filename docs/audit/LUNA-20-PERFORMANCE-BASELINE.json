@@ -1,0 +1,369 @@
+﻿{
+  "SchemaVersion": 1,
+  "Mode": "baseline",
+  "CapturedUtc": "2026-08-29T06:28:50.085887+00:00",
+  "RepositoryCommit": "39c503f",
+  "Runtime": {
+    "Framework": ".NET 8.0.29",
+    "RuntimeIdentifier": "win-x64",
+    "OperatingSystem": "Microsoft Windows 10.0.19045",
+    "ProcessArchitecture": "X64",
+    "Is64BitProcess": true,
+    "ProcessorCount": 16,
+    "Configuration": "Release",
+    "Iterations": 3,
+    "MemoryCycles": 5
+  },
+  "WorkloadPolicy": {
+    "Small": "50 forecast lines, 500 transactions, 18 forecast periods, 100 schedule activities",
+    "Normal": "500 forecast lines, 20,000 transactions, 36 forecast periods, 1,000 schedule activities",
+    "Stress": "2,000 forecast lines, 100,000 transactions, 60 forecast periods, 2,500 schedule activities",
+    "Data": "Synthetic deterministic identifiers and values; no workbook or personal data"
+  },
+  "Datasets": [
+    {
+      "Name": "small",
+      "ForecastLines": 50,
+      "Transactions": 500,
+      "ForecastPeriods": 18,
+      "MonthlyForecastCells": 900,
+      "ScheduleActivities": 100,
+      "ScheduleLinks": 99,
+      "ProjectJsonBytes": 754586,
+      "ImportCsvBytes": 81007
+    },
+    {
+      "Name": "normal",
+      "ForecastLines": 500,
+      "Transactions": 20000,
+      "ForecastPeriods": 36,
+      "MonthlyForecastCells": 18000,
+      "ScheduleActivities": 1000,
+      "ScheduleLinks": 999,
+      "ProjectJsonBytes": 20832873,
+      "ImportCsvBytes": 3235255
+    },
+    {
+      "Name": "stress",
+      "ForecastLines": 2000,
+      "Transactions": 100000,
+      "ForecastPeriods": 60,
+      "MonthlyForecastCells": 120000,
+      "ScheduleActivities": 2500,
+      "ScheduleLinks": 2499,
+      "ProjectJsonBytes": 107294499,
+      "ImportCsvBytes": 16185256
+    }
+  ],
+  "Scenarios": [
+    {
+      "Name": "startup-view-model",
+      "Dataset": "small",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        52.157,
+        65.19,
+        62.414
+      ],
+      "MinimumMilliseconds": 52.157,
+      "MedianMilliseconds": 62.414,
+      "P95Milliseconds": 65.19,
+      "MaximumMilliseconds": 65.19
+    },
+    {
+      "Name": "project-load",
+      "Dataset": "small",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        31.391,
+        26.996,
+        30.55
+      ],
+      "MinimumMilliseconds": 26.996,
+      "MedianMilliseconds": 30.55,
+      "P95Milliseconds": 31.391,
+      "MaximumMilliseconds": 31.391
+    },
+    {
+      "Name": "project-save",
+      "Dataset": "small",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        12.654,
+        17.045,
+        15.316
+      ],
+      "MinimumMilliseconds": 12.654,
+      "MedianMilliseconds": 15.316,
+      "P95Milliseconds": 17.045,
+      "MaximumMilliseconds": 17.045
+    },
+    {
+      "Name": "csv-import",
+      "Dataset": "small",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        3.998,
+        3.778,
+        3.738
+      ],
+      "MinimumMilliseconds": 3.738,
+      "MedianMilliseconds": 3.778,
+      "P95Milliseconds": 3.998,
+      "MaximumMilliseconds": 3.998
+    },
+    {
+      "Name": "full-recalculation",
+      "Dataset": "small",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        4.029,
+        3.368,
+        3.498
+      ],
+      "MinimumMilliseconds": 3.368,
+      "MedianMilliseconds": 3.498,
+      "P95Milliseconds": 4.029,
+      "MaximumMilliseconds": 4.029
+    },
+    {
+      "Name": "schedule-calculation",
+      "Dataset": "small",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        0.655,
+        0.658,
+        0.658
+      ],
+      "MinimumMilliseconds": 0.655,
+      "MedianMilliseconds": 0.658,
+      "P95Milliseconds": 0.658,
+      "MaximumMilliseconds": 0.658
+    },
+    {
+      "Name": "startup-view-model",
+      "Dataset": "normal",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        856.324,
+        692.118,
+        526.953
+      ],
+      "MinimumMilliseconds": 526.953,
+      "MedianMilliseconds": 692.118,
+      "P95Milliseconds": 856.324,
+      "MaximumMilliseconds": 856.324
+    },
+    {
+      "Name": "project-load",
+      "Dataset": "normal",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        300.696,
+        266.251,
+        342.257
+      ],
+      "MinimumMilliseconds": 266.251,
+      "MedianMilliseconds": 300.696,
+      "P95Milliseconds": 342.257,
+      "MaximumMilliseconds": 342.257
+    },
+    {
+      "Name": "project-save",
+      "Dataset": "normal",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        213.762,
+        234.014,
+        253.26
+      ],
+      "MinimumMilliseconds": 213.762,
+      "MedianMilliseconds": 234.014,
+      "P95Milliseconds": 253.26,
+      "MaximumMilliseconds": 253.26
+    },
+    {
+      "Name": "csv-import",
+      "Dataset": "normal",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        239.896,
+        103.977,
+        103.61
+      ],
+      "MinimumMilliseconds": 103.61,
+      "MedianMilliseconds": 103.977,
+      "P95Milliseconds": 239.896,
+      "MaximumMilliseconds": 239.896
+    },
+    {
+      "Name": "full-recalculation",
+      "Dataset": "normal",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        47.446,
+        25.016,
+        32.55
+      ],
+      "MinimumMilliseconds": 25.016,
+      "MedianMilliseconds": 32.55,
+      "P95Milliseconds": 47.446,
+      "MaximumMilliseconds": 47.446
+    },
+    {
+      "Name": "schedule-calculation",
+      "Dataset": "normal",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        2.436,
+        1.946,
+        1.941
+      ],
+      "MinimumMilliseconds": 1.941,
+      "MedianMilliseconds": 1.946,
+      "P95Milliseconds": 2.436,
+      "MaximumMilliseconds": 2.436
+    },
+    {
+      "Name": "startup-view-model",
+      "Dataset": "stress",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        2403.477,
+        2714.091,
+        2280.492
+      ],
+      "MinimumMilliseconds": 2280.492,
+      "MedianMilliseconds": 2403.477,
+      "P95Milliseconds": 2714.091,
+      "MaximumMilliseconds": 2714.091
+    },
+    {
+      "Name": "project-load",
+      "Dataset": "stress",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        1261.074,
+        1299.984,
+        1336.867
+      ],
+      "MinimumMilliseconds": 1261.074,
+      "MedianMilliseconds": 1299.984,
+      "P95Milliseconds": 1336.867,
+      "MaximumMilliseconds": 1336.867
+    },
+    {
+      "Name": "project-save",
+      "Dataset": "stress",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        1190.198,
+        1277.516,
+        1158.678
+      ],
+      "MinimumMilliseconds": 1158.678,
+      "MedianMilliseconds": 1190.198,
+      "P95Milliseconds": 1277.516,
+      "MaximumMilliseconds": 1277.516
+    },
+    {
+      "Name": "csv-import",
+      "Dataset": "stress",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        458.393,
+        555.134,
+        470.476
+      ],
+      "MinimumMilliseconds": 458.393,
+      "MedianMilliseconds": 470.476,
+      "P95Milliseconds": 555.134,
+      "MaximumMilliseconds": 555.134
+    },
+    {
+      "Name": "full-recalculation",
+      "Dataset": "stress",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        102.208,
+        120.168,
+        117.577
+      ],
+      "MinimumMilliseconds": 102.208,
+      "MedianMilliseconds": 117.577,
+      "P95Milliseconds": 120.168,
+      "MaximumMilliseconds": 120.168
+    },
+    {
+      "Name": "schedule-calculation",
+      "Dataset": "stress",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        10.2,
+        15.712,
+        6.642
+      ],
+      "MinimumMilliseconds": 6.642,
+      "MedianMilliseconds": 10.2,
+      "P95Milliseconds": 15.712,
+      "MaximumMilliseconds": 15.712
+    },
+    {
+      "Name": "grid-edit-refresh",
+      "Dataset": "normal",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        228.502,
+        215.304,
+        211.654
+      ],
+      "MinimumMilliseconds": 211.654,
+      "MedianMilliseconds": 215.304,
+      "P95Milliseconds": 228.502,
+      "MaximumMilliseconds": 228.502
+    },
+    {
+      "Name": "workspace-switch",
+      "Dataset": "normal",
+      "Description": "Timed synthetic workload.",
+      "SamplesMilliseconds": [
+        20.695,
+        0.502,
+        0.367
+      ],
+      "MinimumMilliseconds": 0.367,
+      "MedianMilliseconds": 0.502,
+      "P95Milliseconds": 20.695,
+      "MaximumMilliseconds": 20.695
+    },
+    {
+      "Name": "memory-repeated-open-close",
+      "Dataset": "normal",
+      "Description": "Created and disposed 5 headless view-model sessions per sample.",
+      "SamplesMilliseconds": [
+        2097.367,
+        2071.515,
+        2095.844
+      ],
+      "MinimumMilliseconds": 2071.515,
+      "MedianMilliseconds": 2095.844,
+      "P95Milliseconds": 2097.367,
+      "MaximumMilliseconds": 2097.367,
+      "MemoryBeforeBytes": [
+        1186303136,
+        1307245160,
+        1428186920
+      ],
+      "MemoryAfterBytes": [
+        1307244936,
+        1428186920,
+        1549136696
+      ],
+      "MemoryDeltaBytes": [
+        120941800,
+        120941760,
+        120949776
+      ]
+    }
+  ]
+}
