@@ -101,6 +101,7 @@ The checks verify the important workbook-derived drilldowns, including:
 - `docs/audit/LUNA-24-FINDING-MATRIX.md` and `docs/audit/LUNA_HANDOFF.md` - finding dispositions, closure status, deferred-risk register, and the independent Sol Ultra handoff.
 - `docs/audit/LUNA-25-CI-PERFORMANCE.md` - SOL-FAIL-1 reproduction, GitHub Windows baseline provenance, bounded remediation, and recapture policy.
 - `docs/audit/SOL-00-FINAL-AUDIT.md` - independent acceptance evidence, residual release risks, and final codebase-audit verdict.
+- `docs/audit/POST-SOL-ARCHITECTURE-REMEDIATION-PLAN.md` - the post-SOL architecture findings, ordered LUNA-26 remediation packets, and SOL-01 review contract.
 
 ## Stack
 
