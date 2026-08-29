@@ -264,7 +264,7 @@ public partial class MainWindow
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedResourceSummary), StringComparison.Ordinal)
             || string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedScheduleActivity), StringComparison.Ordinal))
         {
-            Dispatcher.BeginInvoke(RefreshCurrentRowVisuals, DispatcherPriority.Render);
+            QueueMainWindowWork(DispatcherPriority.Render, RefreshCurrentRowVisuals);
         }
 
         if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.WorkspaceTabIconVersion), StringComparison.Ordinal))

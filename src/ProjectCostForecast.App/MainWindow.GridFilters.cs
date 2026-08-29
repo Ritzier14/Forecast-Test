@@ -468,11 +468,11 @@ public partial class MainWindow
             StaysOpenOnClick = true
         });
 
-        menu.Opened += (_, _) => Dispatcher.BeginInvoke(() =>
+        menu.Opened += (_, _) => QueueMainWindowWork(DispatcherPriority.Input, () =>
         {
             searchBox.Focus();
             searchBox.SelectAll();
-        }, DispatcherPriority.Input);
+        });
 
         return menu;
     }

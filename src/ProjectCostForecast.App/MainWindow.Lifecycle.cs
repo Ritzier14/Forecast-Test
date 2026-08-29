@@ -279,6 +279,9 @@ public partial class MainWindow
         _workspaceColumnStateCaptureQueuedGrids.Clear();
         _selectionVisualRefreshQueued.Clear();
         _pendingWorkspaceEditorFocusView = null;
+        _kpiRightDragging = false;
+        _ledgerChartRightDragging = false;
+        _ledgerChartZooming = false;
         _forecastYearBandDeferredRetryCount = 0;
         _pendingForecastGridRefreshState = null;
         _forecastGridFirstDrawTimer?.Stop();

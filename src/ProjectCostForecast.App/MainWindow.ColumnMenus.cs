@@ -591,7 +591,7 @@ public partial class MainWindow
         filterItem.Click += (_, _) =>
         {
             menu.IsOpen = false;
-            Dispatcher.BeginInvoke(() => OpenColumnFilterMenu(header, grid), DispatcherPriority.Input);
+            QueueMainWindowWork(DispatcherPriority.Input, () => OpenColumnFilterMenu(header, grid));
         };
         menu.Items.Add(filterItem);
 
@@ -800,7 +800,7 @@ public partial class MainWindow
         return groupMenu;
     }
 
-    private static void AddForecastGroupItem(MenuItem groupMenu, MainWindowViewModel viewModel, string label, string groupByKey)
+    private void AddForecastGroupItem(MenuItem groupMenu, MainWindowViewModel viewModel, string label, string groupByKey)
     {
         var item = new MenuItem
         {
@@ -842,7 +842,7 @@ public partial class MainWindow
             if (args.OriginalSource is DependencyObject source && ReferenceEquals(FindParent<MenuItem>(source), iconMenu))
             {
                 iconMenu.IsSubmenuOpen = true;
-                Dispatcher.BeginInvoke(() => iconMenu.IsSubmenuOpen = true, DispatcherPriority.Input);
+                QueueMainWindowWork(DispatcherPriority.Input, () => iconMenu.IsSubmenuOpen = true);
                 args.Handled = true;
             }
         }), true);
@@ -1155,10 +1155,10 @@ public partial class MainWindow
         }
     }
 
-    private static void ExecuteAfterClosingMenu(MenuItem item, Action action)
+    private void ExecuteAfterClosingMenu(MenuItem item, Action action)
     {
         CloseContainingMenu(item);
-        item.Dispatcher.BeginInvoke(action, DispatcherPriority.Input);
+        QueueMainWindowWork(DispatcherPriority.Input, action);
     }
 
     private static void CloseContainingMenu(MenuItem item)

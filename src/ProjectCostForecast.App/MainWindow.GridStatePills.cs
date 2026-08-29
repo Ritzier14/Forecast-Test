@@ -405,7 +405,7 @@ public partial class MainWindow
         OpenPillMenu(pill, menu);
     }
 
-    private static void AddForecastGroupPillMenuItem(ContextMenu menu, MainWindowViewModel viewModel, string label, string groupByKey)
+    private void AddForecastGroupPillMenuItem(ContextMenu menu, MainWindowViewModel viewModel, string label, string groupByKey)
     {
         var item = new MenuItem
         {

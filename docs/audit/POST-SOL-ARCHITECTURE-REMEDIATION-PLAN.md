@@ -210,6 +210,18 @@ Acceptance:
 
 Depends on: LUNA-26C.1 complete.
 
+Status: complete. All 13 remaining raw dispatcher schedules now route through
+the generation-aware lifecycle owner with their original priorities. Rejected
+or lifetime-cancelled shell/editor work clears transient drag, zoom, and focus
+state, and the final source gate permits only the owned dispatcher call in
+`MainWindow.Lifecycle.cs` across every `MainWindow*.cs` source partial.
+
+Evidence: 6 focused architecture tests and 24 existing compatibility/WPF tests
+passed; full verification passed a Release build with 0 warnings/errors, all
+232 discovered tests, and all 428 retained smoke assertions. The deterministic
+performance gate passed all 21 workloads with no median above baseline plus
+`max(50 ms, 25%)`; `git diff --check` passed.
+
 Scope:
 
 - route raw work in `MainWindow.ColumnMenus.cs`, `MainWindow.GridFilters.cs`,
@@ -283,5 +295,5 @@ that larger migration is already complete.
 | LUNA-26A | Complete | Model dependency closure with one canonical fiscal parser; 46 focused tests, 213 discovered tests, and 428 retained smoke assertions pass |
 | LUNA-26B | Complete | Revision-safe persistence boundary; deterministic interleaving conflict evidence and typed same-session writer boundary |
 | LUNA-26C.1 | Complete | Generation-aware deferred-work owner; 12 focused tests, 19 compatibility/WPF tests, 226 discovered tests, and 428 retained smoke assertions pass |
-| LUNA-26C.2 | Pending | Menu, workspace, shell, and final dispatcher architecture gate |
+| LUNA-26C.2 | Complete | One raw MainWindow dispatcher call remains in the lifecycle owner; 6 focused tests, 24 compatibility/WPF tests, 232 discovered tests, 428 smoke assertions, and all 21 performance workloads pass |
 | SOL-01 | Pending | Independent post-SOL architecture review |

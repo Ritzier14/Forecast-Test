@@ -31,12 +31,12 @@ public partial class MainWindow
             }
             else
             {
-                Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+                QueueMainWindowWork(DispatcherPriority.Input, () =>
                 {
                     UpdateWorkspaceViewEditorWidth(textBox);
                     textBox.Focus();
                     textBox.SelectAll();
-                }));
+                });
             }
         }
     }
@@ -51,12 +51,12 @@ public partial class MainWindow
             }
             else
             {
-                Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+                QueueMainWindowWork(DispatcherPriority.Input, () =>
                 {
                     UpdateWorkspaceViewEditorWidth(textBox);
                     textBox.Focus();
                     textBox.SelectAll();
-                }));
+                });
             }
 
             e.Handled = true;
@@ -84,7 +84,7 @@ public partial class MainWindow
             return;
         }
 
-        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        if (!QueueMainWindowWork(DispatcherPriority.Input, () =>
         {
             UpdateWorkspaceViewEditorWidth(textBox);
             textBox.HorizontalAlignment = HorizontalAlignment.Left;
@@ -101,7 +101,10 @@ public partial class MainWindow
             {
                 _pendingWorkspaceEditorFocusView = null;
             }
-        }));
+        }))
+        {
+            _pendingWorkspaceEditorFocusView = null;
+        }
     }
 
     private void WorkspaceViewName_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
@@ -210,7 +213,7 @@ public partial class MainWindow
 
     private void QueueFocusPendingWorkspaceViewEditor()
     {
-        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        if (!QueueMainWindowWork(DispatcherPriority.Input, () =>
         {
             if (_pendingWorkspaceEditorFocusView is null)
             {
@@ -229,7 +232,10 @@ public partial class MainWindow
             editor.Focus();
             editor.SelectAll();
             _pendingWorkspaceEditorFocusView = null;
-        }));
+        }))
+        {
+            _pendingWorkspaceEditorFocusView = null;
+        }
     }
 
     private static void UpdateWorkspaceViewEditorWidth(TextBox textBox)
@@ -367,14 +373,14 @@ public partial class MainWindow
 
     private void DetailWorkspaceRail_MouseLeave(object sender, MouseEventArgs e)
     {
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        QueueMainWindowWork(DispatcherPriority.Background, () =>
         {
             if (DataContext is MainWindowViewModel { IsDetailPanelCollapsed: true, IsDetailPanelPinned: false }
                 && !IsMouseOverDetailWorkspace())
             {
                 CollapseDetailWorkspacePanel(clearPin: false);
             }
-        }));
+        });
     }
 
     private void DetailWorkspaceShell_MouseLeave(object sender, MouseEventArgs e)

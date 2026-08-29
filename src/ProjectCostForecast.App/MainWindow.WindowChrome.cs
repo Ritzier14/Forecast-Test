@@ -140,7 +140,10 @@ public partial class MainWindow
     private void KpiScrollViewer_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
         _kpiRightDragStart = null;
-        Dispatcher.BeginInvoke(() => _kpiRightDragging = false);
+        if (!QueueMainWindowWork(DispatcherPriority.Normal, () => _kpiRightDragging = false))
+        {
+            _kpiRightDragging = false;
+        }
     }
 
     private void KpiCard_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -332,7 +335,10 @@ public partial class MainWindow
         }
 
         _ledgerChartRightDragStart = null;
-        Dispatcher.BeginInvoke(() => _ledgerChartRightDragging = false);
+        if (!QueueMainWindowWork(DispatcherPriority.Normal, () => _ledgerChartRightDragging = false))
+        {
+            _ledgerChartRightDragging = false;
+        }
     }
 
     private void LedgerChartScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -352,13 +358,16 @@ public partial class MainWindow
         viewModel.ZoomLedgerChart(e.Delta > 0);
         e.Handled = true;
 
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        if (!QueueMainWindowWork(DispatcherPriority.Loaded, () =>
         {
             scrollViewer.UpdateLayout();
             var newX = oldRatio * Math.Max(1d, viewModel.LedgerChartCanvasWidth);
             scrollViewer.ScrollToHorizontalOffset(Math.Max(0, newX - pointer.X));
             _ledgerChartZooming = false;
-        }));
+        }))
+        {
+            _ledgerChartZooming = false;
+        }
     }
 
     private static bool IsScrollBarInteractionSource(DependencyObject source)
