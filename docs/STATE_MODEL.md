@@ -516,3 +516,19 @@ remains later UI work.
 - the path produced zero unexpected binding errors, so no framework-noise
   allow-list was added. The application’s existing image resource lookup was
   made assembly-qualified for deterministic test-host resolution.
+
+## 19. LUNA-19A shared right-click grid panning evidence
+
+`Luna19ARightClickGridPanTests` records the shared interaction boundary:
+
+- `RightClickGridPanBehavior` is the single attached implementation used by
+  MainWindow grids, both cost-centre mapping grids, and both task/category
+  editor grids;
+- `RightClickGridPanSession` preserves the 6px click threshold, pans in the
+  opposite direction to the pointer, clamps both axes, and leaves disabled
+  scroll directions unchanged;
+- the WPF behavior captures only after a drag threshold is crossed, releases
+  its own capture, suppresses the matching post-drag context-menu route, and
+  cancels on capture loss, Escape, unload, or lifecycle detach; and
+- column headers, scrollbars, row resizing, and existing grid selection or
+  header actions remain outside the shared panning state.

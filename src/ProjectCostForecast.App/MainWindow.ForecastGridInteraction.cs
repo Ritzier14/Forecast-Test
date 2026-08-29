@@ -291,7 +291,8 @@ public partial class MainWindow
 
     private void SelectedMonthlyForecastsGrid_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (_gridRightDragging || e.OriginalSource is not DependencyObject source)
+        if (RightClickGridPanBehavior.IsDraggingFrom(e.OriginalSource as DependencyObject)
+            || e.OriginalSource is not DependencyObject source)
         {
             return;
         }

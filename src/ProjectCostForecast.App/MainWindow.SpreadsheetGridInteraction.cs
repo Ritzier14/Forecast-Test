@@ -940,7 +940,10 @@ public partial class MainWindow
 
     private void SpreadsheetGrid_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (e.Handled || _gridRightDragging || sender is not DataGrid grid || e.OriginalSource is not DependencyObject source)
+        if (e.Handled
+            || sender is not DataGrid grid
+            || RightClickGridPanBehavior.GetIsDragging(grid)
+            || e.OriginalSource is not DependencyObject source)
         {
             return;
         }

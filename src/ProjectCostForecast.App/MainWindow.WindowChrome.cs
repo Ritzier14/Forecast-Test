@@ -361,99 +361,9 @@ public partial class MainWindow
         }));
     }
 
-    private void Grid_PreviewMouseDown(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is DataGrid sourceGrid
-            && e.OriginalSource is DependencyObject interactionSource
-            && IsScrollBarInteractionSource(interactionSource))
-        {
-            CancelGridPanCapture(sourceGrid);
-            return;
-        }
-
-        if (e.ChangedButton != MouseButton.Right
-            || sender is not DataGrid grid
-            || e.OriginalSource is not DependencyObject source
-            || FindParent<DataGridColumnHeader>(source) is not null)
-        {
-            return;
-        }
-
-        var scrollViewer = FindChild<ScrollViewer>(grid);
-        if (scrollViewer is null)
-        {
-            return;
-        }
-
-        _activeGridScrollViewer = scrollViewer;
-        _gridRightDragStart = e.GetPosition(grid);
-        _gridHorizontalScrollStartOffset = scrollViewer.HorizontalOffset;
-        _gridVerticalScrollStartOffset = scrollViewer.VerticalOffset;
-        _gridRightDragging = false;
-    }
-
-    private void CancelGridPanCapture(DataGrid? grid)
-    {
-        if (grid?.IsMouseCaptured == true)
-        {
-            grid.ReleaseMouseCapture();
-        }
-
-        _gridRightDragStart = null;
-        _activeGridScrollViewer = null;
-        _gridRightDragging = false;
-    }
-
     private static bool IsScrollBarInteractionSource(DependencyObject source)
     {
         return FindParent<ScrollBar>(source) is not null;
-    }
-
-    private void Grid_PreviewMouseMove(object sender, MouseEventArgs e)
-    {
-        if (_gridRightDragStart is null || _activeGridScrollViewer is null || sender is not DataGrid grid || e.RightButton != MouseButtonState.Pressed)
-        {
-            return;
-        }
-
-        var current = e.GetPosition(grid);
-        var deltaX = current.X - _gridRightDragStart.Value.X;
-        var deltaY = current.Y - _gridRightDragStart.Value.Y;
-        if (!_gridRightDragging && Math.Abs(deltaX) < 6 && Math.Abs(deltaY) < 6)
-        {
-            return;
-        }
-
-        _gridRightDragging = true;
-        if (!grid.IsMouseCaptured)
-        {
-            grid.CaptureMouse();
-        }
-        _activeGridScrollViewer.ScrollToHorizontalOffset(Math.Max(0, _gridHorizontalScrollStartOffset - deltaX));
-        _activeGridScrollViewer.ScrollToVerticalOffset(Math.Max(0, _gridVerticalScrollStartOffset - deltaY));
-        e.Handled = true;
-    }
-
-    private void Grid_PreviewMouseUp(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ChangedButton != MouseButton.Right)
-        {
-            return;
-        }
-
-        if (sender is DataGrid grid && grid.IsMouseCaptured)
-        {
-            grid.ReleaseMouseCapture();
-        }
-
-        var wasDragging = _gridRightDragging;
-        _gridRightDragStart = null;
-        _activeGridScrollViewer = null;
-        if (wasDragging)
-        {
-            e.Handled = true;
-        }
-        Dispatcher.BeginInvoke(() => _gridRightDragging = false);
     }
 
     private void Window_DragOver(object sender, DragEventArgs e)

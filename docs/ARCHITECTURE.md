@@ -172,6 +172,14 @@ the previous trace level on disposal. The path exercises the main forecast,
 resources/ledger, schedule, monthly report, and saved-month surfaces; no
 framework noise or application binding errors required an allow-list.
 
+Right-click grid panning is a presentation concern owned by the attached
+`RightClickGridPanBehavior`. MainWindow, cost-centre mapping, and task/category
+editor grids all use the same 6px threshold, header/scrollbar exclusions,
+capture/release lifecycle, bounded horizontal and vertical offsets, and
+post-drag context-menu suppression. `RightClickGridPanSession` keeps the
+threshold and offset policy independent of WPF input, while the behavior owns
+per-grid state and cancels it on capture loss, Escape, unload, or detach.
+
 The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root
 collection and persisted calculated field, records the current identity and

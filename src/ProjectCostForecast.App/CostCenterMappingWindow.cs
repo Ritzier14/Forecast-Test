@@ -34,11 +34,6 @@ public sealed class CostCenterMappingWindow : Window
     private bool _suppressNameTextChanged;
     private bool _suppressExistingNamesSearchChanged;
     private CandidateRow? _selectedCandidateRow;
-    private ScrollViewer? _activeScrollViewer;
-    private Point? _rightDragStart;
-    private double _dragHorizontalStartOffset;
-    private double _dragVerticalStartOffset;
-    private bool _rightDragging;
     private string? _existingNameTargetMappingKey;
 
     public CostCenterMappingWindow(
@@ -344,7 +339,7 @@ public sealed class CostCenterMappingWindow : Window
         grid.MouseDoubleClick += (_, _) => ConfirmSelection();
         grid.PreviewKeyDown += CandidateGrid_PreviewKeyDown;
         grid.Loaded += (_, _) => UpdateCandidateGridWidth();
-        AttachRightClickPan(grid);
+        RightClickGridPanBehavior.SetIsEnabled(grid, true);
         return grid;
     }
 
@@ -588,7 +583,7 @@ public sealed class CostCenterMappingWindow : Window
         grid.Columns.Add(new DataGridTextColumn { Header = "Amount", Binding = new System.Windows.Data.Binding(nameof(MatchingTransactionRow.Amount)), Width = 90 });
         grid.PreviewMouseRightButtonDown += MatchingTransactionsGrid_PreviewMouseRightButtonDown;
         grid.ContextMenu = BuildMatchingTransactionsContextMenu(grid);
-        AttachRightClickPan(grid);
+        RightClickGridPanBehavior.SetIsEnabled(grid, true);
         return grid;
     }
 
@@ -934,89 +929,6 @@ public sealed class CostCenterMappingWindow : Window
             : $"Came from: {sourceLabel}";
     }
 
-    private void AttachRightClickPan(DataGrid grid)
-    {
-        grid.Loaded += (_, _) =>
-        {
-            _activeScrollViewer ??= FindChild<ScrollViewer>(grid);
-        };
-        grid.PreviewMouseDown += Grid_PreviewMouseDown;
-        grid.PreviewMouseMove += Grid_PreviewMouseMove;
-        grid.PreviewMouseUp += Grid_PreviewMouseUp;
-    }
-
-    private void Grid_PreviewMouseDown(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ChangedButton != MouseButton.Right
-            || sender is not DataGrid grid
-            || e.OriginalSource is not DependencyObject source
-            || FindParent<DataGridColumnHeader>(source) is not null)
-        {
-            return;
-        }
-
-        _activeScrollViewer = FindChild<ScrollViewer>(grid);
-        if (_activeScrollViewer is null)
-        {
-            return;
-        }
-
-        _rightDragStart = e.GetPosition(_activeScrollViewer);
-        _dragHorizontalStartOffset = _activeScrollViewer.HorizontalOffset;
-        _dragVerticalStartOffset = _activeScrollViewer.VerticalOffset;
-        _rightDragging = false;
-    }
-
-    private void Grid_PreviewMouseMove(object sender, MouseEventArgs e)
-    {
-        if (_rightDragStart is null
-            || _activeScrollViewer is null
-            || sender is not DataGrid grid
-            || e.RightButton != MouseButtonState.Pressed)
-        {
-            return;
-        }
-
-        var current = e.GetPosition(_activeScrollViewer);
-        var deltaX = current.X - _rightDragStart.Value.X;
-        var deltaY = current.Y - _rightDragStart.Value.Y;
-        if (!_rightDragging && Math.Abs(deltaX) < 6 && Math.Abs(deltaY) < 6)
-        {
-            return;
-        }
-
-        _rightDragging = true;
-        if (!grid.IsMouseCaptured)
-        {
-            grid.CaptureMouse();
-        }
-
-        _activeScrollViewer.ScrollToHorizontalOffset(Math.Max(0, _dragHorizontalStartOffset - deltaX));
-        _activeScrollViewer.ScrollToVerticalOffset(Math.Max(0, _dragVerticalStartOffset - deltaY));
-        e.Handled = true;
-    }
-
-    private void Grid_PreviewMouseUp(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ChangedButton != MouseButton.Right)
-        {
-            return;
-        }
-
-        if (sender is DataGrid grid && grid.IsMouseCaptured)
-        {
-            grid.ReleaseMouseCapture();
-        }
-
-        var wasDragging = _rightDragging;
-        _rightDragging = false;
-        _rightDragStart = null;
-        if (wasDragging)
-        {
-            e.Handled = true;
-        }
-    }
-
     private void RememberWindowPlacement()
     {
         if (!double.IsNaN(Left) && !double.IsNaN(Top))
@@ -1127,31 +1039,6 @@ public sealed class CostCenterMappingWindow : Window
         {
             target.Add(item);
         }
-    }
-
-    private static T? FindChild<T>(DependencyObject? root) where T : DependencyObject
-    {
-        if (root is null)
-        {
-            return null;
-        }
-
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
-        {
-            var child = VisualTreeHelper.GetChild(root, index);
-            if (child is T match)
-            {
-                return match;
-            }
-
-            var nested = FindChild<T>(child);
-            if (nested is not null)
-            {
-                return nested;
-            }
-        }
-
-        return null;
     }
 
     private static T? FindParent<T>(DependencyObject? source) where T : DependencyObject

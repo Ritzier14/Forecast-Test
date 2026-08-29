@@ -99,11 +99,6 @@ public partial class MainWindow : Window
     private Point? _ledgerChartRightDragStart;
     private double _ledgerChartScrollStartOffset;
     private bool _ledgerChartRightDragging;
-    private Point? _gridRightDragStart;
-    private double _gridHorizontalScrollStartOffset;
-    private double _gridVerticalScrollStartOffset;
-    private bool _gridRightDragging;
-    private ScrollViewer? _activeGridScrollViewer;
     private ScrollViewer? _forecastGridScrollViewer;
     private MainWindowViewModel? _subscribedViewModel;
     private bool _closeDecisionInProgress;

@@ -35,6 +35,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - Refresh work now enters a coalescing `RefreshCoordinator` with explicit projection targets, phase counters/timings, one end-of-batch spreadsheet refresh, and dispatcher-coalesced dynamic grid-column rebuilds.
 - Forecast-grid refreshes preserve stable selection/current-cell identity, scroll offsets, active editor text, filters, and task-group expansion when the underlying items and columns remain available.
 - A scoped WPF binding-error capture gate now covers the main forecast, resources/ledger, schedule, monthly report, and saved-month smoke surfaces without globally suppressing binding diagnostics.
+- Right-click grid panning now uses one shared attached behavior across the main, cost-centre mapping, and task/category editor grids, with bounded two-axis scrolling and drag-safe context-menu handling.
 
 ### Verified
 
@@ -58,6 +59,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - The LUNA-18A suite proves one named MainWindow lifecycle owner, matching routed/grid/scroll detachment, generation-guarded dispatcher work, and view-model timer/refresh disposal; the Release verifier also covers the retained 428-assertion smoke gate.
 - The LUNA-18B suite proves observed schedule-comparison refresh tasks, separate cancellation/failure handling, close-time cancellation and awaiting, stale-write suppression, diagnostics routing, and child close-handler detachment; the Release verifier also covers the retained 428-assertion smoke gate.
 - The LUNA-18C suite proves scoped WPF binding trace capture, actionable surface/path diagnostics, and zero unexpected binding errors across the representative main-window smoke path; the Release verifier also covers the retained 428-assertion smoke gate.
+- The LUNA-19A suite proves the shared grid-pan threshold, direction and bounds policy, disabled-axis behavior, cancellation lifecycle, and three-surface wiring; the Release verifier also covers the retained 428-assertion smoke gate.
 
 ### Remaining Before A Formal Production Release
 

@@ -152,9 +152,7 @@ public partial class MainWindow
 
         foreach (var grid in GetAllMainWindowDataGrids())
         {
-            grid.PreviewMouseDown -= Grid_PreviewMouseDown;
-            grid.PreviewMouseMove -= Grid_PreviewMouseMove;
-            grid.PreviewMouseUp -= Grid_PreviewMouseUp;
+            RightClickGridPanBehavior.SetIsEnabled(grid, false);
             grid.LoadingRow -= Grid_LoadingRow;
             grid.MouseMove -= Grid_MouseMove;
             grid.MouseLeave -= Grid_MouseLeave;

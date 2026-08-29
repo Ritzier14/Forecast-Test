@@ -52,11 +52,6 @@ public partial class TaskCategoryEditorWindow : Window
     private readonly string? _initialCategorySelection;
     private Point? _taskDragStart;
     private ProjectTaskCode? _taskDragSource;
-    private Point? _gridRightDragStart;
-    private double _gridHorizontalScrollStartOffset;
-    private double _gridVerticalScrollStartOffset;
-    private bool _gridRightDragging;
-    private ScrollViewer? _activeGridScrollViewer;
     private bool _refreshingInlineEdit;
 
     public TaskCategoryEditorWindow(MainWindowViewModel viewModel, TaskCategoryEditorTab initialTab, string? initialCategorySelection = null)
@@ -326,62 +321,6 @@ public partial class TaskCategoryEditorWindow : Window
         _taskDragSource = null;
     }
 
-    private void EditorGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is not DataGrid grid || e.OriginalSource is not DependencyObject source)
-        {
-            return;
-        }
-
-        if (IsScrollBarInteractionSource(source))
-        {
-            _gridRightDragStart = null;
-            _activeGridScrollViewer = null;
-            _gridRightDragging = false;
-            return;
-        }
-
-        var scrollViewer = FindDescendant<ScrollViewer>(grid);
-        if (scrollViewer is null)
-        {
-            return;
-        }
-
-        _activeGridScrollViewer = scrollViewer;
-        _gridRightDragStart = e.GetPosition(scrollViewer);
-        _gridHorizontalScrollStartOffset = scrollViewer.HorizontalOffset;
-        _gridVerticalScrollStartOffset = scrollViewer.VerticalOffset;
-        _gridRightDragging = false;
-    }
-
-    private void EditorGrid_PreviewMouseMove(object sender, MouseEventArgs e)
-    {
-        if (_gridRightDragStart is null || _activeGridScrollViewer is null || e.RightButton != MouseButtonState.Pressed)
-        {
-            return;
-        }
-
-        var current = e.GetPosition(_activeGridScrollViewer);
-        var deltaX = current.X - _gridRightDragStart.Value.X;
-        var deltaY = current.Y - _gridRightDragStart.Value.Y;
-        if (!_gridRightDragging && Math.Abs(deltaX) < 6 && Math.Abs(deltaY) < 6)
-        {
-            return;
-        }
-
-        _gridRightDragging = true;
-        _activeGridScrollViewer.ScrollToHorizontalOffset(Math.Max(0, _gridHorizontalScrollStartOffset - deltaX));
-        _activeGridScrollViewer.ScrollToVerticalOffset(Math.Max(0, _gridVerticalScrollStartOffset - deltaY));
-        e.Handled = true;
-    }
-
-    private void EditorGrid_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
-    {
-        _gridRightDragStart = null;
-        _activeGridScrollViewer = null;
-        Dispatcher.BeginInvoke(() => _gridRightDragging = false);
-    }
-
     private void EditorColumnHeader_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (sender is not DataGridColumnHeader { Column: { } column } header
@@ -390,9 +329,7 @@ public partial class TaskCategoryEditorWindow : Window
             return;
         }
 
-        _gridRightDragStart = null;
-        _activeGridScrollViewer = null;
-        _gridRightDragging = false;
+        RightClickGridPanBehavior.Cancel(grid);
 
         var menu = new ContextMenu();
         var iconMenu = new MenuItem { Header = "Icon" };

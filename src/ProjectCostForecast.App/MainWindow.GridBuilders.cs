@@ -1458,7 +1458,8 @@ public partial class MainWindow
 
     private void SelectableForecastText_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (_gridRightDragging || sender is not TextBox textBox)
+        if (RightClickGridPanBehavior.IsDraggingFrom(sender as DependencyObject)
+            || sender is not TextBox textBox)
         {
             return;
         }

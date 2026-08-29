@@ -874,7 +874,7 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | LUNA-18A | Complete | Central named MainWindow lifecycle owner, idempotent visual attach/detach, lifetime-guarded dispatcher work, view-model timer/refresh disposal, and 4 focused lifecycle tests; Release verification passes with 139 discovered tests plus the retained legacy smoke gate |
 | LUNA-18B | Complete | Observed schedule-comparison task boundary, per-refresh/lifetime cancellation, close-time await and stale-write guards, diagnostics routing, named child close ownership, and 4 focused async tests; Release verification passes with 143 discovered tests plus the retained legacy smoke gate |
 | LUNA-18C | Complete | Scoped WPF binding-error listener and representative STA smoke path cover forecast, resources/ledger, schedule, monthly report, and saved-month surfaces; 3 focused tests pass with zero unexpected binding errors, plus the retained 428-assertion smoke gate |
-| LUNA-19A | Not started | |
+| LUNA-19A | Complete | `RightClickGridPanBehavior` and `RightClickGridPanSession` consolidate MainWindow, cost-centre mapping, and task/category editor grid panning; 5 focused tests and full verification pass with 151 discovered tests plus the retained legacy smoke gate |
 | LUNA-19B | Not started | |
 | LUNA-19C | Not started | |
 | LUNA-20 | Not started | |

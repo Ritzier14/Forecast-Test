@@ -61,12 +61,7 @@ public partial class MainWindow
     {
         if (root is DataGrid grid)
         {
-            grid.PreviewMouseDown -= Grid_PreviewMouseDown;
-            grid.PreviewMouseMove -= Grid_PreviewMouseMove;
-            grid.PreviewMouseUp -= Grid_PreviewMouseUp;
-            grid.PreviewMouseDown += Grid_PreviewMouseDown;
-            grid.PreviewMouseMove += Grid_PreviewMouseMove;
-            grid.PreviewMouseUp += Grid_PreviewMouseUp;
+            RightClickGridPanBehavior.SetIsEnabled(grid, true);
 
             if (_rowHoverAttachedGrids.Add(grid))
             {
