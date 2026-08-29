@@ -46,6 +46,8 @@ public partial class MainWindow
             return;
         }
 
+        _mainWindowLifetimeVersion++;
+        CancelPendingWindowWork();
         WireViewModelSubscriptions();
         WireGanttSubscriptions();
         if (_mainWindowLoaded)
@@ -287,30 +289,53 @@ public partial class MainWindow
 
     private bool QueueMainWindowWork(DispatcherPriority priority, Action action)
     {
-        ArgumentNullException.ThrowIfNull(action);
-        var lifetimeVersion = _mainWindowLifetimeVersion;
-        if (!IsMainWindowWorkActive || Dispatcher.HasShutdownStarted)
-        {
-            return false;
-        }
-
-        try
-        {
-            Dispatcher.BeginInvoke(priority, new Action(() =>
+        return MainWindowWorkLifetime.TryQueue(
+            isActive: () => IsMainWindowWorkActive && !Dispatcher.HasShutdownStarted,
+            getLifetimeVersion: () => _mainWindowLifetimeVersion,
+            queue: guardedAction =>
             {
-                if (!IsMainWindowWorkActive || lifetimeVersion != _mainWindowLifetimeVersion)
+                try
                 {
-                    return;
+                    Dispatcher.BeginInvoke(priority, guardedAction);
+                    return true;
                 }
+                catch (InvalidOperationException) when (Dispatcher.HasShutdownStarted)
+                {
+                    // The dispatcher can begin shutting down between the guard and BeginInvoke.
+                    return false;
+                }
+            },
+            action: action);
+    }
+}
 
-                action();
-            }));
-            return true;
-        }
-        catch (InvalidOperationException) when (Dispatcher.HasShutdownStarted)
+internal static class MainWindowWorkLifetime
+{
+    public static bool TryQueue(
+        Func<bool> isActive,
+        Func<int> getLifetimeVersion,
+        Func<Action, bool> queue,
+        Action action)
+    {
+        ArgumentNullException.ThrowIfNull(isActive);
+        ArgumentNullException.ThrowIfNull(getLifetimeVersion);
+        ArgumentNullException.ThrowIfNull(queue);
+        ArgumentNullException.ThrowIfNull(action);
+
+        var lifetimeVersion = getLifetimeVersion();
+        if (!isActive())
         {
-            // The dispatcher can begin shutting down between the guard and BeginInvoke.
             return false;
         }
+
+        return queue(() =>
+        {
+            if (!isActive() || lifetimeVersion != getLifetimeVersion())
+            {
+                return;
+            }
+
+            action();
+        });
     }
 }

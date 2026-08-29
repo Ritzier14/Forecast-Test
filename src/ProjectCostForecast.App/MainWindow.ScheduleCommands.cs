@@ -323,7 +323,7 @@ public partial class MainWindow
 
     private void BeginEditingScheduleActivityNameCell(ScheduleActivity activity)
     {
-        Dispatcher.BeginInvoke(new Action(() =>
+        QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.ContextIdle, () =>
         {
             ScheduleGrid.SelectedItem = activity;
             if (GanttViewModel is { } viewModel)
@@ -341,7 +341,7 @@ public partial class MainWindow
             }
 
             ScheduleGrid.ScrollIntoView(activity, nameColumn);
-            Dispatcher.BeginInvoke(new Action(() =>
+            QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.Loaded, () =>
             {
                 ScheduleGrid.UpdateLayout();
                 ScheduleGrid.CurrentCell = new DataGridCellInfo(activity, nameColumn);
@@ -355,15 +355,15 @@ public partial class MainWindow
                 cell?.Focus();
                 if (ScheduleGrid.BeginEdit())
                 {
-                    Dispatcher.BeginInvoke(new Action(() =>
+                    QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.Input, () =>
                     {
                         var editor = cell is null ? null : FindChild<TextBox>(cell);
                         editor?.Focus();
                         editor?.SelectAll();
-                    }), System.Windows.Threading.DispatcherPriority.Input);
+                    });
                 }
-            }), System.Windows.Threading.DispatcherPriority.Loaded);
-        }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+            });
+        });
     }
 
     private static MenuItem CreateScheduleMenuItem(string header, Action action, bool enabled = true)

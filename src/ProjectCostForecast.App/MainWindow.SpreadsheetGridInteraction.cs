@@ -308,7 +308,7 @@ public partial class MainWindow
         cell.Focus();
         if (grid.BeginEdit())
         {
-            Dispatcher.BeginInvoke(() =>
+            QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.Normal, () =>
             {
                 if (FindChild<TextBox>(cell) is TextBox editor)
                 {
@@ -355,7 +355,7 @@ public partial class MainWindow
             return;
         }
 
-        Dispatcher.BeginInvoke(() =>
+        if (!QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.Background, () =>
         {
             _spreadsheetEditSnapshots.Remove(grid);
             var after = FormatGridCellValue(GetGridCellValue(snapshot.Item, snapshot.Column));
@@ -367,7 +367,10 @@ public partial class MainWindow
             RegisterSpreadsheetUndoBatch(
                 "Cell edit",
                 [new SpreadsheetCellEdit(snapshot.Item, snapshot.Column, snapshot.BeforeText, after)]);
-        }, System.Windows.Threading.DispatcherPriority.Background);
+        }))
+        {
+            _spreadsheetEditSnapshots.Remove(grid);
+        }
     }
 
     private void SpreadsheetGrid_Loaded(object sender, RoutedEventArgs e)
@@ -388,7 +391,7 @@ public partial class MainWindow
         grid.CurrentCell = new DataGridCellInfo(item, column);
         grid.ScrollIntoView(item, column);
 
-        Dispatcher.BeginInvoke(() =>
+        QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.Input, () =>
         {
             grid.UpdateLayout();
             if (grid.ItemContainerGenerator.ContainerFromItem(item) is not DataGridRow row)
@@ -404,7 +407,7 @@ public partial class MainWindow
                 return;
             }
 
-            Dispatcher.BeginInvoke(() =>
+            QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.Input, () =>
             {
                 if (cell is null || FindChild<TextBox>(cell) is not TextBox editor)
                 {
@@ -421,8 +424,8 @@ public partial class MainWindow
                 {
                     editor.SelectAll();
                 }
-            }, System.Windows.Threading.DispatcherPriority.Input);
-        }, System.Windows.Threading.DispatcherPriority.Input);
+            });
+        });
     }
 
     private bool TryGetCurrentSpreadsheetCell(DataGrid grid, out object item, out DataGridColumn column)
@@ -619,13 +622,13 @@ public partial class MainWindow
             SelectSingleGridCell(grid, item, column, scrollIntoView: false);
         }
 
-        Dispatcher.BeginInvoke((Action)Restore, System.Windows.Threading.DispatcherPriority.Input);
-        Dispatcher.BeginInvoke((Action)Restore, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.Input, Restore);
+        QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.ApplicationIdle, Restore);
     }
 
     private void QueueSpreadsheetCellActivation(DataGrid grid, object item, DataGridColumn column)
     {
-        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, new Action(() =>
+        QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.Input, () =>
         {
             if (!grid.Items.Contains(item) || !grid.Columns.Contains(column))
             {
@@ -633,7 +636,7 @@ public partial class MainWindow
             }
 
             SelectSingleGridCell(grid, item, column, scrollIntoView: false, focusCell: false);
-        }));
+        });
     }
 
     private void SpreadsheetGrid_LoadingRow(object? sender, DataGridRowEventArgs e)
@@ -744,7 +747,9 @@ public partial class MainWindow
         QueueSpreadsheetCellActivation(grid, cell.DataContext, cell.Column);
         if (IsManagementResourceGrid(grid) && CanWriteGridCell(grid, cell.DataContext, cell.Column))
         {
-            Dispatcher.BeginInvoke(() => BeginSpreadsheetCellEdit(grid, cell.DataContext, cell.Column, null, replaceText: false), System.Windows.Threading.DispatcherPriority.Input);
+            QueueMainWindowWork(
+                System.Windows.Threading.DispatcherPriority.Input,
+                () => BeginSpreadsheetCellEdit(grid, cell.DataContext, cell.Column, null, replaceText: false));
         }
     }
 
@@ -850,7 +855,7 @@ public partial class MainWindow
     {
         var selectedItem = grid.SelectedItem;
         var rowContext = GetGridRowContext(grid);
-        Dispatcher.BeginInvoke(() =>
+        QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.Input, () =>
         {
             if (selectedItem is null || grid.Items.Contains(selectedItem))
             {
@@ -858,7 +863,7 @@ public partial class MainWindow
             }
 
             RestoreGridRowContext(grid, rowContext);
-        }, System.Windows.Threading.DispatcherPriority.Input);
+        });
     }
 
     private object? GetGridRowContext(DataGrid grid)
@@ -1642,7 +1647,7 @@ public partial class MainWindow
 
     private void BeginEditingForecastResourceCell(ForecastLine line)
     {
-        Dispatcher.BeginInvoke(() =>
+        QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.Background, () =>
         {
             var resourceColumn = ForecastLinesGrid.Columns
                 .FirstOrDefault(column => column.Header is string header && string.Equals(header, "Resource", StringComparison.Ordinal));
@@ -1659,7 +1664,7 @@ public partial class MainWindow
             ForecastLinesGrid.SelectedCells.Add(info);
             ForecastLinesGrid.CurrentCell = info;
             ForecastLinesGrid.BeginEdit();
-            Dispatcher.BeginInvoke(() =>
+            QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.Input, () =>
             {
                 var cell = FindChildren<DataGridCell>(ForecastLinesGrid)
                     .FirstOrDefault(candidate => ReferenceEquals(candidate.DataContext, line) && ReferenceEquals(candidate.Column, resourceColumn));
@@ -1668,8 +1673,8 @@ public partial class MainWindow
                     editor.Focus();
                     editor.SelectAll();
                 }
-            }, System.Windows.Threading.DispatcherPriority.Input);
-        }, System.Windows.Threading.DispatcherPriority.Background);
+            });
+        });
     }
 
     private ForecastLine? GetForecastLineForGridItem(object? item)
@@ -1737,7 +1742,9 @@ public partial class MainWindow
         e.Handled = true;
         if (textBox.ContextMenu?.IsOpen != true)
         {
-            Dispatcher.BeginInvoke(() => OpenSelectableForecastTextContextMenu(textBox), System.Windows.Threading.DispatcherPriority.Input);
+            QueueMainWindowWork(
+                System.Windows.Threading.DispatcherPriority.Input,
+                () => OpenSelectableForecastTextContextMenu(textBox));
         }
     }
 

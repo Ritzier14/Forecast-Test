@@ -31,7 +31,7 @@ public partial class MainWindow
 
         grid.CurrentCell = new DataGridCellInfo(cell.DataContext, cell.Column);
         cell.Focus();
-        Dispatcher.BeginInvoke(() =>
+        QueueMainWindowWork(DispatcherPriority.Normal, () =>
         {
             if (!grid.BeginEdit())
             {
@@ -44,7 +44,7 @@ public partial class MainWindow
             {
                 editor?.SelectAll();
             }
-        }, DispatcherPriority.Input);
+        });
     }
 
     private void ManagementResourceGrid_Loaded(object sender, System.Windows.RoutedEventArgs e)

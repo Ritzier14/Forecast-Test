@@ -1328,25 +1328,48 @@ public partial class MainWindow
     {
         if (e.EditAction == DataGridEditAction.Commit
             && e.Column?.Header is string header
-            && DataContext is MainWindowViewModel viewModel)
+            && DataContext is MainWindowViewModel)
         {
             if (string.Equals(header, "Resource", StringComparison.Ordinal))
             {
-                Dispatcher.BeginInvoke(() => viewModel.RecalculateCommand.Execute(null), DispatcherPriority.Background);
+                QueueMainWindowWork(
+                    DispatcherPriority.Background,
+                    () =>
+                    {
+                        if (DataContext is MainWindowViewModel viewModel)
+                        {
+                            viewModel.RecalculateCommand.Execute(null);
+                        }
+                    });
             }
             else if (string.Equals(header, "Category", StringComparison.Ordinal)
                 && e.Row.Item is ForecastLine line)
             {
-                Dispatcher.BeginInvoke(() =>
-                {
-                    viewModel.EnsureProjectCategory(line.ReportingCategory);
-                    viewModel.RefreshTaskCategoryMetadata();
-                    QueueRefreshForecastGroupHeaderPresenters();
-                }, DispatcherPriority.Background);
+                QueueMainWindowWork(
+                    DispatcherPriority.Background,
+                    () =>
+                    {
+                        if (DataContext is not MainWindowViewModel viewModel)
+                        {
+                            return;
+                        }
+
+                        viewModel.EnsureProjectCategory(line.ReportingCategory);
+                        viewModel.RefreshTaskCategoryMetadata();
+                        QueueRefreshForecastGroupHeaderPresenters();
+                    });
             }
             else if (string.Equals(header, "Budget", StringComparison.Ordinal))
             {
-                Dispatcher.BeginInvoke(() => viewModel.RecalculateCommand.Execute(null), DispatcherPriority.Background);
+                QueueMainWindowWork(
+                    DispatcherPriority.Background,
+                    () =>
+                    {
+                        if (DataContext is MainWindowViewModel viewModel)
+                        {
+                            viewModel.RecalculateCommand.Execute(null);
+                        }
+                    });
             }
         }
     }

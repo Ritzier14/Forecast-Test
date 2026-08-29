@@ -173,6 +173,18 @@ would exceed the six-production-file contract.
 
 Depends on: LUNA-26B complete.
 
+Status: complete. `MainWindow.Lifecycle.cs` owns the selected slice's only raw
+dispatcher schedule through a generation-aware lifetime guard. Data-context
+replacement invalidates already queued work before subscriptions are rewired,
+and the five non-lifecycle partials route their deferred edit, recalculation,
+category, schedule, and spreadsheet callbacks through that owner.
+
+Evidence: the pure list-backed lifetime suite passed 12 tests without creating
+a WPF `Application`, `MainWindow`, or dispatcher loop; 19 existing lifecycle,
+child-window, binding, and WPF tests passed; full verification passed a Release
+build with 0 warnings/errors, all 226 discovered tests, and all 428 retained
+smoke assertions; `git diff --check` passed.
+
 Scope:
 
 - invalidate the MainWindow lifetime generation when `DataContext` changes so
@@ -270,6 +282,6 @@ that larger migration is already complete.
 |---|---|---|
 | LUNA-26A | Complete | Model dependency closure with one canonical fiscal parser; 46 focused tests, 213 discovered tests, and 428 retained smoke assertions pass |
 | LUNA-26B | Complete | Revision-safe persistence boundary; deterministic interleaving conflict evidence and typed same-session writer boundary |
-| LUNA-26C.1 | Pending | Lifecycle, edit, and data-mutation deferred-work closure |
+| LUNA-26C.1 | Complete | Generation-aware deferred-work owner; 12 focused tests, 19 compatibility/WPF tests, 226 discovered tests, and 428 retained smoke assertions pass |
 | LUNA-26C.2 | Pending | Menu, workspace, shell, and final dispatcher architecture gate |
 | SOL-01 | Pending | Independent post-SOL architecture review |

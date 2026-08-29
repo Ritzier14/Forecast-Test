@@ -718,7 +718,7 @@ public partial class MainWindow
         ForecastLinesGrid.SelectedItem = cell.DataContext;
         ForecastLinesGrid.CurrentCell = new DataGridCellInfo(cell.DataContext, cell.Column);
         ForecastLinesGrid.BeginEdit();
-        Dispatcher.BeginInvoke(() =>
+        QueueMainWindowWork(DispatcherPriority.Normal, () =>
         {
             if (FindChild<TextBox>(cell) is TextBox textBox)
             {

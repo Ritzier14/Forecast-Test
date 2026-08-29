@@ -35,7 +35,7 @@ public sealed class Luna18ALifecycleTests
         Assert.Contains("UIElement.PreviewMouseLeftButtonDownEvent", lifecycle, StringComparison.Ordinal);
         Assert.Contains("FrameworkElement.ContextMenuOpeningEvent", lifecycle, StringComparison.Ordinal);
         Assert.Contains("_mainWindowLifetimeVersion++", lifecycle, StringComparison.Ordinal);
-        Assert.Contains("lifetimeVersion != _mainWindowLifetimeVersion", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("lifetimeVersion != getLifetimeVersion()", lifecycle, StringComparison.Ordinal);
         Assert.Contains("Dispatcher.HasShutdownStarted", lifecycle, StringComparison.Ordinal);
     }
 
