@@ -35,7 +35,7 @@ public sealed partial class MainWindowViewModel
         LoadBudgetLinesFromDataset();
         ReplaceContingencyEntries(_dataset.ContingencyEntries);
         ReplaceCollection(Phases, _dataset.Phases);
-        ReplaceCollection(SavedMonthSnapshots, _dataset.SavedMonthSnapshots.OrderByDescending(snapshot => snapshot.SavedAt));
+        SetSavedMonthSnapshotCollection(_dataset);
         ReplaceCollection(UnmatchedImportCombinations, _dataset.UnmatchedImportCombinations.OrderByDescending(item => item.RecordedAt));
         ReplaceCollection(AuditEvents, _dataset.AuditEvents.OrderByDescending(a => a.ChangedAt));
         _showCtcMonthForecastYearTotals = _dataset.ShowCtcMonthForecastYearTotals;

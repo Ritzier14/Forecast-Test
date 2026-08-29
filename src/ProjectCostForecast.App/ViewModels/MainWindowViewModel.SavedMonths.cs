@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Collections.Specialized;
 using ProjectCostForecast.App.Models;
 
 namespace ProjectCostForecast.App.ViewModels;
@@ -12,6 +13,8 @@ public sealed partial class MainWindowViewModel
     private SavedMonthSnapshot? _viewedSavedMonthSnapshot;
     private bool _isSavedMonthViewLocked;
     private SavedMonthForecastFilterState? _workingForecastFiltersBeforeSavedMonthView;
+    private BatchObservableCollection<SavedMonthSnapshot>? _subscribedSavedMonthSnapshots;
+    private bool _suppressSavedMonthCollectionEvents;
 
     public ICommand ToggleSavedMonthViewLockCommand { get; private set; } = null!;
     public ICommand CloseSavedMonthViewCommand { get; private set; } = null!;
@@ -268,6 +271,42 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(ViewedSavedMonthPeriod));
         OnPropertyChanged(nameof(SavedMonthViewMessage));
         OnPropertyChanged(nameof(SavedMonthLockButtonText));
+    }
+
+    private void SetSavedMonthSnapshotCollection(ProjectDataset dataset)
+    {
+        ArgumentNullException.ThrowIfNull(dataset);
+
+        if (_subscribedSavedMonthSnapshots is not null)
+        {
+            _subscribedSavedMonthSnapshots.CollectionChanged -= SavedMonthSnapshots_CollectionChanged;
+        }
+
+        var snapshots = dataset.SavedMonthSnapshots;
+        _suppressSavedMonthCollectionEvents = true;
+        try
+        {
+            snapshots.ReplaceWith(snapshots
+                .OrderByDescending(snapshot => snapshot.SavedAt)
+                .ToList());
+            SavedMonthSnapshots = snapshots;
+        }
+        finally
+        {
+            _suppressSavedMonthCollectionEvents = false;
+        }
+
+        _subscribedSavedMonthSnapshots = snapshots;
+        _subscribedSavedMonthSnapshots.CollectionChanged += SavedMonthSnapshots_CollectionChanged;
+        OnPropertyChanged(nameof(SavedMonthSnapshots));
+    }
+
+    private void SavedMonthSnapshots_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (!_suppressSavedMonthCollectionEvents)
+        {
+            IsDirty = true;
+        }
     }
 
     private SavedMonthForecastFilterState CaptureSavedMonthForecastFilterState() => new(

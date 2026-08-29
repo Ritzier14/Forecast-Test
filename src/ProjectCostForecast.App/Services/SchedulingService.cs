@@ -190,7 +190,7 @@ public sealed class SchedulingService
 
     private static List<ScheduleActivity> TopologicalSort(
         List<ScheduleActivity> network,
-        List<ActivityLink> links,
+        IReadOnlyList<ActivityLink> links,
         Dictionary<string, ScheduleActivity> byId,
         out List<ScheduleActivity> cyclic)
     {

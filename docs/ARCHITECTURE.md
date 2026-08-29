@@ -108,6 +108,23 @@ the same isolation guarantee. Persisted derived caches remain in the format
 for backward compatibility and are refreshed from inputs before application
 saves; their removal requires a future versioned migration.
 
+### Canonical schedule, snapshot, and workspace state boundary
+
+`ScheduleData` owns observable activity, calendar, link, and baseline
+collections. The schedule view model exposes the activity and calendar
+collections directly, while `SchedulingService` recalculates derived CPM
+values and rebuilds links in place. Named collection subscription tracking
+detaches old activity/calendar/baseline items and attaches replacement
+references once during project load or collection reset.
+
+`ProjectDataset.SavedMonthSnapshots` is the canonical observable history
+collection exposed by the view model. Saved-month edits use the explicit
+history editor and never enter current-period calculation. Project-local
+workspace layouts remain dataset-owned presentation preferences; WPF
+`WorkspaceViewTab` instances are a separate projection because they carry
+ignored visual preview state. Application-wide `AppUserPreferences` stays in
+its own preference-file boundary and changing it does not dirty a project.
+
 ## State and refresh rules
 
 - A user operation should enter through one view-model method or command.

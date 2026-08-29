@@ -38,15 +38,23 @@ public enum ScheduleEditMode
     SelectedBaseline
 }
 
-public sealed class ScheduleCalendar
+public sealed class ScheduleCalendar : ObservableModel
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
-    public string Name { get; set; } = "Standard 5 Day";
-    public bool[] WorkingDays { get; set; } = [false, true, true, true, true, true, false]; // Sunday..Saturday
-    public List<DateOnly> Holidays { get; set; } = [];
-    public List<DateOnly> ExtraWorkDays { get; set; } = [];
-    public string ColorHex { get; set; } = "#94A3B8";
-    public bool IsVisibleOnGantt { get; set; } = true;
+    private string _id = Guid.NewGuid().ToString("N")[..8];
+    private string _name = "Standard 5 Day";
+    private bool[] _workingDays = [false, true, true, true, true, true, false];
+    private List<DateOnly> _holidays = [];
+    private List<DateOnly> _extraWorkDays = [];
+    private string _colorHex = "#94A3B8";
+    private bool _isVisibleOnGantt = true;
+
+    public string Id { get => _id; set => SetProperty(ref _id, value ?? string.Empty); }
+    public string Name { get => _name; set => SetProperty(ref _name, value ?? string.Empty); }
+    public bool[] WorkingDays { get => _workingDays; set => SetProperty(ref _workingDays, value ?? [false, true, true, true, true, true, false]); } // Sunday..Saturday
+    public List<DateOnly> Holidays { get => _holidays; set => SetProperty(ref _holidays, value ?? []); }
+    public List<DateOnly> ExtraWorkDays { get => _extraWorkDays; set => SetProperty(ref _extraWorkDays, value ?? []); }
+    public string ColorHex { get => _colorHex; set => SetProperty(ref _colorHex, value ?? string.Empty); }
+    public bool IsVisibleOnGantt { get => _isVisibleOnGantt; set => SetProperty(ref _isVisibleOnGantt, value); }
 
     public bool IsWorkingDay(DateOnly date)
     {
@@ -106,18 +114,30 @@ public sealed class ActivityLink
     }
 }
 
-public sealed class ScheduleBaselineEntry
+public sealed class ScheduleBaselineEntry : ObservableModel
 {
-    public string ActivityId { get; set; } = string.Empty;
-    public DateOnly? Start { get; set; }
-    public DateOnly? Finish { get; set; }
+    private string _activityId = string.Empty;
+    private DateOnly? _start;
+    private DateOnly? _finish;
+
+    public string ActivityId { get => _activityId; set => SetProperty(ref _activityId, value ?? string.Empty); }
+    public DateOnly? Start { get => _start; set => SetProperty(ref _start, value); }
+    public DateOnly? Finish { get => _finish; set => SetProperty(ref _finish, value); }
 }
 
-public sealed class ScheduleBaseline
+public sealed class ScheduleBaseline : ObservableModel
 {
-    public string Name { get; set; } = "Baseline";
-    public DateTimeOffset CapturedAt { get; set; } = DateTimeOffset.UnixEpoch;
-    public List<ScheduleBaselineEntry> Entries { get; set; } = [];
+    private string _name = "Baseline";
+    private DateTimeOffset _capturedAt = DateTimeOffset.UnixEpoch;
+    private BatchObservableCollection<ScheduleBaselineEntry> _entries = [];
+
+    public string Name { get => _name; set => SetProperty(ref _name, value ?? string.Empty); }
+    public DateTimeOffset CapturedAt { get => _capturedAt; set => SetProperty(ref _capturedAt, value); }
+    public BatchObservableCollection<ScheduleBaselineEntry> Entries
+    {
+        get => _entries;
+        set => SetProperty(ref _entries, value ?? []);
+    }
 
     public ScheduleBaselineEntry? FindEntry(string activityId)
     {
@@ -138,16 +158,25 @@ public sealed class ScheduleBaseline
     }
 }
 
-public sealed class ScheduleData
+public sealed class ScheduleData : ObservableModel
 {
-    public DateOnly? ProjectStart { get; set; }
-    public DateOnly? MustFinishBy { get; set; }
-    public string DefaultCalendarId { get; set; } = string.Empty;
-    public string ActiveBaselineName { get; set; } = string.Empty;
-    public List<ScheduleCalendar> Calendars { get; set; } = [];
-    public List<ScheduleActivity> Activities { get; set; } = [];
-    public List<ActivityLink> Links { get; set; } = [];
-    public List<ScheduleBaseline> Baselines { get; set; } = [];
+    private DateOnly? _projectStart;
+    private DateOnly? _mustFinishBy;
+    private string _defaultCalendarId = string.Empty;
+    private string _activeBaselineName = string.Empty;
+    private BatchObservableCollection<ScheduleCalendar> _calendars = [];
+    private BatchObservableCollection<ScheduleActivity> _activities = [];
+    private BatchObservableCollection<ActivityLink> _links = [];
+    private BatchObservableCollection<ScheduleBaseline> _baselines = [];
+
+    public DateOnly? ProjectStart { get => _projectStart; set => SetProperty(ref _projectStart, value); }
+    public DateOnly? MustFinishBy { get => _mustFinishBy; set => SetProperty(ref _mustFinishBy, value); }
+    public string DefaultCalendarId { get => _defaultCalendarId; set => SetProperty(ref _defaultCalendarId, value ?? string.Empty); }
+    public string ActiveBaselineName { get => _activeBaselineName; set => SetProperty(ref _activeBaselineName, value ?? string.Empty); }
+    public BatchObservableCollection<ScheduleCalendar> Calendars { get => _calendars; set => SetProperty(ref _calendars, value ?? []); }
+    public BatchObservableCollection<ScheduleActivity> Activities { get => _activities; set => SetProperty(ref _activities, value ?? []); }
+    public BatchObservableCollection<ActivityLink> Links { get => _links; set => SetProperty(ref _links, value ?? []); }
+    public BatchObservableCollection<ScheduleBaseline> Baselines { get => _baselines; set => SetProperty(ref _baselines, value ?? []); }
 
     public ScheduleCalendar EnsureDefaultCalendar()
     {

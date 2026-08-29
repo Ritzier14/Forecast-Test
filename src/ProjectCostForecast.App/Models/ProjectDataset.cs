@@ -25,9 +25,14 @@ public sealed class ProjectDataset
     public List<ContingencyEntry> ContingencyEntries { get; set; } = [];
     public List<CategorySummary> CategorySummaries { get; set; } = [];
     public List<CostCenterNameMapping> CostCenterNameMappings { get; set; } = [];
-    public List<SavedMonthSnapshot> SavedMonthSnapshots { get; set; } = [];
+    // Saved-month history is a canonical append/freeze collection while a
+    // project is open; the view model exposes this same collection instance.
+    public BatchObservableCollection<SavedMonthSnapshot> SavedMonthSnapshots { get; set; } = [];
     public List<AuditEvent> AuditEvents { get; set; } = [];
-    public List<WorkspaceViewLayout> WorkspaceViews { get; set; } = [];
+    // Workspace layouts are project-local presentation state. They remain
+    // separate from financial inputs even though their persisted collection
+    // is owned by the dataset.
+    public BatchObservableCollection<WorkspaceViewLayout> WorkspaceViews { get; set; } = [];
     public List<string> WorkspaceTabOrder { get; set; } = [];
     public List<string> DetailWorkspaceTabOrder { get; set; } = [];
     public Dictionary<string, string> ForecastGroupHeaderIconKeys { get; set; } = new(StringComparer.OrdinalIgnoreCase);

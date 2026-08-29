@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows.Threading;
 using ProjectCostForecast.App.Models;
@@ -15,9 +16,13 @@ public sealed partial class MainWindowViewModel
     private ScheduleEditMode _scheduleEditMode;
     private bool _showScheduleBaselineComparison = true;
     private readonly List<string> _scheduleLinkClipboardActivityIds = [];
+    private readonly CollectionSubscriptionTracker<ScheduleActivity> _scheduleActivitySubscriptions;
+    private readonly CollectionSubscriptionTracker<ScheduleCalendar> _scheduleCalendarSubscriptions;
+    private readonly CollectionSubscriptionTracker<ScheduleBaseline> _scheduleBaselineSubscriptions;
+    private ScheduleData? _subscribedScheduleData;
 
-    public ObservableCollection<ScheduleActivity> ScheduleActivities { get; } = [];
-    public ObservableCollection<ScheduleCalendar> ScheduleCalendars { get; } = [];
+    public BatchObservableCollection<ScheduleActivity> ScheduleActivities { get; private set; } = [];
+    public BatchObservableCollection<ScheduleCalendar> ScheduleCalendars { get; private set; } = [];
     public ObservableCollection<string> ScheduleBaselineNames { get; } = [];
 
     public static IReadOnlyList<ScheduleActivityKind> ScheduleKindOptions { get; } =
@@ -189,18 +194,8 @@ public sealed partial class MainWindowViewModel
                 SeedSampleSchedule(_dataset.Schedule);
             }
 
-            foreach (var activity in ScheduleActivities)
-            {
-                activity.PropertyChanged -= ScheduleActivity_PropertyChanged;
-            }
-
-            ReplaceCollection(ScheduleActivities, _dataset.Schedule.Activities);
-            ReplaceCollection(ScheduleCalendars, _dataset.Schedule.Calendars);
+            SetScheduleCollections(_dataset.Schedule);
             RefreshScheduleBaselineNames();
-            foreach (var activity in ScheduleActivities)
-            {
-                activity.PropertyChanged += ScheduleActivity_PropertyChanged;
-            }
         }
         finally
         {
@@ -210,10 +205,37 @@ public sealed partial class MainWindowViewModel
         RecalculateSchedule();
     }
 
+    private void SetScheduleCollections(ScheduleData schedule)
+    {
+        ArgumentNullException.ThrowIfNull(schedule);
+
+        if (!ReferenceEquals(_subscribedScheduleData, schedule))
+        {
+            if (_subscribedScheduleData is not null)
+            {
+                _subscribedScheduleData.PropertyChanged -= ScheduleData_PropertyChanged;
+            }
+
+            _subscribedScheduleData = schedule;
+            _subscribedScheduleData.PropertyChanged += ScheduleData_PropertyChanged;
+        }
+
+        ScheduleActivities = schedule.Activities;
+        ScheduleCalendars = schedule.Calendars;
+        _scheduleActivitySubscriptions.SetCollection(ScheduleActivities, ScheduleActivities);
+        _scheduleCalendarSubscriptions.SetCollection(ScheduleCalendars, ScheduleCalendars);
+        _scheduleBaselineSubscriptions.SetCollection(schedule.Baselines, schedule.Baselines);
+        OnPropertyChanged(nameof(ScheduleActivities));
+        OnPropertyChanged(nameof(ScheduleCalendars));
+        OnPropertyChanged(nameof(ScheduleDataRef));
+    }
+
     private void SyncScheduleToDataset()
     {
-        _dataset.Schedule.Activities = ScheduleActivities.ToList();
-        _dataset.Schedule.Calendars = ScheduleCalendars.ToList();
+        // ScheduleData owns the live collections. This method remains as a
+        // named compatibility boundary for callers that synchronize the full
+        // dataset, but it intentionally performs no mirror copy.
+        SetScheduleCollections(_dataset.Schedule);
     }
 
     private void RefreshScheduleBaselineNames()
@@ -268,9 +290,9 @@ public sealed partial class MainWindowViewModel
         });
     }
 
-    private void ScheduleActivity_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void ScheduleActivity_PropertyChanged(ScheduleActivity activity, PropertyChangedEventArgs e)
     {
-        if (_suppressScheduleEvents || sender is not ScheduleActivity activity)
+        if (_suppressScheduleEvents)
         {
             return;
         }
@@ -296,6 +318,67 @@ public sealed partial class MainWindowViewModel
                 MarkScheduleDirtyAndRecalculate();
                 break;
         }
+    }
+
+    private void ScheduleActivityCollectionChanged(NotifyCollectionChangedEventArgs e)
+    {
+        if (_suppressScheduleEvents)
+        {
+            return;
+        }
+
+        MarkScheduleDirtyAndRecalculate();
+    }
+
+    private void ScheduleCalendar_PropertyChanged(ScheduleCalendar calendar, PropertyChangedEventArgs e)
+    {
+        if (_suppressScheduleEvents)
+        {
+            return;
+        }
+
+        MarkScheduleDirtyAndRecalculate();
+    }
+
+    private void ScheduleCalendarCollectionChanged(NotifyCollectionChangedEventArgs e)
+    {
+        if (_suppressScheduleEvents)
+        {
+            return;
+        }
+
+        MarkScheduleDirtyAndRecalculate();
+    }
+
+    private void ScheduleBaseline_PropertyChanged(ScheduleBaseline baseline, PropertyChangedEventArgs e)
+    {
+        if (_suppressScheduleEvents)
+        {
+            return;
+        }
+
+        MarkScheduleDirtyAndRecalculate();
+    }
+
+    private void ScheduleBaselineCollectionChanged(NotifyCollectionChangedEventArgs e)
+    {
+        if (_suppressScheduleEvents)
+        {
+            return;
+        }
+
+        RefreshScheduleBaselineNames();
+        MarkScheduleDirtyAndRecalculate();
+    }
+
+    private void ScheduleData_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_suppressScheduleEvents)
+        {
+            return;
+        }
+
+        MarkScheduleDirtyAndRecalculate();
     }
 
     private void SaveEditedBaselineValue(ScheduleActivity activity, bool isStart)
@@ -376,7 +459,6 @@ public sealed partial class MainWindowViewModel
             IsUnscheduled = !imposedStart.HasValue && kind == ScheduleActivityKind.Task
         };
 
-        activity.PropertyChanged += ScheduleActivity_PropertyChanged;
         ScheduleActivities.Insert(Math.Clamp(insertIndex, 0, ScheduleActivities.Count), activity);
         SelectedScheduleActivity = activity;
         AddAuditEvent("Schedule", activity.Id, "Created", string.Empty, kind.ToString(), "Added schedule activity");
@@ -477,7 +559,6 @@ public sealed partial class MainWindowViewModel
         var nextIndex = targets.Min(activity => ScheduleActivities.IndexOf(activity));
         foreach (var activity in targets)
         {
-            activity.PropertyChanged -= ScheduleActivity_PropertyChanged;
             ScheduleActivities.Remove(activity);
             AddAuditEvent("Schedule", activity.Id, "Deleted", activity.Name, string.Empty, "Deleted schedule activity");
         }

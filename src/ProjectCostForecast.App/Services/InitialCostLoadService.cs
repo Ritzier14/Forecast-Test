@@ -109,7 +109,7 @@ public sealed class InitialCostLoadService
         };
 
         _calculationService.Recalculate(dataset);
-        dataset.SavedMonthSnapshots = BuildMonthlySnapshots(dataset);
+        dataset.SavedMonthSnapshots = new(BuildMonthlySnapshots(dataset));
         return dataset;
     }
 

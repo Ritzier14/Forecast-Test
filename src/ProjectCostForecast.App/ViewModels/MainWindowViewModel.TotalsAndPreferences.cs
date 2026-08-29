@@ -395,10 +395,9 @@ public sealed partial class MainWindowViewModel
         _dataset.ManagementResources = ManagementResources.ToList();
         _dataset.ContingencyEntries = ContingencyEntries.ToList();
         _dataset.Phases = Phases.ToList();
-        _dataset.SavedMonthSnapshots = SavedMonthSnapshots.OrderBy(snapshot => snapshot.SavedAt).ToList();
         _dataset.UnmatchedImportCombinations = UnmatchedImportCombinations.OrderByDescending(item => item.RecordedAt).ToList();
         _dataset.AuditEvents = AuditEvents.ToList();
-        _dataset.WorkspaceViews = BuildWorkspaceViewLayouts();
+        _dataset.WorkspaceViews.ReplaceWith(BuildWorkspaceViewLayouts());
         _dataset.SelectedCtcMonthForecastYears = _selectedCtcMonthForecastYears
             .OrderBy(year => year)
             .ToList();

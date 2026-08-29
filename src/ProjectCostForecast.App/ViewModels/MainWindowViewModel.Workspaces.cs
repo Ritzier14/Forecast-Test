@@ -17,6 +17,7 @@ public sealed partial class MainWindowViewModel
 {
     private void InitializeWorkspaceViews(IEnumerable<WorkspaceViewLayout>? persistedViews = null)
     {
+        DetachWorkspaceViewSubscriptions();
         _workspaceViews.Clear();
         _detailWorkspaceViews.Clear();
 
@@ -101,6 +102,43 @@ public sealed partial class MainWindowViewModel
 
             _detailWorkspaceViews[group.Key] = CreateCollection(group.Select(CreateWorkspaceViewTab));
         }
+
+        SynchronizeWorkspaceViewSubscriptions();
+    }
+
+    private void SynchronizeWorkspaceViewSubscriptions()
+    {
+        var currentViews = new HashSet<WorkspaceViewTab>(
+            _workspaceViews.Values
+                .Concat(_detailWorkspaceViews.Values)
+                .SelectMany(views => views),
+            ReferenceEqualityComparer.Instance);
+
+        foreach (var removed in _trackedWorkspaceViews.Where(view => !currentViews.Contains(view)).ToList())
+        {
+            removed.PropertyChanged -= WorkspaceView_PropertyChanged;
+            _trackedWorkspaceViews.Remove(removed);
+        }
+
+        foreach (var added in currentViews.Where(view => _trackedWorkspaceViews.Add(view)))
+        {
+            added.PropertyChanged += WorkspaceView_PropertyChanged;
+        }
+    }
+
+    private void DetachWorkspaceViewSubscriptions()
+    {
+        foreach (var view in _trackedWorkspaceViews)
+        {
+            view.PropertyChanged -= WorkspaceView_PropertyChanged;
+        }
+
+        _trackedWorkspaceViews.Clear();
+    }
+
+    private void WorkspaceView_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        IsDirty = true;
     }
 
     private void RefreshCurrentWorkspaceViews()
@@ -218,6 +256,7 @@ public sealed partial class MainWindowViewModel
         };
 
         views.Add(newView);
+        SynchronizeWorkspaceViewSubscriptions();
         if (!CurrentWorkspaceViews.Contains(newView))
         {
             CurrentWorkspaceViews.Add(newView);
@@ -257,6 +296,7 @@ public sealed partial class MainWindowViewModel
         };
 
         views.Add(newView);
+        SynchronizeWorkspaceViewSubscriptions();
         if (!CurrentDetailWorkspaceViews.Contains(newView))
         {
             CurrentDetailWorkspaceViews.Add(newView);

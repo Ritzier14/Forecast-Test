@@ -1,6 +1,6 @@
 # State model and source-of-truth contract
 
-Status: LUNA-16A evidence packet, 2026-08-29.
+Status: LUNA-16B evidence packet, 2026-08-29.
 
 This document records the state contract through the forecast/summary
 presentation boundary. It is a map of the current application, not a claim
@@ -20,11 +20,14 @@ Every value in the project workflow belongs to one of these categories:
 | Presentation preference | A project-local or user-local choice about layout, visibility, ordering, colours, filters, or display context. A project-local preference may affect which configured budget or columns are shown, but it is not financial source data. | Project-local preferences live under `ProjectDataset`; application-wide preferences live in the separate user-preferences file. |
 | Transient UI state | Selection, editing, view-model wrappers, WPF objects, chart geometry, validation rows, and other state that can be rebuilt from the previous categories. | Not stored in the project JSON. |
 
-The durable project boundary is `ProjectDataset`. `ForecastLines` and
-`Transactions` are observable collections owned by that document while a
-project is open, and the view model exposes those same collection instances.
-The remaining view-model collections are projections or feature-specific
-working state and continue to synchronize through their existing boundaries.
+The durable project boundary is `ProjectDataset`. `ForecastLines`,
+`Transactions`, and the schedule/snapshot collections are observable
+collections owned by that document while a project is open, and the view model
+exposes those same collection instances. Workspace tabs remain an explicit
+presentation projection over dataset-owned project-local layouts because the
+live tab type contains WPF-only preview state. The remaining view-model
+collections are projections or feature-specific working state and continue to
+synchronize through their existing boundaries.
 
 ## 2. Ownership rules
 
@@ -69,9 +72,9 @@ The following table covers every root property currently serialized by
 | `ContingencyEntries` | Authoritative persisted contingency records with a currently persisted derived remaining value | No generated ID; current row identity is date/context and collection position | Contingency collection/item tracking and contingency edit commands | `RemainingContingency` is treated as a derived compatibility value today even though its setter is public and it is serialized. |
 | `CategorySummaries` | Derived persisted calculation cache | Reporting category/project code; rebuilt from forecast lines | `CalculationService.Recalculate` and view-model refresh | All fields are derived; retain shape until a migration and compatibility decision remove the cache. |
 | `CostCenterNameMappings` | Authoritative persisted user/import association history | Mapping `Key` | Import association suggestions and manual-name recording | `LastUsedAt` is a durable instant; mapping is not a transient dialog row. |
-| `SavedMonthSnapshots` | Authoritative persisted frozen history | Saved FY period, with snapshot order by `SavedAt`; line identity is row/task/resource/project | New Month creates one frozen record; saved-month view reads it without feeding current calculation | Values are historical observations, not live derived values. Nested forecast amounts are copied history. |
+| `SavedMonthSnapshots` | Authoritative persisted frozen history in the dataset-owned `BatchObservableCollection` exposed by the view model | Saved FY period, with snapshot order by `SavedAt`; line identity is row/task/resource/project | New Month creates one frozen record; saved-month view reads it without feeding current calculation | Values are historical observations, not live derived values. Nested forecast amounts are copied history. |
 | `AuditEvents` | Authoritative persisted append-only history | `AuditId` | View-model edit/import/save/month operations append events | `ChangedAtDisplay` is ignored; `ChangedAt` is a UTC durable instant. |
-| `WorkspaceViews` | Project-local presentation preference | Workspace key + content key/name; layout object identity is `ReportCanvasObjectLayout.Id` | Workspace/tab commands and explicit layout save paths | Layout, columns, report-canvas objects, and visibility are project-local, not financial inputs. |
+| `WorkspaceViews` | Dataset-owned project-local presentation preference; `WorkspaceViewTab` is an explicit WPF projection | Workspace key + content key/name; layout object identity is `ReportCanvasObjectLayout.Id` | Workspace/tab commands and explicit layout save paths | Layout, columns, report-canvas objects, and visibility are project-local, not financial inputs. |
 | `WorkspaceTabOrder` | Project-local presentation preference | Workspace key string | Tab drag/reorder commands | Plain ordered string list. |
 | `DetailWorkspaceTabOrder` | Project-local presentation preference | Detail workspace key string | Detail-tab drag/reorder commands | Plain ordered string list. |
 | `ForecastGroupHeaderIconKeys` | Project-local presentation preference | Forecast group key | Header/icon customization commands | Case-insensitive string dictionary; no calculation dependency. |
@@ -81,7 +84,7 @@ The following table covers every root property currently serialized by
 | `ForecastGroupHeaderColorHexes` | Project-local presentation preference | Forecast group key | Header colour customization commands | Presentation only. |
 | `SelectedCtcMonthForecastYears` | Project-local presentation preference | Calendar-year integer | CTC-column selection commands; affects visible columns only | Persisted project-local display context, not forecast data. |
 | `ShowCtcMonthForecastYearTotals` | Project-local presentation preference | Single project flag | CTC-column display command | Persisted project-local display context. |
-| `Schedule` | Authoritative persisted schedule inputs/configuration plus ignored derived outputs | Activity/calendar IDs and baseline names; `SchedulingService` owns outputs | Schedule commands and explicit schedule edit paths; CPM recalculation consumes schedule inputs | Schedule input and history are serialized; computed activity outputs are ignored. |
+| `Schedule` | Authoritative persisted schedule inputs/configuration plus ignored derived outputs; activity, calendar, link, and baseline collections are dataset-owned observable collections | Activity/calendar IDs and baseline names; `SchedulingService` owns outputs | Schedule commands and explicit schedule edit paths; CPM recalculation consumes schedule inputs | Schedule input and history are serialized; computed activity outputs are ignored. |
 
 ## 4. Nested persisted entities
 
@@ -156,6 +159,9 @@ presentation. `ResourceCommentMetricPreference` persists `Key`, `Label`,
 
 `ScheduleData` persists `ProjectStart`, `MustFinishBy`, `DefaultCalendarId`,
 `ActiveBaselineName`, `Calendars`, `Activities`, `Links`, and `Baselines`.
+The four schedule collections are dataset-owned `BatchObservableCollection`
+instances; the view model exposes the activity and calendar instances directly
+and the scheduling service rebuilds links in place.
 
 | Schedule type | Authoritative persisted state | Derived/ignored state |
 |---|---|---|
@@ -242,22 +248,25 @@ Current coverage is intentionally recorded as follows:
 | Contingency entries | Collection changes and each tracked `ContingencyEntry.PropertyChanged` mark dirty and refresh totals. | The tracking is a feature-specific subscription owned by the view model. |
 | Budget amounts | Loaded `FiscalYearBudgetAmount.PropertyChanged` is subscribed; amount edits sync both budget representations, refresh reports/charts, and mark dirty. | Direct changes to a newly replaced nested amount list are unsafe until subscription ownership is centralized. |
 | Management resources | Resource edit paths and management allocation operations explicitly notify/recalculate; live table rows wrap dataset resources. | Nested allocation lists and arbitrary direct item edits do not have one generic persisted-edit boundary. |
-| Schedule | Public schedule commands and schedule input properties call `MarkScheduleDirtyAndRecalculate`; activity subscriptions are attached during schedule load. | Calendar/baseline/nested collection lifecycle and all direct object edits need the LUNA-16B replacement contract. |
+| Schedule | Dataset-owned schedule collections are exposed directly; `CollectionSubscriptionTracker` owns activity, calendar, and baseline item lifetimes, while schedule root properties and collection changes enter the dirty/recalculation gateway. | Calendar working-day array index edits and baseline nested-entry edits still use their explicit editor/command gateways; arbitrary unsupported direct mutation is not a generic project-session API. |
 | Transactions | The dataset-owned observable collection is exposed directly; import owns batch mutation and dirty state. | `CostTransaction` is not an observable model, so direct property changes do not raise a dirty event; unsupported direct collection edits remain outside the mutation gateway. |
 | Task/category metadata and phases | Commands/load/metadata-repair paths explicitly rebuild dependent views. | Direct edits to arbitrary items are not globally observed. |
-| Comments, snapshots, unmatched records, audit history | Feature commands add/update records and set dirty as appropriate. | Direct list/item mutation is not a supported generic boundary. |
-| Workspace layouts and tab order | Workspace commands/build-layout paths synchronize project-local preference state. | A `WorkspaceViewTab`/nested list property change does not universally mark the project dirty by itself. |
+| Comments, snapshots, unmatched records, audit history | Feature commands add/update records and set dirty as appropriate; saved-month history is now a dataset-owned observable collection with a detached/re-attached collection subscription on project load. | Direct snapshot nested-value mutation outside the saved-month editor remains unsupported. |
+| Workspace layouts and tab order | Dataset-owned project-local layout state is projected into `WorkspaceViewTab`; the view-model tracks each live tab exactly once and detaches old tabs on project load. Application-wide preferences remain in `AppUserPreferences` and do not dirty a project. | Nested report-canvas object edits are explicit WPF editor gateways; arbitrary direct nested-list mutation is not a generic project-session API. |
 | Header, period configuration, dictionaries, and root flags | Specialized view-model paths mutate dataset-owned values directly. | They do not all flow through `SyncDatasetFromCollections`; this is an explicit ownership seam for later packets. |
 
 `SyncDatasetFromCollections` still copies the non-financial view-model
 projections (task/category metadata, management resources, contingency entries,
-phases, snapshots, unmatched records, audit events, workspace layouts, selected
-CTC years, and display flags), then delegates budget and schedule
-synchronization. It deliberately does not copy forecast lines, transactions,
-or category summaries: the first two are already dataset-owned canonical
-collections, and the last is a calculation-owned cache rebuilt from them.
-`Header`, `ForecastPeriods`, and several project-local dictionaries/tab-order
-values remain dataset-owned and are updated by specialized paths.
+phases, unmatched records, audit events, workspace layouts, selected CTC
+years, and display flags), then delegates budget synchronization. It
+deliberately does not copy forecast lines, transactions, saved-month snapshots,
+or schedule collections: those are already dataset-owned canonical
+collections. Category summaries remain a calculation-owned cache rebuilt from
+financial inputs. Workspace tab objects are the explicit presentation
+projection for project-local layout values, and application preferences remain
+outside the project dataset. `Header`, `ForecastPeriods`, and several
+project-local dictionaries/tab-order values remain dataset-owned and are
+updated by specialized paths.
 
 ## 8. Recalculation dependencies
 
@@ -330,16 +339,16 @@ silently turn those preferences into `ProjectDataset` authority.
 
 ## 10. Explicit follow-up extensions
 
-The following items are intentionally not fixed by LUNA-14 or LUNA-16A:
+The following items are intentionally not fixed by LUNA-14 or LUNA-16B:
 
 - LUNA-16A follow-up: remove or explicitly version persisted derived caches
   through a future compatible migration, and decide the typed forecast-line
   identity and transaction replacement semantics. The live ownership and
   recomputation boundary are complete in this packet.
-- LUNA-16B: apply the ownership rules to schedule, workspace, and snapshot
-  state; attach/detach nested item subscriptions exactly once; prove dirty
-  coverage for every persisted edit; and keep project-local presentation
-  separate from financial state.
+- LUNA-16B follow-up: add generic deep tracking for arbitrary nested calendar,
+  baseline-entry, snapshot, and report-canvas list mutation if those become
+  supported public session APIs. The current packet owns the root collections,
+  supported editor gateways, and project-load subscription lifetime.
 - LUNA-17: coalesce recalculation and projection refreshes after ownership is
   clear.
 - LUNA-18A/B: audit window lifetime, dispatcher work, cancellation, and
@@ -404,7 +413,7 @@ This packet removes the WPF dependency from the agreed model candidate set but
 does not change the persisted derived-cache policy; cache removal remains the
 explicit LUNA-16A follow-up above. Canonical forecast/transaction ownership is
 now covered by the next evidence section, while schedule/workspace ownership
-remains with LUNA-16B.
+is covered by the following evidence section.
 
 ## 14. LUNA-16A canonical-state evidence
 
@@ -427,3 +436,22 @@ Initial cost-load snapshot generation now calculates on a cloned dataset, so
 period cut-offs never replace the live transaction collection. The project
 JSON remains an array-compatible format; only the in-process collection
 implementation is observable.
+
+## 15. LUNA-16B schedule/workspace/snapshot evidence
+
+`Luna16BStateOwnershipTests` records the second ownership boundary:
+
+- schedule activities and calendars, saved-month history, and the schedule
+  root are the exact dataset-owned collections exposed by the live view model;
+- `CollectionSubscriptionTracker` detaches removed schedule items, attaches
+  replacements once, and stops callbacks after disposal;
+- supported schedule, baseline, snapshot, and workspace mutations mark the
+  project dirty, while application-wide user-preference changes remain outside
+  project dirty state; and
+- loading a second project detaches the old schedule and workspace objects, so
+  mutations to the old project cannot dirty or recalculate the new session.
+
+Workspace layouts remain project-local persisted presentation state. The WPF
+`WorkspaceViewTab` objects are an explicit projection and are subscribed by
+reference, while saved-month snapshots remain frozen history and never feed
+current financial or schedule calculation.

@@ -89,6 +89,15 @@ public sealed class WorkspaceViewTab : ObservableModel
     private string _contentKey = string.Empty;
     private string _iconKey = string.Empty;
     private string _iconColorHex = string.Empty;
+    private List<string> _hiddenColumnKeys = [];
+    private List<WorkspaceColumnLayout> _columnLayouts = [];
+    private bool _showZeroAsBlank = true;
+    private bool _groupForecastLinesByTask;
+    private string _forecastGroupByKey = string.Empty;
+    private bool _reportCanvasInitialized;
+    private string _reportCanvasPageSize = "A4";
+    private string _reportCanvasOrientation = "Portrait";
+    private List<ReportCanvasObjectLayout> _reportCanvasObjects = [];
 
     public string WorkspaceKey { get; init; } = string.Empty;
 
@@ -127,15 +136,15 @@ public sealed class WorkspaceViewTab : ObservableModel
         $"/Assets/Icons/png/{(string.IsNullOrWhiteSpace(IconKey) ? "ic_tab_forecast_16.png" : IconKey)}",
         IconColorHex);
 
-    public List<string> HiddenColumnKeys { get; set; } = [];
-    public List<WorkspaceColumnLayout> ColumnLayouts { get; set; } = [];
-    public bool ShowZeroAsBlank { get; set; } = true;
-    public bool GroupForecastLinesByTask { get; set; }
-    public string ForecastGroupByKey { get; set; } = string.Empty;
-    public bool ReportCanvasInitialized { get; set; }
-    public string ReportCanvasPageSize { get; set; } = "A4";
-    public string ReportCanvasOrientation { get; set; } = "Portrait";
-    public List<ReportCanvasObjectLayout> ReportCanvasObjects { get; set; } = [];
+    public List<string> HiddenColumnKeys { get => _hiddenColumnKeys; set => SetProperty(ref _hiddenColumnKeys, value ?? []); }
+    public List<WorkspaceColumnLayout> ColumnLayouts { get => _columnLayouts; set => SetProperty(ref _columnLayouts, value ?? []); }
+    public bool ShowZeroAsBlank { get => _showZeroAsBlank; set => SetProperty(ref _showZeroAsBlank, value); }
+    public bool GroupForecastLinesByTask { get => _groupForecastLinesByTask; set => SetProperty(ref _groupForecastLinesByTask, value); }
+    public string ForecastGroupByKey { get => _forecastGroupByKey; set => SetProperty(ref _forecastGroupByKey, value ?? string.Empty); }
+    public bool ReportCanvasInitialized { get => _reportCanvasInitialized; set => SetProperty(ref _reportCanvasInitialized, value); }
+    public string ReportCanvasPageSize { get => _reportCanvasPageSize; set => SetProperty(ref _reportCanvasPageSize, value ?? "A4"); }
+    public string ReportCanvasOrientation { get => _reportCanvasOrientation; set => SetProperty(ref _reportCanvasOrientation, value ?? "Portrait"); }
+    public List<ReportCanvasObjectLayout> ReportCanvasObjects { get => _reportCanvasObjects; set => SetProperty(ref _reportCanvasObjects, value ?? []); }
 
     public string Name
     {

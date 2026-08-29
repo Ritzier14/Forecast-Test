@@ -162,9 +162,9 @@ public sealed class ProjectDatasetMigrationPipeline
         dataset.ContingencyEntries = EnsureList(dataset.ContingencyEntries, ref changed);
         dataset.CategorySummaries = EnsureList(dataset.CategorySummaries, ref changed);
         dataset.CostCenterNameMappings = EnsureList(dataset.CostCenterNameMappings, ref changed);
-        dataset.SavedMonthSnapshots = EnsureList(dataset.SavedMonthSnapshots, ref changed);
+        dataset.SavedMonthSnapshots = EnsureCollection(dataset.SavedMonthSnapshots, ref changed);
         dataset.AuditEvents = EnsureList(dataset.AuditEvents, ref changed);
-        dataset.WorkspaceViews = EnsureList(dataset.WorkspaceViews, ref changed);
+        dataset.WorkspaceViews = EnsureCollection(dataset.WorkspaceViews, ref changed);
         dataset.WorkspaceTabOrder = EnsureList(dataset.WorkspaceTabOrder, ref changed);
         dataset.DetailWorkspaceTabOrder = EnsureList(dataset.DetailWorkspaceTabOrder, ref changed);
         dataset.SelectedCtcMonthForecastYears = EnsureList(dataset.SelectedCtcMonthForecastYears, ref changed);
@@ -254,10 +254,10 @@ public sealed class ProjectDatasetMigrationPipeline
             }
         }
 
-        dataset.Schedule.Calendars = EnsureList(dataset.Schedule.Calendars, ref changed);
-        dataset.Schedule.Activities = EnsureList(dataset.Schedule.Activities, ref changed);
-        dataset.Schedule.Links = EnsureList(dataset.Schedule.Links, ref changed);
-        dataset.Schedule.Baselines = EnsureList(dataset.Schedule.Baselines, ref changed);
+        dataset.Schedule.Calendars = EnsureCollection(dataset.Schedule.Calendars, ref changed);
+        dataset.Schedule.Activities = EnsureCollection(dataset.Schedule.Activities, ref changed);
+        dataset.Schedule.Links = EnsureCollection(dataset.Schedule.Links, ref changed);
+        dataset.Schedule.Baselines = EnsureCollection(dataset.Schedule.Baselines, ref changed);
         foreach (var calendar in dataset.Schedule.Calendars)
         {
             if (calendar.WorkingDays is null)
@@ -272,7 +272,7 @@ public sealed class ProjectDatasetMigrationPipeline
 
         foreach (var baseline in dataset.Schedule.Baselines)
         {
-            baseline.Entries = EnsureList(baseline.Entries, ref changed);
+            baseline.Entries = EnsureCollection(baseline.Entries, ref changed);
         }
 
         changed |= NormalizeDurableTimestamps(dataset);

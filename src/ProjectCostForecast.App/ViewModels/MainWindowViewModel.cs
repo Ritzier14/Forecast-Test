@@ -106,6 +106,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private readonly Dictionary<string, string> _selectedWorkspaceViewNames = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ObservableCollection<WorkspaceViewTab>> _detailWorkspaceViews = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _selectedDetailWorkspaceViewNames = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<WorkspaceViewTab> _trackedWorkspaceViews = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<string, string> _projectCodeByTaskNumber = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, HashSet<string>> _taskNumbersByProjectCode = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<MonthlyForecast, ForecastLine> _forecastLineByMonthlyForecast = [];
@@ -172,6 +173,15 @@ public sealed partial class MainWindowViewModel : NotifyObject
             _validationService,
             dependencies.SaveConflictDecisionHandler);
         _newMonthOperation = new NewMonthOperation(_calculationService, _projectDatasetCloner, _clock);
+        _scheduleActivitySubscriptions = new(
+            ScheduleActivity_PropertyChanged,
+            ScheduleActivityCollectionChanged);
+        _scheduleCalendarSubscriptions = new(
+            ScheduleCalendar_PropertyChanged,
+            ScheduleCalendarCollectionChanged);
+        _scheduleBaselineSubscriptions = new(
+            ScheduleBaseline_PropertyChanged,
+            ScheduleBaselineCollectionChanged);
 
         _preferenceSaveTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
@@ -215,7 +225,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
         ContingencyEntries = CreateCollection<ContingencyEntry>();
         InitializeContingencyTracking();
         Phases = CreateCollection<PhaseItem>();
-        SavedMonthSnapshots = CreateCollection<SavedMonthSnapshot>();
+        SavedMonthSnapshots = new BatchObservableCollection<SavedMonthSnapshot>();
         UnmatchedImportCombinations = CreateCollection<UnmatchedImportCombination>();
         ActivePeriodWarnings = CreateCollection<string>();
         ResourceSummaries = CreateCollection<ResourceSummary>();
@@ -358,7 +368,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     public ObservableCollection<CategorySummary> CategorySummaries { get; }
     public ObservableCollection<ContingencyEntry> ContingencyEntries { get; }
     public ObservableCollection<PhaseItem> Phases { get; }
-    public ObservableCollection<SavedMonthSnapshot> SavedMonthSnapshots { get; }
+    public BatchObservableCollection<SavedMonthSnapshot> SavedMonthSnapshots { get; private set; }
     public ObservableCollection<UnmatchedImportCombination> UnmatchedImportCombinations { get; }
     public ObservableCollection<string> ActivePeriodWarnings { get; }
     public ObservableCollection<ResourceSummary> ResourceSummaries { get; }
