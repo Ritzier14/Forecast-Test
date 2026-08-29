@@ -244,14 +244,13 @@ public sealed class ScheduleCalendarWindow : Window
             return;
         }
 
-        try
+        if (BrushFactory.TryParseHexColor(_colorTextBox.Text, out _))
         {
-            _ = (Color)ColorConverter.ConvertFromString(_colorTextBox.Text)!;
             calendar.ColorHex = _colorTextBox.Text.Trim();
             _colorTextBox.ClearValue(Control.BorderBrushProperty);
             _viewModel.NotifyScheduleCalendarsChanged();
         }
-        catch
+        else
         {
             _colorTextBox.BorderBrush = Brushes.Red;
         }

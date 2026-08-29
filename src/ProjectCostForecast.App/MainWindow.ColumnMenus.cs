@@ -192,7 +192,7 @@ public partial class MainWindow
             {
                 var targetHeaderBrush =
                     string.Equals(option.Label, "Default", StringComparison.OrdinalIgnoreCase)
-                        ? CreateGridHeaderGradient()
+                        ? BrushFactory.FrozenDefaultHeaderGradient()
                         : BrushFactory.FrozenHeaderGradient(option.HeaderHex);
                 var targetSpec =
                     string.Equals(option.Label, "Default", StringComparison.OrdinalIgnoreCase)
@@ -223,7 +223,7 @@ public partial class MainWindow
                     var brush = usesSharedGradient
                         ? Brushes.Transparent
                         : string.IsNullOrWhiteSpace(colorSpec)
-                        ? CreateGridHeaderGradient()
+                        ? BrushFactory.FrozenDefaultHeaderGradient()
                         : BrushFactory.FrozenHeaderGradient(colorSpec);
                     foreach (var targetColumn in targetColumns)
                     {

@@ -377,15 +377,25 @@ public partial class MainWindow
     {
         foreach (var chart in MonthlyReportChartCanvas.Children.OfType<ReportChartCard>())
         {
-            Canvas.SetLeft(chart, Math.Clamp(Canvas.GetLeft(chart), 0, Math.Max(0, MonthlyReportChartCanvas.Width - chart.Width)));
-            Canvas.SetTop(chart, Math.Clamp(Canvas.GetTop(chart), 0, Math.Max(0, MonthlyReportChartCanvas.Height - chart.Height)));
+            var position = ReportCanvasObjectPositioning.ClampToCanvas(
+                new Point(Canvas.GetLeft(chart), Canvas.GetTop(chart)),
+                new Size(chart.Width, chart.Height),
+                MonthlyReportChartCanvas.Width,
+                MonthlyReportChartCanvas.Height);
+            Canvas.SetLeft(chart, position.X);
+            Canvas.SetTop(chart, position.Y);
             chart.SyncPositionFromCanvas();
         }
 
         foreach (var item in MonthlyReportChartCanvas.Children.OfType<ReportCanvasObjectCard>())
         {
-            Canvas.SetLeft(item, Math.Clamp(Canvas.GetLeft(item), 0, Math.Max(0, MonthlyReportChartCanvas.Width - item.Width)));
-            Canvas.SetTop(item, Math.Clamp(Canvas.GetTop(item), 0, Math.Max(0, MonthlyReportChartCanvas.Height - item.Height)));
+            var position = ReportCanvasObjectPositioning.ClampToCanvas(
+                new Point(Canvas.GetLeft(item), Canvas.GetTop(item)),
+                new Size(item.Width, item.Height),
+                MonthlyReportChartCanvas.Width,
+                MonthlyReportChartCanvas.Height);
+            Canvas.SetLeft(item, position.X);
+            Canvas.SetTop(item, position.Y);
             item.SyncPositionFromCanvas();
         }
     }
@@ -554,17 +564,14 @@ internal sealed class ReportChartBuilderWindow : Window
     }
 }
 
-internal sealed class ReportChartCard : Border
+internal sealed class ReportChartCard : Border, IReportCanvasObjectHost
 {
     private readonly ReportCanvasObjectLayout _objectLayout;
     private readonly ReportChartVisual _chartVisual;
     private readonly TextBlock _titleText;
     private readonly StackPanel _dataSetPillPanel;
     private readonly Border _dataSetStrip;
-    private Point _dragOrigin;
-    private double _leftOrigin;
-    private double _topOrigin;
-    private bool _isDragging;
+    private readonly ReportCanvasDragController _dragController;
 
     public ReportChartCard(ReportChartModel model, ReportCanvasObjectLayout objectLayout)
     {
@@ -627,9 +634,6 @@ internal sealed class ReportChartCard : Border
         };
         headerLayout.Children.Add(_titleText);
         header.Child = headerLayout;
-        header.PreviewMouseLeftButtonDown += Header_MouseLeftButtonDown;
-        header.PreviewMouseMove += Header_MouseMove;
-        header.PreviewMouseLeftButtonUp += Header_MouseLeftButtonUp;
         layout.Children.Add(header);
 
         _dataSetPillPanel = new StackPanel
@@ -667,6 +671,11 @@ internal sealed class ReportChartCard : Border
         Panel.SetZIndex(resizeThumb, 20);
         layout.Children.Add(resizeThumb);
         Child = layout;
+        _dragController = new ReportCanvasDragController(
+            this,
+            header,
+            this,
+            () => PositionChanged?.Invoke(this, EventArgs.Empty));
         RebuildDataSetPills();
     }
 
@@ -676,6 +685,7 @@ internal sealed class ReportChartCard : Border
     public event EventHandler<ReportChartDataSetEventArgs>? DataSetRemoved;
 
     public ReportCanvasObjectLayout Layout => _objectLayout;
+    internal bool IsDragging => _dragController.IsDragging;
 
     public void UpdateChart(ReportChartModel model)
     {
@@ -810,54 +820,6 @@ internal sealed class ReportChartCard : Border
     {
         _objectLayout.X = Canvas.GetLeft(this);
         _objectLayout.Y = Canvas.GetTop(this);
-    }
-
-    private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        for (var source = e.OriginalSource as DependencyObject; source is not null; source = VisualTreeHelper.GetParent(source))
-        {
-            if (source is Button)
-            {
-                return;
-            }
-
-            if (ReferenceEquals(source, sender))
-            {
-                break;
-            }
-        }
-
-        _isDragging = true;
-        _dragOrigin = e.GetPosition(Parent as IInputElement);
-        _leftOrigin = Canvas.GetLeft(this);
-        _topOrigin = Canvas.GetTop(this);
-        ((UIElement)sender).CaptureMouse();
-        Panel.SetZIndex(this, 100);
-        e.Handled = true;
-    }
-
-    private void Header_MouseMove(object sender, MouseEventArgs e)
-    {
-        if (!_isDragging || Parent is not Canvas canvas || e.LeftButton != MouseButtonState.Pressed)
-        {
-            return;
-        }
-
-        var point = e.GetPosition(canvas);
-        var left = Math.Clamp(_leftOrigin + point.X - _dragOrigin.X, 0, Math.Max(0, canvas.Width - Width));
-        var top = Math.Clamp(_topOrigin + point.Y - _dragOrigin.Y, 0, Math.Max(0, canvas.Height - Height));
-        Canvas.SetLeft(this, left);
-        Canvas.SetTop(this, top);
-        SyncPositionFromCanvas();
-    }
-
-    private void Header_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-    {
-        _isDragging = false;
-        ((UIElement)sender).ReleaseMouseCapture();
-        Panel.SetZIndex(this, 1);
-        PositionChanged?.Invoke(this, EventArgs.Empty);
-        e.Handled = true;
     }
 }
 

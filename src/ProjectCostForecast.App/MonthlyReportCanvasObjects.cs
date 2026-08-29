@@ -405,8 +405,13 @@ public partial class MainWindow
 
     private void AddCardToCanvas(FrameworkElement card, ReportCanvasObjectLayout layout)
     {
-        Canvas.SetLeft(card, Math.Clamp(layout.X, 0, Math.Max(0, MonthlyReportChartCanvas.Width - card.Width)));
-        Canvas.SetTop(card, Math.Clamp(layout.Y, 0, Math.Max(0, MonthlyReportChartCanvas.Height - card.Height)));
+        var position = ReportCanvasObjectPositioning.ClampToCanvas(
+            new Point(layout.X, layout.Y),
+            new Size(card.Width, card.Height),
+            MonthlyReportChartCanvas.Width,
+            MonthlyReportChartCanvas.Height);
+        Canvas.SetLeft(card, position.X);
+        Canvas.SetTop(card, position.Y);
         MonthlyReportChartCanvas.Children.Add(card);
         UpdateReportCanvasHint();
     }
@@ -596,13 +601,10 @@ public partial class MainWindow
     }
 }
 
-internal sealed class ReportCanvasObjectCard : Border
+internal sealed class ReportCanvasObjectCard : Border, IReportCanvasObjectHost
 {
     private readonly ContentControl _contentHost;
-    private Point _dragOrigin;
-    private double _leftOrigin;
-    private double _topOrigin;
-    private bool _isDragging;
+    private readonly ReportCanvasDragController _dragController;
 
     public ReportCanvasObjectCard(string heading, FrameworkElement content, ReportCanvasObjectLayout layout)
     {
@@ -651,9 +653,6 @@ internal sealed class ReportCanvasObjectCard : Border
             VerticalAlignment = VerticalAlignment.Center
         });
         header.Child = headerPanel;
-        header.PreviewMouseLeftButtonDown += Header_MouseLeftButtonDown;
-        header.PreviewMouseMove += Header_MouseMove;
-        header.PreviewMouseLeftButtonUp += Header_MouseLeftButtonUp;
         Panel.SetZIndex(header, 25);
         grid.Children.Add(header);
 
@@ -671,11 +670,17 @@ internal sealed class ReportCanvasObjectCard : Border
         Panel.SetZIndex(resizeThumb, 40);
         grid.Children.Add(resizeThumb);
         Child = grid;
+        _dragController = new ReportCanvasDragController(
+            this,
+            header,
+            this,
+            () => PositionChanged?.Invoke(this, EventArgs.Empty));
     }
 
     public ReportCanvasObjectLayout Layout { get; }
     public event EventHandler? RemoveRequested;
     public event EventHandler? PositionChanged;
+    internal bool IsDragging => _dragController.IsDragging;
 
     public void SetSelected(bool selected)
     {
@@ -696,66 +701,6 @@ internal sealed class ReportCanvasObjectCard : Border
     {
         Layout.X = Canvas.GetLeft(this);
         Layout.Y = Canvas.GetTop(this);
-    }
-
-    private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (FindButtonAncestor(e.OriginalSource as DependencyObject, sender as DependencyObject))
-        {
-            return;
-        }
-
-        _isDragging = true;
-        _dragOrigin = e.GetPosition(Parent as IInputElement);
-        _leftOrigin = Canvas.GetLeft(this);
-        _topOrigin = Canvas.GetTop(this);
-        ((UIElement)sender).CaptureMouse();
-        Panel.SetZIndex(this, 100);
-        e.Handled = true;
-    }
-
-    private void Header_MouseMove(object sender, MouseEventArgs e)
-    {
-        if (!_isDragging || Parent is not Canvas canvas || e.LeftButton != MouseButtonState.Pressed)
-        {
-            return;
-        }
-
-        var point = e.GetPosition(canvas);
-        Canvas.SetLeft(this, Math.Clamp(_leftOrigin + point.X - _dragOrigin.X, 0, Math.Max(0, canvas.Width - Width)));
-        Canvas.SetTop(this, Math.Clamp(_topOrigin + point.Y - _dragOrigin.Y, 0, Math.Max(0, canvas.Height - Height)));
-        SyncPositionFromCanvas();
-    }
-
-    private void Header_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-    {
-        if (!_isDragging)
-        {
-            return;
-        }
-
-        _isDragging = false;
-        ((UIElement)sender).ReleaseMouseCapture();
-        Panel.SetZIndex(this, 1);
-        PositionChanged?.Invoke(this, EventArgs.Empty);
-        e.Handled = true;
-    }
-
-    private static bool FindButtonAncestor(DependencyObject? source, DependencyObject? stop)
-    {
-        while (source is not null)
-        {
-            if (source is Button)
-            {
-                return true;
-            }
-            if (ReferenceEquals(source, stop))
-            {
-                return false;
-            }
-            source = VisualTreeHelper.GetParent(source);
-        }
-        return false;
     }
 }
 

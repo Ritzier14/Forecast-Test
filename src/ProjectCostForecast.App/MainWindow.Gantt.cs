@@ -672,15 +672,7 @@ public partial class MainWindow
 
     private static SolidColorBrush CreateCalendarSolidBrush(string? colorHex)
     {
-        try
-        {
-            var color = (Color)ColorConverter.ConvertFromString(string.IsNullOrWhiteSpace(colorHex) ? "#94A3B8" : colorHex)!;
-            return new SolidColorBrush(color);
-        }
-        catch
-        {
-            return new SolidColorBrush(Color.FromRgb(0x94, 0xA3, 0xB8));
-        }
+        return BrushFactory.CreateSolidColor(colorHex, "#94A3B8");
     }
 
     private void DrawGanttTimescale(DateOnly rangeStart, DateOnly rangeEnd, double bodyHeight)

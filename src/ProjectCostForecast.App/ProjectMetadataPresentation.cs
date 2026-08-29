@@ -31,34 +31,16 @@ public static class ProjectMetadataPresentation
 
     public static Brush GetColorBrush(string? selectedHex, string? fallbackHex)
     {
-        if (BrushFactory.TryParseHexColor(selectedHex, out var selectedColor))
+        if (!BrushFactory.TryParseHexColor(selectedHex, out _)
+            && !BrushFactory.TryParseHexColor(fallbackHex, out _))
         {
-            return new SolidColorBrush(selectedColor);
+            return BrushFactory.Frozen("#FFFFFF");
         }
 
-        if (BrushFactory.TryParseHexColor(fallbackHex, out var fallbackColor))
-        {
-            return new SolidColorBrush(fallbackColor);
-        }
-
-        return BrushFactory.Frozen("#FFFFFF");
+        return BrushFactory.CreateSolidColor(selectedHex, fallbackHex);
     }
 
-    public static string GetColorLabel(string? hex)
-    {
-        return (hex ?? string.Empty).Trim().ToUpperInvariant() switch
-        {
-            "" => "Default",
-            "#EDF8F0" or "#16A34A" => "Green",
-            "#FFF4E7" or "#EA580C" => "Orange",
-            "#EEF5FF" or "#2563EB" => "Blue",
-            "#F5F0FF" or "#7C3AED" => "Purple",
-            "#ECF9FA" => "Cyan",
-            "#FFF0F5" or "#DC2626" => "Pink",
-            "#475569" => "Slate",
-            _ => hex ?? "Default"
-        };
-    }
+    public static string GetColorLabel(string? hex) => ColorPalette.GetLabel(hex);
 
     internal static string? GetString(object[] values, int index)
     {

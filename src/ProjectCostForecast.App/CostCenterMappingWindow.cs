@@ -1058,7 +1058,7 @@ public sealed class CostCenterMappingWindow : Window
 
     private static SolidColorBrush BrushFrom(string hex)
     {
-        return new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
+        return BrushFactory.Frozen(hex);
     }
 
     private sealed class CandidateRow

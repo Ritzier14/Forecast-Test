@@ -180,6 +180,16 @@ post-drag context-menu suppression. `RightClickGridPanSession` keeps the
 threshold and offset policy independent of WPF input, while the behavior owns
 per-grid state and cancels it on capture loss, Escape, unload, or detach.
 
+Monthly report cards implement `IReportCanvasObjectHost` and delegate header
+dragging to one `ReportCanvasDragController`. The controller owns canvas
+coordinate conversion, bounded position updates, mouse capture, and temporary
+z-order changes; each card keeps its own layout and dirty-state callback.
+`ReportCanvasObjectPositioning` is the shared clamp used by placement, resize
+containment, and drag updates. Persisted colour values are parsed and
+normalized by the WPF-free `ColorValueParser`; `BrushFactory` is the only
+boundary that turns those values into WPF brushes and owns the shared default
+header gradient. Common colour labels and icon swatches use `ColorPalette`.
+
 The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root
 collection and persisted calculated field, records the current identity and

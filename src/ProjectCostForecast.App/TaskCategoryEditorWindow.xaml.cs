@@ -682,7 +682,7 @@ public partial class TaskCategoryEditorWindow : Window
                     Height = 14,
                     CornerRadius = new CornerRadius(4),
                     Background = string.IsNullOrWhiteSpace(hex)
-                        ? CreateEditorHeaderGradient()
+                        ? BrushFactory.FrozenDefaultHeaderGradient()
                         : BrushFactory.FrozenHeaderGradient(hex),
                     BorderBrush = BrushFactory.Frozen("#CBD5E1"),
                     BorderThickness = new Thickness(1)
@@ -731,7 +731,7 @@ public partial class TaskCategoryEditorWindow : Window
     private static void ApplyEditorHeaderColour(DataGridColumn column, string? colorSpec)
     {
         var brush = string.IsNullOrWhiteSpace(colorSpec)
-            ? CreateEditorHeaderGradient()
+            ? BrushFactory.FrozenDefaultHeaderGradient()
             : BrushFactory.FrozenHeaderGradient(colorSpec);
         GridColumnPresentationState.SetHeaderBackground(column, brush);
         GridColumnPresentationState.SetBaseHeaderBackground(column, brush);
@@ -753,20 +753,6 @@ public partial class TaskCategoryEditorWindow : Window
                 GridColumnPresentationState.SetHeaderBorderBrush(column, BrushFactory.Frozen("#DDE7F1"));
             }
         }
-    }
-
-    private static LinearGradientBrush CreateEditorHeaderGradient()
-    {
-        var gradient = new LinearGradientBrush
-        {
-            StartPoint = new Point(0.5, 0),
-            EndPoint = new Point(0.5, 1)
-        };
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xF8, 0xFA, 0xFC), 0));
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xEC, 0xF1, 0xF6), 0.5));
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xE1, 0xE8, 0xF0), 1));
-        gradient.Freeze();
-        return gradient;
     }
 
     private void RoundedGridHost_SizeChanged(object sender, SizeChangedEventArgs e)

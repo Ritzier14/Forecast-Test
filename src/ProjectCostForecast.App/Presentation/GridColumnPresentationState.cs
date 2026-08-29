@@ -5,7 +5,7 @@ namespace ProjectCostForecast.App;
 
 public static class GridColumnPresentationState
 {
-    private static readonly Brush DefaultHeaderGradient = CreateDefaultHeaderGradient();
+    private static readonly Brush DefaultHeaderGradient = BrushFactory.FrozenDefaultHeaderGradient();
     private static readonly Brush DefaultColumnBorderBrush = CreateFrozenBrush(0xEE, 0xF3, 0xF8);
     private static readonly Brush DefaultHeaderBorderBrush = CreateFrozenBrush(0xE2, 0xEA, 0xF4);
 
@@ -96,20 +96,6 @@ public static class GridColumnPresentationState
     public static string GetHeaderColorSpec(DependencyObject element) => (string)element.GetValue(HeaderColorSpecProperty);
 
     public static void SetHeaderColorSpec(DependencyObject element, string value) => element.SetValue(HeaderColorSpecProperty, value);
-
-    private static Brush CreateDefaultHeaderGradient()
-    {
-        var gradient = new LinearGradientBrush
-        {
-            StartPoint = new Point(0.5, 0),
-            EndPoint = new Point(0.5, 1)
-        };
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xF8, 0xFA, 0xFC), 0));
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xEC, 0xF1, 0xF6), 0.5));
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xE1, 0xE8, 0xF0), 1));
-        gradient.Freeze();
-        return gradient;
-    }
 
     private static Brush CreateFrozenBrush(byte red, byte green, byte blue)
     {

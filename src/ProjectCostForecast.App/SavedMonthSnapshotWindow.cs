@@ -86,7 +86,7 @@ public sealed class SavedMonthSnapshotWindow : Window
             Text = "Views",
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 10, 0),
-            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#64748B"))
+            Foreground = BrushFactory.Frozen("#64748B")
         };
         DockPanel.SetDock(viewLabel, Dock.Left);
         lineViewStrip.Children.Add(viewLabel);
@@ -115,8 +115,8 @@ public sealed class SavedMonthSnapshotWindow : Window
 
         var lockedNotice = new Border
         {
-            Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFF5F5")),
-            BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FECACA")),
+            Background = BrushFactory.Frozen("#FFF5F5"),
+            BorderBrush = BrushFactory.Frozen("#FECACA"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(6),
             Padding = new Thickness(8, 5, 8, 5),
@@ -124,7 +124,7 @@ public sealed class SavedMonthSnapshotWindow : Window
             Child = new TextBlock
             {
                 Text = "Previous forecast locked for editing",
-                Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#B91C1C")),
+                Foreground = BrushFactory.Frozen("#B91C1C"),
                 FontWeight = FontWeights.SemiBold
             }
         };
@@ -333,8 +333,8 @@ public sealed class SavedMonthSnapshotWindow : Window
         style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 6, 0)));
         style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
         style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
-        style.Setters.Add(new Setter(Control.BorderBrushProperty, new SolidColorBrush((Color)ColorConverter.ConvertFromString("#CBD5E1"))));
-        style.Setters.Add(new Setter(Control.ForegroundProperty, new SolidColorBrush((Color)ColorConverter.ConvertFromString("#0F172A"))));
+        style.Setters.Add(new Setter(Control.BorderBrushProperty, BrushFactory.Frozen("#CBD5E1")));
+        style.Setters.Add(new Setter(Control.ForegroundProperty, BrushFactory.Frozen("#0F172A")));
 
         var template = new ControlTemplate(typeof(TabItem));
         var borderFactory = new FrameworkElementFactory(typeof(Border));
@@ -358,7 +358,7 @@ public sealed class SavedMonthSnapshotWindow : Window
             Value = true
         };
         selectedTrigger.Setters.Add(new Setter(Border.BackgroundProperty, Brushes.White, "TabBorder"));
-        selectedTrigger.Setters.Add(new Setter(Border.BorderBrushProperty, new SolidColorBrush((Color)ColorConverter.ConvertFromString("#94A3B8")), "TabBorder"));
+        selectedTrigger.Setters.Add(new Setter(Border.BorderBrushProperty, BrushFactory.Frozen("#94A3B8"), "TabBorder"));
         template.Triggers.Add(selectedTrigger);
 
         var hoverTrigger = new Trigger
@@ -366,7 +366,7 @@ public sealed class SavedMonthSnapshotWindow : Window
             Property = UIElement.IsMouseOverProperty,
             Value = true
         };
-        hoverTrigger.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F8FAFC")), "TabBorder"));
+        hoverTrigger.Setters.Add(new Setter(Border.BackgroundProperty, BrushFactory.Frozen("#F8FAFC"), "TabBorder"));
         template.Triggers.Add(hoverTrigger);
 
         style.Setters.Add(new Setter(Control.TemplateProperty, template));

@@ -235,7 +235,7 @@ public partial class HeaderColorPickerPopup : UserControl
             Width = 70,
             Height = 28,
             CornerRadius = new CornerRadius(5),
-            Background = preset.Spec is null ? CreateDefaultHeaderGradient() : BrushFactory.FrozenHeaderGradient(preset.Spec),
+            Background = preset.Spec is null ? BrushFactory.FrozenDefaultHeaderGradient() : BrushFactory.FrozenHeaderGradient(preset.Spec),
             HorizontalAlignment = HorizontalAlignment.Left
         };
         grid.Children.Add(preview);
@@ -615,7 +615,7 @@ public partial class HeaderColorPickerPopup : UserControl
     private void RefreshPreviewOnly()
     {
         _previewBorder.Background = _isDefaultSelection
-            ? CreateDefaultHeaderGradient()
+            ? BrushFactory.FrozenDefaultHeaderGradient()
             : BrushFactory.FrozenHeaderGradient(BrushFactory.SerializeAdvancedHeaderGradientSpec(CreateCurrentSpec()));
     }
 
@@ -1183,20 +1183,6 @@ public partial class HeaderColorPickerPopup : UserControl
             Cursor = Cursors.Hand,
             Template = CreateStretchButtonTemplate(new CornerRadius(15))
         };
-    }
-
-    private static Brush CreateDefaultHeaderGradient()
-    {
-        var gradient = new LinearGradientBrush
-        {
-            StartPoint = new Point(0.5, 0),
-            EndPoint = new Point(0.5, 1)
-        };
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xF8, 0xFA, 0xFC), 0));
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xEC, 0xF1, 0xF6), 0.5));
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xE1, 0xE8, 0xF0), 1));
-        gradient.Freeze();
-        return gradient;
     }
 
     private static byte BlendByte(byte left, byte right, double amount)

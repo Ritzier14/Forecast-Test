@@ -395,7 +395,7 @@ public partial class MainWindow
             return fallback;
         }
 
-        if (string.IsNullOrWhiteSpace(tintHex) || !TryParseHexColor(tintHex, out var tintColor))
+        if (string.IsNullOrWhiteSpace(tintHex) || !BrushFactory.TryParseHexColor(tintHex, out var tintColor))
         {
             BuiltInImageSources[cacheKey] = bitmap;
             return bitmap;
@@ -466,7 +466,7 @@ public partial class MainWindow
 
     private static ImageSource CreateFallbackIconSource(string? tintHex)
     {
-        var color = TryParseHexColor(tintHex, out var parsedColor)
+        var color = BrushFactory.TryParseHexColor(tintHex, out var parsedColor)
             ? parsedColor
             : Color.FromRgb(0x47, 0x55, 0x69);
         var pen = new Pen(new SolidColorBrush(color), 1.6);
@@ -482,29 +482,6 @@ public partial class MainWindow
         return image;
     }
 
-    private static bool TryParseHexColor(string? tintHex, out Color color)
-    {
-        color = default;
-        if (string.IsNullOrWhiteSpace(tintHex))
-        {
-            return false;
-        }
-
-        try
-        {
-            var converter = ColorConverter.ConvertFromString(tintHex);
-            if (converter is Color parsed)
-            {
-                color = parsed;
-                return true;
-            }
-        }
-        catch
-        {
-        }
-
-        return false;
-    }
 }
 
 public sealed record BuiltInIconPickerOption(string Key, string Label, string AssetPath, string Category);

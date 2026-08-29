@@ -966,7 +966,7 @@ public partial class MainWindow
 
     private static void ApplyForecastFixedHeaderGradient(IEnumerable<DataGridColumn> columns)
     {
-        var gradient = CreateGridHeaderGradient();
+        var gradient = BrushFactory.FrozenDefaultHeaderGradient();
 
         foreach (var column in columns)
         {
@@ -2102,20 +2102,6 @@ public partial class MainWindow
         };
     }
 
-    private static LinearGradientBrush CreateGridHeaderGradient()
-    {
-        var gradient = new LinearGradientBrush
-        {
-            StartPoint = new Point(0.5, 0),
-            EndPoint = new Point(0.5, 1)
-        };
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xF8, 0xFA, 0xFC), 0));
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xEC, 0xF1, 0xF6), 0.5));
-        gradient.GradientStops.Add(new GradientStop(Color.FromRgb(0xE1, 0xE8, 0xF0), 1));
-        gradient.Freeze();
-        return gradient;
-    }
-
     private void ApplyDefaultColumnPresentation(DependencyObject root)
     {
         if (root is DataGrid grid)
@@ -2251,12 +2237,7 @@ public partial class MainWindow
     private static bool IsColumnColourSelected(DataGridColumn column, ColumnColourOption option)
     {
         return GridColumnPresentationState.GetColumnBackground(column) is SolidColorBrush brush
-            && string.Equals(brush.Color.ToString(), NormalizeHex(option.ColumnHex), StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string NormalizeHex(string hex)
-    {
-        return hex.Length == 7 ? $"#FF{hex[1..]}" : hex;
+            && string.Equals(brush.Color.ToString(), ColorValueParser.NormalizeHex(option.ColumnHex, includeAlpha: true), StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed record DefaultColumnWidth(DataGridLength Width);

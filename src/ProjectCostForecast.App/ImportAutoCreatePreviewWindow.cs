@@ -372,6 +372,6 @@ public sealed class ImportAutoCreatePreviewWindow : Window
 
     private static SolidColorBrush BrushFrom(string hex)
     {
-        return new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
+        return BrushFactory.Frozen(hex);
     }
 }

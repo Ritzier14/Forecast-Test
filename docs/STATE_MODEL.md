@@ -532,3 +532,20 @@ remains later UI work.
   cancels on capture loss, Escape, unload, or lifecycle detach; and
 - column headers, scrollbars, row resizing, and existing grid selection or
   header actions remain outside the shared panning state.
+
+## 20. LUNA-19B shared report-canvas and colour presentation evidence
+
+`ReportCanvasDragController` is the single header-drag implementation for
+`ReportCanvasObjectCard` and `ReportChartCard`. Both cards expose the same
+`IReportCanvasObjectHost` contract for selection, layout, and saved-position
+updates. Drag coordinates are read in the owning canvas coordinate space,
+positions are clamped through `ReportCanvasObjectPositioning`, the original
+panel z-index is restored after a drag, and the card's existing
+`PositionChanged` callback remains the dirty-state gateway.
+
+`ColorValueParser` is a WPF-free parser/normalizer for three-, four-, six-,
+and eight-digit hexadecimal values, including alpha. `ColorPalette` owns the
+shared metadata labels and icon colour options. `BrushFactory` adapts parsed
+values to WPF `Color`/brush instances and exposes the one frozen default header
+gradient used by the main grid, task/category editor, and header colour picker;
+no domain or persisted colour type references WPF.

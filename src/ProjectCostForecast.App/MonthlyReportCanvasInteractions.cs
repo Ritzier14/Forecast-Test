@@ -293,15 +293,9 @@ public partial class MainWindow
     {
         while (source is not null)
         {
-            if (source is ReportCanvasObjectCard objectCard)
+            if (source is IReportCanvasObjectHost host && host is FrameworkElement element)
             {
-                SelectReportCanvasObject(objectCard.Layout, objectCard);
-                return;
-            }
-
-            if (source is ReportChartCard chartCard)
-            {
-                SelectReportCanvasObject(chartCard.Layout, chartCard);
+                SelectReportCanvasObject(host.Layout, element);
                 return;
             }
 
@@ -311,24 +305,16 @@ public partial class MainWindow
 
     private void SelectReportCanvasObject(ReportCanvasObjectLayout layout, FrameworkElement element)
     {
-        if (_selectedReportCanvasElement is ReportCanvasObjectCard previousObjectCard)
+        if (_selectedReportCanvasElement is IReportCanvasObjectHost previousHost)
         {
-            previousObjectCard.SetSelected(false);
-        }
-        else if (_selectedReportCanvasElement is ReportChartCard previousChartCard)
-        {
-            previousChartCard.SetSelected(false);
+            previousHost.SetSelected(false);
         }
 
         _selectedReportCanvasObject = layout;
         _selectedReportCanvasElement = element;
-        if (element is ReportCanvasObjectCard objectCard)
+        if (element is IReportCanvasObjectHost host)
         {
-            objectCard.SetSelected(true);
-        }
-        else if (element is ReportChartCard chartCard)
-        {
-            chartCard.SetSelected(true);
+            host.SetSelected(true);
         }
 
         if (IsMonthlyReportWorkspace())
@@ -340,13 +326,9 @@ public partial class MainWindow
     private void ClearReportCanvasObjectSelection()
     {
         EndReportTickFrequencyDrag();
-        if (_selectedReportCanvasElement is ReportCanvasObjectCard objectCard)
+        if (_selectedReportCanvasElement is IReportCanvasObjectHost host)
         {
-            objectCard.SetSelected(false);
-        }
-        else if (_selectedReportCanvasElement is ReportChartCard chartCard)
-        {
-            chartCard.SetSelected(false);
+            host.SetSelected(false);
         }
 
         _selectedReportCanvasObject = null;
@@ -528,9 +510,11 @@ public partial class MainWindow
     }
 
     private Point ClampReportCanvasObjectPosition(Point position, Size size)
-        => new(
-            Math.Clamp(position.X, 0, Math.Max(0, MonthlyReportChartCanvas.Width - size.Width)),
-            Math.Clamp(position.Y, 0, Math.Max(0, MonthlyReportChartCanvas.Height - size.Height)));
+        => ReportCanvasObjectPositioning.ClampToCanvas(
+            position,
+            size,
+            MonthlyReportChartCanvas.Width,
+            MonthlyReportChartCanvas.Height);
 
     private Point ClampReportCanvasPoint(Point point)
     {
@@ -543,7 +527,7 @@ public partial class MainWindow
     {
         while (source is not null)
         {
-            if (source is ReportCanvasObjectCard or ReportChartCard)
+            if (source is IReportCanvasObjectHost)
             {
                 return true;
             }

@@ -17,6 +17,7 @@ public static class BrushFactory
         };
 
     private const string AdvancedGradientPrefix = "gradient:v1";
+    private static readonly LinearGradientBrush DefaultHeaderGradient = CreateDefaultHeaderGradient();
 
     public static SolidColorBrush Frozen(byte red, byte green, byte blue)
     {
@@ -27,10 +28,22 @@ public static class BrushFactory
 
     public static SolidColorBrush Frozen(string hex)
     {
-        var color = (Color)ColorConverter.ConvertFromString(hex);
+        var color = ToMediaColor(ParseColor(hex));
         var brush = new SolidColorBrush(color);
         brush.Freeze();
         return brush;
+    }
+
+    public static LinearGradientBrush FrozenDefaultHeaderGradient() => DefaultHeaderGradient;
+
+    public static SolidColorBrush CreateSolidColor(string? hex, string? fallbackHex = "#FFFFFF")
+    {
+        var color = TryParseHexColor(hex, out var parsed)
+            ? parsed
+            : TryParseHexColor(fallbackHex, out var fallback)
+                ? fallback
+                : Colors.White;
+        return new SolidColorBrush(color);
     }
 
     public static LinearGradientBrush FrozenVerticalGradient(string topHex, string bottomHex)
@@ -40,8 +53,8 @@ public static class BrushFactory
             StartPoint = new System.Windows.Point(0.5, 0),
             EndPoint = new System.Windows.Point(0.5, 1)
         };
-        brush.GradientStops.Add(new GradientStop((Color)ColorConverter.ConvertFromString(topHex), 0));
-        brush.GradientStops.Add(new GradientStop((Color)ColorConverter.ConvertFromString(bottomHex), 1));
+        brush.GradientStops.Add(new GradientStop(ToMediaColor(ParseColor(topHex)), 0));
+        brush.GradientStops.Add(new GradientStop(ToMediaColor(ParseColor(bottomHex)), 1));
         brush.Freeze();
         return brush;
     }
@@ -56,7 +69,7 @@ public static class BrushFactory
         }
 
         var spec = ParseHeaderGradientSpec(baseHex);
-        var color = (Color)ColorConverter.ConvertFromString(spec.BaseHex);
+        var color = ToMediaColor(ParseColor(spec.BaseHex));
         var top = Blend(color, Colors.White, spec.TopBlend);
         var middle = Blend(color, Colors.White, spec.MiddleBlend);
         var bottom = Blend(color, Colors.Black, spec.BottomShade);
@@ -120,7 +133,7 @@ public static class BrushFactory
         }
 
         var legacy = ParseHeaderGradientSpec(value);
-        var baseColor = (Color)ColorConverter.ConvertFromString(legacy.BaseHex);
+        var baseColor = ToMediaColor(ParseColor(legacy.BaseHex));
         var stops = new List<HeaderGradientStop>
         {
             new(0, ToHex(Blend(baseColor, Colors.White, legacy.TopBlend)), 1),
@@ -210,22 +223,14 @@ public static class BrushFactory
 
     public static bool TryParseHexColor(string? value, out Color color)
     {
-        try
+        if (ColorValueParser.TryParseHex(value, out var parsed))
         {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                color = default;
-                return false;
-            }
-
-            color = (Color)ColorConverter.ConvertFromString(value);
+            color = ToMediaColor(parsed);
             return true;
         }
-        catch
-        {
-            color = default;
-            return false;
-        }
+
+        color = default;
+        return false;
     }
 
     private static Color Blend(Color color, Color target, double amount)
@@ -263,7 +268,7 @@ public static class BrushFactory
 
         foreach (var stop in spec.Stops.OrderBy(stop => stop.Offset))
         {
-            var color = (Color)ColorConverter.ConvertFromString(NormalizeHex(stop.Hex));
+            var color = ToMediaColor(ParseColor(NormalizeHex(stop.Hex)));
             color.A = (byte)Math.Round(Math.Clamp(stop.Opacity, 0, 1) * 255);
             brush.GradientStops.Add(new GradientStop(color, Math.Clamp(stop.Offset, 0, 1)));
         }
@@ -323,11 +328,40 @@ public static class BrushFactory
 
     private static string NormalizeHex(string hex)
     {
-        return TryParseHexColor(hex, out var color) ? ToHex(color) : "#000000";
+        return ColorValueParser.NormalizeHex(hex);
     }
 
     private static string ToHex(Color color)
     {
-        return $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+        return new ColorValue(color.R, color.G, color.B, color.A).ToHex();
+    }
+
+    private static ColorValue ParseColor(string value)
+    {
+        if (ColorValueParser.TryParseHex(value, out var color))
+        {
+            return color;
+        }
+
+        throw new FormatException($"Invalid hexadecimal colour value: '{value}'.");
+    }
+
+    private static Color ToMediaColor(ColorValue color)
+    {
+        return Color.FromArgb(color.Alpha, color.Red, color.Green, color.Blue);
+    }
+
+    private static LinearGradientBrush CreateDefaultHeaderGradient()
+    {
+        var gradient = new LinearGradientBrush
+        {
+            StartPoint = new System.Windows.Point(0.5, 0),
+            EndPoint = new System.Windows.Point(0.5, 1)
+        };
+        gradient.GradientStops.Add(new GradientStop(ToMediaColor(ParseColor("#F8FAFC")), 0));
+        gradient.GradientStops.Add(new GradientStop(ToMediaColor(ParseColor("#ECF1F6")), 0.5));
+        gradient.GradientStops.Add(new GradientStop(ToMediaColor(ParseColor("#E1E8F0")), 1));
+        gradient.Freeze();
+        return gradient;
     }
 }

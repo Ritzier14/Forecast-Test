@@ -8,17 +8,6 @@ namespace ProjectCostForecast.App;
 
 public partial class BuiltInIconPickerWindow : UserControl
 {
-    private static readonly IReadOnlyList<(string Name, string? Hex)> IconColourOptions =
-    [
-        ("Default", null),
-        ("Slate", "#475569"),
-        ("Blue", "#2563EB"),
-        ("Green", "#16A34A"),
-        ("Orange", "#EA580C"),
-        ("Red", "#DC2626"),
-        ("Purple", "#7C3AED")
-    ];
-
     private readonly IReadOnlyList<BuiltInIconPickerOption> _allOptions;
     private readonly Action<string?, string?> _applyIcon;
     private readonly string _defaultKey;
@@ -130,7 +119,7 @@ public partial class BuiltInIconPickerWindow : UserControl
     private ContextMenu BuildColourMenu(string iconKey)
     {
         var menu = new ContextMenu();
-        foreach (var (name, hex) in IconColourOptions)
+        foreach (var (name, hex) in ColorPalette.IconColours)
         {
             var item = new MenuItem
             {
@@ -145,7 +134,7 @@ public partial class BuiltInIconPickerWindow : UserControl
                     CornerRadius = new CornerRadius(2),
                     Background = string.IsNullOrWhiteSpace(hex)
                         ? BrushFactory.Frozen("#FFFFFF")
-                        : new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)),
+                        : BrushFactory.Frozen(hex!),
                     BorderBrush = BrushFactory.Frozen("#CBD5E1"),
                     BorderThickness = new Thickness(1)
                 }
@@ -283,7 +272,7 @@ public partial class BuiltInIconPickerWindow : UserControl
                 Width = 7,
                 Height = 7,
                 CornerRadius = new CornerRadius(1),
-                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(SelectedIconColorHex)),
+                Background = BrushFactory.Frozen(SelectedIconColorHex!),
                 BorderBrush = Brushes.White,
                 BorderThickness = new Thickness(1),
                 HorizontalAlignment = HorizontalAlignment.Left,
