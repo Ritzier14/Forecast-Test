@@ -44,6 +44,12 @@ displaying exception details, project values, imported rows, names, or paths.
 - Every editable persisted collection must track item and collection changes, update affected totals, and set `IsDirty`.
 - Subscriptions owned by a window must be named, idempotent, detached when the data context changes, and detached when the window unloads.
 
+The pre-refactor state inventory and ownership boundary is recorded in
+[`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root
+collection and persisted calculated field, records the current identity and
+dirty-tracking seams, and names LUNA-16A/LUNA-16B as the owners of the future
+canonical forecast/transaction and schedule/workspace state decisions.
+
 ## Feature boundaries
 
 New code should be organized by feature rather than added to the root `MainWindow` partial indefinitely. The first extraction candidate is Schedule because it already has distinct commands, a view-model partial, a calculation service, and Gantt rendering. The intended slices are:

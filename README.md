@@ -36,7 +36,7 @@ The current build focuses on the highest-value spreadsheet workflow and the rele
 
 ## Architecture
 
-The codebase is being migrated toward a modular WPF architecture with explicit application, domain, and storage seams. The current boundaries, rules for new code, and phased assembly split are documented in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+The codebase is being migrated toward a modular WPF architecture with explicit application, domain, and storage seams. The current boundaries, state/source-of-truth contract, rules for new code, and phased assembly split are documented in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/STATE_MODEL.md`](docs/STATE_MODEL.md).
 
 ## How to verify
 
@@ -78,6 +78,7 @@ The checks verify the important workbook-derived drilldowns, including:
 - `docs/RECOVERY_RUNBOOK.md` - user-facing backup, retention, and restore instructions.
 - `docs/DIAGNOSTICS_RUNBOOK.md` - user-facing diagnostics and corrupt-preference recovery instructions.
 - `docs/DATE_TIME_CONTRACT.md` - NZ business-date, UTC persistence, display-locale, and legacy timestamp rules.
+- `docs/STATE_MODEL.md` - project state categories, ownership, identities, derived values, dirty tracking, and follow-up boundaries.
 - `docs/TEST_COVERAGE_MAP.md` - complete legacy-harness-to-discovered-test mapping and test isolation rules.
 
 ## Stack

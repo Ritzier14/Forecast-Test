@@ -25,6 +25,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - Release-candidate status/header information and Save / Discard / Cancel handling for unsaved changes on close.
 - No-dependency command-line acceptance checks in `tests/ProjectCostForecast.Tests`.
 - Complete discovered xUnit migration with a 428/428 legacy-assertion coverage map, named calculation/import/scheduling/view-model/WPF tests, and one authoritative verification path.
+- State/source-of-truth contract covering every project dataset collection, persisted calculated field, identity rule, dirty-tracking seam, serialization boundary, and explicit LUNA-16A/LUNA-16B follow-up.
 
 ### Verified
 
@@ -37,6 +38,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - FY report values match Excel's cached formulas to two decimal places.
 - Actuals pivot values match the workbook pivot totals.
 - Seed data has no validation errors.
+- The LUNA-12 state characterization suite round-trips editable nested project state, proves known monthly/contingency/budget dirty boundaries, and confirms schedule-derived outputs remain runtime-only.
 
 ### Remaining Before A Formal Production Release
 
