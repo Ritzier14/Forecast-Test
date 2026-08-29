@@ -30,8 +30,8 @@ coverage/
 *.temp
 ~$*
 
-# Release and scratch artifacts are generated outside normal builds. Existing
-# tracked copies require an explicit cleanup packet before they are removed.
+# Release and scratch artifacts are generated outside normal builds. The F-13
+# cleanup removed the legacy tracked copies; keep future outputs ignored.
 /release/ProjectCostForecast/
 /Temp/
 

@@ -34,16 +34,17 @@ finding register, but it is not the current release description:
 - One production package, `ClosedXML` 0.105.0, plus seven transitive packages.
 - No package lock file and no existing CI workflow.
 - A GitHub remote is configured, so a Windows GitHub Actions gate is appropriate.
-- Release executables, DLLs, PDBs, runtime files, and packaged sample data are tracked under `release/ProjectCostForecast`.
-- `Temp/data_anonymised.xlsx` is also tracked.
+- The initial audit found release executables, DLLs, PDBs, runtime files, and
+  packaged sample data under `release/ProjectCostForecast`, plus a tracked
+  `Temp/data_anonymised.xlsx`; the F-13 cleanup packet now removes those 17
+  paths from Git tracking while preserving local copies.
 - The working tree already contains many modified and untracked files. These changes pre-date this plan and must not be discarded or silently mixed with audit work.
 
 The current as-built candidate is version `1.0.1`. LUNA-21 updates ClosedXML to
 0.105.1, commits three lock files, and records a 22-package inventory; LUNA-22
-adds the Windows CI workflow, bundled-data boundary, and redacted source/history
-secret scan. Existing tracked release and `Temp` copies remain present by
-design until the separately approval-gated cleanup decision is made. The
-current claims and limitations are consolidated in
+adds the Windows CI workflow, bundled-data boundary, redacted source/history
+secret scan, and the separately authorized F-13 cleanup packet. The current
+claims and limitations are consolidated in
 `docs/audit/LUNA-23-RELEASE-TRUTH.md`.
 
 Primary evidence reviewed:
@@ -85,7 +86,7 @@ Primary evidence reviewed:
 | Performance and scalability | Direct | Full collection replacement, grid-column rebuilds, and refresh fan-out need realistic measurement. Desktop virtualization replaces web pagination concerns. | LUNA-17, LUNA-20 |
 | Configuration and environment separation | Partial | Local preferences, diagnostic locations, packaged data, build configuration, and release settings apply. Server environment variables and secret stores do not currently apply. | LUNA-08, LUNA-21 to LUNA-23 |
 | Dependencies and supply chain | Direct | ClosedXML and transitives process complex files; locked restore, advisory audit, and license review are now implemented. | LUNA-21, LUNA-22 |
-| Testing, review capacity, version control, release readiness | Direct and high priority | Named discovered tests, the retained smoke gate, locked Windows CI, release-truth documentation, and tracked-artifact approval boundaries are now explicit; installer/signing and final acceptance remain. | LUNA-00 to LUNA-02, LUNA-11, LUNA-22 to LUNA-24 |
+| Testing, review capacity, version control, release readiness | Direct and high priority | Named discovered tests, the retained smoke gate, locked Windows CI, release-truth documentation, and the dedicated F-13 tracked-artifact cleanup are explicit; installer/signing and final acceptance remain. | LUNA-00 to LUNA-02, LUNA-11, LUNA-22 to LUNA-24 |
 | Dates, time zones, and locale | Direct/partial | NZ business dates are important, while persisted audit/snapshot timestamps mix `DateTime.Now` and local `DateTimeOffset.Now`. | LUNA-10 |
 | Context drift, specification drift, scope bloat, comprehension debt | Direct | The close-warning contradiction was fixed in LUNA-03; current release claims, limitations, and historical roadmap language are reconciled in LUNA-23. | All packet rules, especially LUNA-00, LUNA-12, and LUNA-23 |
 | Authentication, sessions, authorization, tenant isolation | Not applicable now | There are no accounts, roles, server sessions, or tenant-owned records. Re-open this area before adding shared or hosted access. | None |
@@ -117,7 +118,7 @@ Priority meanings:
 | F-10 | P1 | Confirmed | Model files reference `Brush`, `ImageSource`, `Visibility`, dependency properties, converters, and `MainWindow.GetBuiltInImageSourceByPath`, contrary to the documented dependency direction. | LUNA-13, LUNA-14 |
 | F-11 | P1 | Confirmed/verify behaviour | Dataset lists and observable collections are mirrored through `SyncDatasetFromCollections` and repeated `ReplaceCollection` calls. Calculated totals and summaries also live on persisted models. The authoritative state and recomputation contract are not explicit. | LUNA-12, LUNA-16A, LUNA-16B |
 | F-12 | P1 | Confirmed | File dialogs and message boxes are called directly from `MainWindowViewModel.ProjectIO.cs`, coupling use cases to WPF and making failure paths harder to test. | LUNA-15A, LUNA-15B |
-| F-13 | P1 | Confirmed | Release binaries, PDBs, runtime files, and data files are tracked. A second anonymised workbook is tracked under `Temp`. Generated binaries obscure review and bundled data needs a privacy/provenance decision. | LUNA-22 |
+| F-13 | P1 | Confirmed | The initial audit found release binaries, PDBs, runtime files, and data files tracked, including a second anonymised workbook under `Temp`. The dedicated F-13 cleanup packet resolves the tracking portion while preserving source fixtures and local copies. | LUNA-22, F-13 cleanup |
 | F-14 | P2, elevate if reproduced | Needs focused audit | Loaded/DataContextChanged flows rebuild multiple views; there are hundreds of subscription sites and several timers/dispatcher callbacks. Some code correctly detaches handlers, so this must be audited by owner/lifetime rather than mechanically rewritten. | LUNA-18A, LUNA-18B |
 | F-15 | P2, elevate if reproduced | Confirmed/needs runtime scan | There is no automated WPF binding-error gate. Schedule comparison dispatches an `async` lambda through `BeginInvoke`, which needs explicit exception, cancellation, and disposal ownership. | LUNA-18B, LUNA-18C |
 | F-16 | P2 | Confirmed | Parallel implementations exist for grid panning, report-canvas selection/drag, colour parsing/labels, and forecast-curve math. Behaviour must be characterized before choosing a canonical implementation. | LUNA-19A to LUNA-19C |
@@ -130,8 +131,9 @@ The finding register above records the original evidence and planned response.
 Current disposition is recorded in the sequential status ledger and the
 LUNA-23 release-truth matrix. In particular, F-01, F-03 through F-12, F-14
 through F-19 have implemented evidence or an explicit applicability boundary;
-F-13 and the release-data portion of F-20 remain split/approval-gated, while
-installer/signing and product acceptance remain deferred as documented work.
+F-13 is fixed by the dedicated cleanup packet, while the release-data portion
+of F-20, installer/signing, and product acceptance remain deferred as
+documented work.
 
 ## 5. Luna Max operating contract
 
@@ -168,7 +170,9 @@ If the packet cannot fit that boundary, Luna must stop after characterization an
 - No swallowed exceptions. Expected failures must become typed results or narrowly handled exceptions with useful context.
 - No logging of project financial values, imported row contents, personal names, or full user paths by default.
 - No deletion under a backup-retention policy until the user has approved the policy and a dry run has listed the exact candidates; never remove the only verified good copy.
-- No destructive repository cleanup in a mixed packet. Release-file removal is isolated in LUNA-22 and requires explicit user approval.
+- No destructive repository cleanup in a mixed packet. Release-file removal is
+  isolated in the F-13 packet and requires explicit user approval, which is
+  recorded for this packet on 2026-08-29.
 - No commit or push unless the user explicitly authorises it.
 
 ### Standard verification gate
@@ -896,7 +900,7 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | LUNA-19C | Complete | `ForecastCurveMath` is the canonical allocator for preview and applied forecasts; 9 focused tests and full verification pass with 175 discovered tests plus the retained legacy smoke gate |
 | LUNA-20 | Complete | Deterministic small/normal/stress performance runner and JSON artifacts record dataset sizes plus startup/load/save/import/recalculation/grid/workspace/schedule/memory timings; targeted forecast refresh skips the unrelated raw-transaction pivot; the focused contract test and full 176-test suite pass, and the enforced short-run median verifier passes baseline + `max(50 ms, 25%)` while retaining p95 evidence |
 | LUNA-21 | Complete | Root lock-file policy and three committed `packages.lock.json` files pin ClosedXML 0.105.1 and the resolved graph; locked restore, direct/transitive package inventory, zero-vulnerability advisory audit, and license review checklist pass with the full 178-test and retained smoke gates |
-| LUNA-22 | Split | Least-privilege CI, normal-package data filtering, bundled-data provenance, redacted source/history secret scanning, and future-artifact ignore rules pass with 180 tests and the retained smoke gate; tracked release/`Temp` cleanup is isolated and awaits explicit approval |
+| LUNA-22 | Complete | Least-privilege CI, normal-package data filtering, bundled-data provenance, redacted source/history secret scanning, future-artifact ignore rules, and the dedicated F-13 cleanup pass their recorded checks; all 17 approved release/`Temp` paths are untracked while local copies and source fixtures are preserved |
 | LUNA-23 | Complete | As-built release-truth matrix reconciles version `1.0.1`, JSON v1/v0 migration, CSV/XLSX/XLSM transaction boundaries, close/recovery semantics, release checklist, explicit negative constraints, and deferred installer/signing/data-approval work; focused contracts and full verification pass with 182 discovered tests plus the retained smoke gate |
-| LUNA-24 | Split | Clean-output build/test evidence, F-00–F-20 finding matrix, and `LUNA_HANDOFF.md` are prepared; current 184-test verification is green, but final closure remains pending explicit F-13 approval/acceptance for tracked release and `Temp` artifacts |
+| LUNA-24 | Complete | Clean-output build/test evidence, F-00–F-20 finding matrix, `F-13-CLEANUP.md`, and `LUNA_HANDOFF.md` are prepared; F-13 is fixed by the authorized index-only cleanup, while SOL-00 remains pending independent parent-agent review |
 | SOL-00 | Not started | Independent final audit |

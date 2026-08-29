@@ -229,8 +229,9 @@ across the working tree and Git history. The bundled-data review in
 [`docs/audit/LUNA-22-BUNDLED-DATA-REVIEW.md`](audit/LUNA-22-BUNDLED-DATA-REVIEW.md)
 records hashes, provenance, and package decisions without printing workbook
 values. Normal application output contains only the approved anonymised startup
-workbook; tracked legacy release and `Temp` copies remain an explicit,
-approval-gated cleanup decision.
+workbook. The F-13 cleanup packet removes the legacy release and `Temp` copies
+from Git tracking with `git rm --cached`, preserves local copies, and leaves
+source fixtures tracked; release-data distribution approval remains separate.
 
 The as-built version, supported file formats, release claims, negative
 constraints, and deferred release work are consolidated in
@@ -240,8 +241,9 @@ roadmap language.
 
 The final finding disposition and independent-audit inputs are indexed by
 [`LUNA-24-FINDING-MATRIX.md`](audit/LUNA-24-FINDING-MATRIX.md) and
-[`LUNA_HANDOFF.md`](audit/LUNA_HANDOFF.md). A documented pending approval is
-not treated as a completed release gate.
+[`LUNA_HANDOFF.md`](audit/LUNA_HANDOFF.md). F-13 is fixed by the dedicated
+cleanup packet; SOL-00 remains the parent Sol agent's independent review and
+final acceptance gate.
 
 The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root

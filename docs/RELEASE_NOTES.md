@@ -40,9 +40,9 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - Forecast curve previews and applied forecasts now share the pure `ForecastCurveMath` allocator, including profile weights, cent rounding, residual assignment, and user-shape resampling.
 - LUNA-20 adds deterministic small/normal/stress performance workloads, JSON/CSV size recording, refresh-phase evidence, and an opt-in p95 regression verifier.
 - NuGet restore now uses committed lock files and locked verification; ClosedXML is updated to 0.105.1, and the dependency audit records direct/transitive inventory, advisory results, and license review metadata.
-- LUNA-22 adds a least-privilege Windows CI workflow, redacted source/history secret scanning, bundled-data provenance evidence, normal-package data filtering, and ignore rules for future release/scratch artifacts.
+- LUNA-22 adds a least-privilege Windows CI workflow, redacted source/history secret scanning, bundled-data provenance evidence, normal-package data filtering, ignore rules for future release/scratch artifacts, and the dedicated F-13 cleanup packet that untracks the approved legacy artifacts while preserving local copies.
 - LUNA-23 reconciles the release checklist, README, architecture/state notes, file-format support, close/recovery behavior, and explicit installer/signing/data-approval limitations in [`LUNA-23-RELEASE-TRUTH.md`](audit/LUNA-23-RELEASE-TRUTH.md).
-- LUNA-24 adds the F-00 through F-20 finding matrix and `LUNA_HANDOFF.md` evidence index for independent Sol Ultra acceptance; the tracked release/`Temp` P1 approval gate remains visible and unresolved.
+- LUNA-24 adds the F-00 through F-20 finding matrix and `LUNA_HANDOFF.md` evidence index for independent Sol Ultra acceptance; F-13 is fixed by the dedicated cleanup packet and SOL-00 remains pending independent review.
 
 ### Verified
 
@@ -71,9 +71,9 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - The LUNA-19C suite proves preview/application curve parity across profiles, boundary and negative inputs, exact rounding residuals, total preservation, user-shape allocation, and removal of duplicate profile formulas; the Release verifier also covers the retained 428-assertion smoke gate.
 - The LUNA-20 performance verifier records 21 scenarios across three synthetic datasets on the same Release environment, proves all workload correctness checks, and passes the default short-run median threshold of baseline plus `max(50 ms, 25%)`; p95 remains in the report and is enforced when both reports have at least 20 samples. Normal grid-edit refresh p95 is 202.276 ms versus 228.502 ms baseline.
 - The LUNA-21 dependency gate passes locked restore, a 22-package direct/transitive inventory, zero NuGet vulnerability records, and the license review checklist; the Release verifier also passes 178 discovered tests and all 428 retained smoke assertions.
-- The LUNA-22 hygiene suite and Release verifier pass with 180 discovered tests and all 428 retained smoke assertions; the secret scan reports zero findings across the tracked working tree and Git history, and the normal app output contains only `data_anonymised.xlsx`. Tracked legacy release/`Temp` cleanup remains a separate approval-gated change.
+- The LUNA-22 hygiene suite and Release verifier pass with 180 discovered tests and all 428 retained smoke assertions; the secret scan reports zero findings across the tracked working tree and Git history, the normal app output contains only `data_anonymised.xlsx`, and the F-13 packet removes the exact 17 legacy release/`Temp` paths from Git tracking while preserving local copies.
 - The LUNA-23 release-truth suite verifies the current `1.0.1`/JSON-v1 boundary, CSV/XLSX/XLSM transaction-import boundary, close-warning wiring, recovery semantics, and explicit negative constraints; the signed installer/MSIX, direct original-workbook project importer, release-data approval, and broader user acceptance remain clearly marked as deferred.
-- The LUNA-24 closure suite verifies complete finding coverage and the independent-audit handoff instructions; clean-output verification passes, but final Sol acceptance is correctly held on the explicit F-13 approval decision.
+- The LUNA-24 closure suite verifies complete finding coverage and the independent-audit handoff instructions; clean-output verification passes, F-13 is fixed, and final Sol acceptance remains pending the independent SOL-00 review.
 
 ### Remaining Before A Formal Production Release
 

@@ -71,15 +71,17 @@ result are retained in
   `InitialCostLoad.xlsx` must not be in the application package.
 - [ ] Review the redacted source/history secret-scan report. It must contain
   zero findings; the scanner must never print matched values.
-- [ ] Treat tracked `release/ProjectCostForecast/` and `Temp/` cleanup as a
-  separate reviewable change. No files are removed or untracked by LUNA-22
-  until explicit approval is recorded.
+- [x] Treat tracked `release/ProjectCostForecast/` and `Temp/` cleanup as a
+  separate reviewable change. The exact 16 release files plus one `Temp` file
+  were authorized on 2026-08-29 and removed from Git tracking with
+  `git rm --cached`; local copies remain on disk and ignored. See
+  [`F-13-CLEANUP.md`](audit/F-13-CLEANUP.md).
 - [ ] Retain generated CI reports as short-lived workflow artifacts rather than
   committing build output or scan results.
 
 The current LUNA-22 implementation records the controls and review evidence,
-but the tracked-artifact cleanup checkbox remains intentionally pending explicit
-approval.
+and the separately authorized F-13 tracked-artifact cleanup is complete. The
+release-data distribution decision remains a separate unchecked release gate.
 
 ## Release truth and readiness (LUNA-23)
 
@@ -107,8 +109,9 @@ limitations or approvals, not undocumented work.
 - [ ] A signed installer or MSIX, upgrade path, and deployment rollback channel
   are implemented and tested.
 - [ ] Product acceptance is completed against additional real projects.
-- [ ] Any tracked `release/ProjectCostForecast/` and `Temp/` cleanup is approved
-  and executed as its own reviewable change; LUNA-22 deliberately did not do so.
+- [x] Any tracked `release/ProjectCostForecast/` and `Temp/` cleanup is approved
+  and executed as its own reviewable change; the F-13 packet records the
+  2026-08-29 authorization and index-only/local-copy-preservation behavior.
 
 ## Closure and independent handoff (LUNA-24)
 
@@ -117,7 +120,7 @@ limitations or approvals, not undocumented work.
 - [x] Produce [`docs/audit/LUNA_HANDOFF.md`](audit/LUNA_HANDOFF.md) with the
   clean-build evidence, independent Sol Ultra procedure, and deferred-risk
   register.
-- [x] Confirm no unresolved P0 is hidden and that the F-13 P1 approval gate is
-  explicitly visible.
-- [ ] Obtain the F-13 user/release-owner decision before final independent
-  acceptance.
+- [x] Confirm no unresolved P0 is hidden and that the F-13 P1 disposition is
+  explicitly resolved by the dedicated cleanup packet.
+- [ ] Complete independent SOL-00 final acceptance; the parent Sol agent must
+  review the cleanup commit and all evidence first.

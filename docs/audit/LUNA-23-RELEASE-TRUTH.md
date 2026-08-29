@@ -1,12 +1,17 @@
 # LUNA-23 release truth and readiness
 
 Recorded: 2026-08-29
-Baseline commit: `33cb128` (`chore(audit): complete LUNA-22 safe controls`)
+Pre-cleanup baseline: `85f3b03` (`docs(audit): prepare LUNA-24 Sol handoff`)
 
 This is the as-built release boundary for the current candidate. The older
 rebuild specification and release notes remain useful history, but this file
 is the concise source of truth for what is implemented, what is verified, and
 what is still a release limitation.
+
+The F-13 tracked-artifact cleanup is recorded in
+[`F-13-CLEANUP.md`](F-13-CLEANUP.md). It removes the exact 17 legacy
+release/scratch paths from Git tracking while preserving local copies; the
+parent Sol agent owns the cleanup commit and independent SOL-00 review.
 
 ## Product and version boundary
 
@@ -69,7 +74,7 @@ at that size; reports retain p95, and runs with at least 20 samples enforce p95.
 | Signing and installer/MSIX | Not implemented | No signed installer or MSIX is produced by this repository |
 | Deployment rollback | Manual only | Use verified backups and the prior approved release artifact; no installer rollback channel is claimed |
 | User acceptance | Pending | Run against additional real projects before a formal production release |
-| Tracked release/`Temp` cleanup | Approval pending | Intentionally isolated from LUNA-22; no files were deleted or removed from the index |
+| Tracked release/`Temp` cleanup | Complete | F-13 cleanup removes exactly 16 release files plus one `Temp` file from the Git index with `git rm --cached`; local copies are preserved and ignored |
 
 ## Explicit negative constraints
 
@@ -88,8 +93,9 @@ These are deliberate product boundaries, not missing claims:
 ## Deferred work and ownership
 
 - The release owner must approve the anonymised/source workbook distribution
-  policy and decide whether the tracked release/`Temp` cleanup should proceed
-  in its own reviewable change.
+  policy. The separate F-13 tracked-artifact cleanup has been authorized and
+  prepared as its own reviewable change; it does not constitute approval to
+  distribute release data.
 - The release/build owner must choose and implement the signed installer or
   MSIX channel, including upgrade and rollback behavior, before a formal
   production release.

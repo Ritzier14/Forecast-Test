@@ -626,10 +626,12 @@ short retention period rather than committing build output.
 The normal application package copies only `data_anonymised.xlsx`. The bundled
 data review records file hashes, provenance, and package decisions without
 printing workbook or project values. `SampleData.json` remains a source/test
-fallback and `InitialCostLoad.xlsx` is not packaged. Existing tracked release
-and `Temp` copies are documented as legacy artifacts and ignored for future
-changes; removing them from Git is intentionally isolated behind explicit user
-approval.
+fallback and `InitialCostLoad.xlsx` is not packaged. The F-13 cleanup packet
+removed the exact 16 release files and one `Temp` copy from Git tracking with
+`git rm --cached`, while preserving local copies and keeping the source
+fixtures tracked. The ignore rules prevent those generated paths from
+returning to the index; see `docs/audit/F-13-CLEANUP.md` for recovery and
+verification evidence.
 
 The as-built release boundary is summarized in
 [`LUNA-23-RELEASE-TRUTH.md`](audit/LUNA-23-RELEASE-TRUTH.md), including the
@@ -640,6 +642,6 @@ semantics, and deferred installer/signing work.
 
 `LUNA-24-FINDING-MATRIX.md` maps F-00 through F-20 to their fixing packet and
 current disposition. `LUNA_HANDOFF.md` records the clean-build evidence and the
-independent Sol Ultra procedure. F-13 remains a visible P1 approval gate for
-the tracked legacy release/`Temp` artifacts; documenting that gate does not
-remove it or silently accept it.
+independent Sol Ultra procedure. F-13 is fixed by its dedicated cleanup packet;
+the parent Sol agent still must independently review the evidence during
+SOL-00, which remains not started.
