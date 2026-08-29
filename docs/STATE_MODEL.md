@@ -630,3 +630,8 @@ fallback and `InitialCostLoad.xlsx` is not packaged. Existing tracked release
 and `Temp` copies are documented as legacy artifacts and ignored for future
 changes; removing them from Git is intentionally isolated behind explicit user
 approval.
+
+The as-built release boundary is summarized in
+[`LUNA-23-RELEASE-TRUTH.md`](audit/LUNA-23-RELEASE-TRUTH.md), including the
+independent application/format versions, supported import formats, recovery
+semantics, and deferred installer/signing work.

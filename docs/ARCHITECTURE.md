@@ -232,6 +232,12 @@ values. Normal application output contains only the approved anonymised startup
 workbook; tracked legacy release and `Temp` copies remain an explicit,
 approval-gated cleanup decision.
 
+The as-built version, supported file formats, release claims, negative
+constraints, and deferred release work are consolidated in
+[`LUNA-23-RELEASE-TRUTH.md`](audit/LUNA-23-RELEASE-TRUTH.md). That boundary is
+the reference when the historical rebuild specification or release notes use
+roadmap language.
+
 The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root
 collection and persisted calculated field, records the current identity and

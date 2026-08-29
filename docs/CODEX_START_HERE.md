@@ -2,6 +2,15 @@
 
 You are continuing the desktop rebuild of the Excel workbook `1.Mar 26.xlsm`.
 
+## Current release boundary
+
+The current candidate is a Windows .NET 8 WPF desktop app version `1.0.1`.
+Project files use JSON format v1 with a versioned migration path from legacy
+unversioned files. Raw transaction imports support `.csv`, `.xlsx`, and `.xlsm`;
+the original workbook remains provenance and is not claimed as a direct project
+data importer. Read `docs/audit/LUNA-23-RELEASE-TRUTH.md` for the complete
+as-built boundary and deferred release work.
+
 ## First task
 
 Open and read these files in order:
@@ -35,11 +44,11 @@ For AP transactions the workbook's `Resource Description` is often `Contractors 
 - Keep Alpha 1.0 compiling before adding features.
 - Do not introduce NuGet dependencies unless needed.
 - Keep formula logic in C# services, not in XAML.
-- Treat JSON seed data as a temporary import format. Later versions should import `.xlsx/.xlsm`, CSV, or accounting-system exports.
+- Treat the anonymised workbook startup fixture and JSON compatibility fallback as distinct from project-file persistence. Raw transaction `.xlsx/.xlsm` and CSV import is supported; a direct original-workbook project importer remains a deliberate deferred decision.
 - Preserve NZ currency and date formatting.
 - Make all totals explainable by drilldown.
 
-## Recommended next Codex tasks
+## Historical implementation roadmap
 
 1. Build/run the existing app and fix any compile issues.
 2. Add a `CalculationService` that recalculates CTC, CTD, FCC, and variance values from source objects rather than trusting JSON totals.

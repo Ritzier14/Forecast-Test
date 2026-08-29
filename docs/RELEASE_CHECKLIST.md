@@ -80,3 +80,32 @@ result are retained in
 The current LUNA-22 implementation records the controls and review evidence,
 but the tracked-artifact cleanup checkbox remains intentionally pending explicit
 approval.
+
+## Release truth and readiness (LUNA-23)
+
+Use [`docs/audit/LUNA-23-RELEASE-TRUTH.md`](audit/LUNA-23-RELEASE-TRUTH.md) as
+the as-built boundary when reviewing this checklist. The following items are
+the current status for the candidate; unchecked items are genuine release
+limitations or approvals, not undocumented work.
+
+- [x] Version identity is `1.0.1`; application version and project format
+  version are recorded independently.
+- [x] Project JSON format v1, legacy unversioned format v0 normalization, and
+  rejection of future versions are covered by migration tests.
+- [x] Raw transaction import support is limited to `.csv`, `.xlsx`, and `.xlsm`
+  with bounded, validated, staged handling; direct original-workbook project
+  import is not claimed.
+- [x] Backup verification, restore-to-new-path, explicit overwrite protection,
+  and recovery instructions are tested and documented.
+- [x] Dirty close behavior is Save / Discard / Cancel; Cancel and failed Save
+  keep the window open.
+- [x] Negative product constraints are documented: no server/auth/database
+  subsystem, no silent migration, no destructive restore default, and no
+  financial row values in default diagnostics.
+- [ ] Release-data owner approves the anonymised startup workbook, archived
+  source workbook, and any distribution policy.
+- [ ] A signed installer or MSIX, upgrade path, and deployment rollback channel
+  are implemented and tested.
+- [ ] Product acceptance is completed against additional real projects.
+- [ ] Any tracked `release/ProjectCostForecast/` and `Temp/` cleanup is approved
+  and executed as its own reviewable change; LUNA-22 deliberately did not do so.

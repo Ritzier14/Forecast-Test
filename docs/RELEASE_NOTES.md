@@ -41,6 +41,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - LUNA-20 adds deterministic small/normal/stress performance workloads, JSON/CSV size recording, refresh-phase evidence, and an opt-in p95 regression verifier.
 - NuGet restore now uses committed lock files and locked verification; ClosedXML is updated to 0.105.1, and the dependency audit records direct/transitive inventory, advisory results, and license review metadata.
 - LUNA-22 adds a least-privilege Windows CI workflow, redacted source/history secret scanning, bundled-data provenance evidence, normal-package data filtering, and ignore rules for future release/scratch artifacts.
+- LUNA-23 reconciles the release checklist, README, architecture/state notes, file-format support, close/recovery behavior, and explicit installer/signing/data-approval limitations in [`LUNA-23-RELEASE-TRUTH.md`](audit/LUNA-23-RELEASE-TRUTH.md).
 
 ### Verified
 
@@ -70,6 +71,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - The LUNA-20 performance verifier records 21 scenarios across three synthetic datasets on the same Release environment, proves all workload correctness checks, and passes the default short-run median threshold of baseline plus `max(50 ms, 25%)`; p95 remains in the report and is enforced when both reports have at least 20 samples. Normal grid-edit refresh p95 is 202.276 ms versus 228.502 ms baseline.
 - The LUNA-21 dependency gate passes locked restore, a 22-package direct/transitive inventory, zero NuGet vulnerability records, and the license review checklist; the Release verifier also passes 178 discovered tests and all 428 retained smoke assertions.
 - The LUNA-22 hygiene suite and Release verifier pass with 180 discovered tests and all 428 retained smoke assertions; the secret scan reports zero findings across the tracked working tree and Git history, and the normal app output contains only `data_anonymised.xlsx`. Tracked legacy release/`Temp` cleanup remains a separate approval-gated change.
+- The LUNA-23 release-truth suite verifies the current `1.0.1`/JSON-v1 boundary, CSV/XLSX/XLSM transaction-import boundary, close-warning wiring, recovery semantics, and explicit negative constraints; the signed installer/MSIX, direct original-workbook project importer, release-data approval, and broader user acceptance remain clearly marked as deferred.
 
 ### Remaining Before A Formal Production Release
 

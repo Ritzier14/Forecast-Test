@@ -95,6 +95,7 @@ The checks verify the important workbook-derived drilldowns, including:
 - `docs/DATE_TIME_CONTRACT.md` - NZ business-date, UTC persistence, display-locale, and legacy timestamp rules.
 - `docs/STATE_MODEL.md` - project state categories, ownership, identities, derived values, dirty tracking, and follow-up boundaries.
 - `docs/TEST_COVERAGE_MAP.md` - complete legacy-harness-to-discovered-test mapping and test isolation rules.
+- `docs/audit/LUNA-23-RELEASE-TRUTH.md` - as-built version, file-format support, release gates, explicit limits, and deferred release work.
 
 ## Stack
 
@@ -131,4 +132,4 @@ should go in the matching partial file (or a new one) rather than growing any si
 
 ## Release status
 
-The app has moved past the Alpha 1 starter into a practical release-candidate shape. The main remaining production work is packaging/signing, a true Excel `.xlsm` importer, and broader user acceptance testing against more real projects.
+The app has moved past the Alpha 1 starter into a practical release-candidate shape. The main remaining production work is a signed installer/MSIX and rollback channel, a decision on a direct original-workbook `.xlsm` project importer, release-data/legacy-artifact approval, and broader user acceptance testing against more real projects. The exact as-built boundary is recorded in [`docs/audit/LUNA-23-RELEASE-TRUTH.md`](docs/audit/LUNA-23-RELEASE-TRUTH.md).

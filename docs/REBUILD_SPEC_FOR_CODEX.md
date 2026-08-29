@@ -4,7 +4,8 @@
 
 Working title: **Project Cost Forecast**
 
-Version in this package: **Alpha 1.0**
+Version in this package: **1.0.1 release candidate** (the original rebuild
+roadmap called the starter package Alpha 1.0)
 
 ## 2. Product purpose
 

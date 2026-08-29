@@ -23,7 +23,9 @@ This document is a point-in-time audit and execution plan. It does not assert th
 
 ## 2. Repository profile and evidence baseline
 
-The inventory was taken from the current working tree, including existing uncommitted work:
+The initial inventory was taken at the LUNA-00 checkpoint from the working tree,
+including existing uncommitted work. That snapshot remains useful for the
+finding register, but it is not the current release description:
 
 - 113 C# or XAML files and approximately 53,683 lines under `src` and `tests`.
 - 20 root-level `MainWindow*.cs` files with approximately 15,317 lines.
@@ -35,6 +37,14 @@ The inventory was taken from the current working tree, including existing uncomm
 - Release executables, DLLs, PDBs, runtime files, and packaged sample data are tracked under `release/ProjectCostForecast`.
 - `Temp/data_anonymised.xlsx` is also tracked.
 - The working tree already contains many modified and untracked files. These changes pre-date this plan and must not be discarded or silently mixed with audit work.
+
+The current as-built candidate is version `1.0.1`. LUNA-21 updates ClosedXML to
+0.105.1, commits three lock files, and records a 22-package inventory; LUNA-22
+adds the Windows CI workflow, bundled-data boundary, and redacted source/history
+secret scan. Existing tracked release and `Temp` copies remain present by
+design until the separately approval-gated cleanup decision is made. The
+current claims and limitations are consolidated in
+`docs/audit/LUNA-23-RELEASE-TRUTH.md`.
 
 Primary evidence reviewed:
 
@@ -74,10 +84,10 @@ Primary evidence reviewed:
 | File and spreadsheet security | Direct | JSON, CSV, XLSX, and XLSM are untrusted input boundaries. CSV formula injection, malformed/oversized workbooks, resource limits, and sample-data disclosure are relevant. | LUNA-09, LUNA-22 |
 | Performance and scalability | Direct | Full collection replacement, grid-column rebuilds, and refresh fan-out need realistic measurement. Desktop virtualization replaces web pagination concerns. | LUNA-17, LUNA-20 |
 | Configuration and environment separation | Partial | Local preferences, diagnostic locations, packaged data, build configuration, and release settings apply. Server environment variables and secret stores do not currently apply. | LUNA-08, LUNA-21 to LUNA-23 |
-| Dependencies and supply chain | Direct | ClosedXML and transitives process complex files; restore is not locked and no automated vulnerability gate exists. | LUNA-21 |
-| Testing, review capacity, version control, release readiness | Direct and high priority | `dotnet test` discovers no real suite, CI is absent, the working change set is broad, and generated releases are committed. | LUNA-00 to LUNA-02, LUNA-11, LUNA-22 to LUNA-24 |
+| Dependencies and supply chain | Direct | ClosedXML and transitives process complex files; locked restore, advisory audit, and license review are now implemented. | LUNA-21, LUNA-22 |
+| Testing, review capacity, version control, release readiness | Direct and high priority | Named discovered tests, the retained smoke gate, locked Windows CI, release-truth documentation, and tracked-artifact approval boundaries are now explicit; installer/signing and final acceptance remain. | LUNA-00 to LUNA-02, LUNA-11, LUNA-22 to LUNA-24 |
 | Dates, time zones, and locale | Direct/partial | NZ business dates are important, while persisted audit/snapshot timestamps mix `DateTime.Now` and local `DateTimeOffset.Now`. | LUNA-10 |
-| Context drift, specification drift, scope bloat, comprehension debt | Direct | Release notes claim a close warning that the window does not call; architecture guidance and source still diverge; very large change sets reduce review confidence. | All packet rules, especially LUNA-00, LUNA-12, and LUNA-23 |
+| Context drift, specification drift, scope bloat, comprehension debt | Direct | The close-warning contradiction was fixed in LUNA-03; current release claims, limitations, and historical roadmap language are reconciled in LUNA-23. | All packet rules, especially LUNA-00, LUNA-12, and LUNA-23 |
 | Authentication, sessions, authorization, tenant isolation | Not applicable now | There are no accounts, roles, server sessions, or tenant-owned records. Re-open this area before adding shared or hosted access. | None |
 | HTTP APIs, CORS/CSRF, API rate limiting, pagination | Not applicable now | There is no HTTP service or browser client. | None |
 | Payments and webhooks | Not applicable now | No payment or webhook flow exists. | None |
@@ -115,6 +125,13 @@ Priority meanings:
 | F-18 | P2 | Confirmed | Restore is not locked. ClosedXML 0.105.1 is available while 0.105.0 is used. No known vulnerabilities were reported on 2026-08-29, but that point-in-time result is not an automated control. | LUNA-21 |
 | F-19 | P2 | Confirmed | Persisted event/snapshot metadata mixes `DateTime.Now` and local `DateTimeOffset.Now`. Business dates, display-local times, and durable instants do not have a documented policy. | LUNA-10 |
 | F-20 | P2 | Confirmed | Release notes are stale and contradict close behaviour; packaging/signing remains unfinished; no automated release checklist or recovery runbook exists. | LUNA-22, LUNA-23 |
+
+The finding register above records the original evidence and planned response.
+Current disposition is recorded in the sequential status ledger and the
+LUNA-23 release-truth matrix. In particular, F-01, F-03 through F-12, F-14
+through F-19 have implemented evidence or an explicit applicability boundary;
+F-13 and the release-data portion of F-20 remain split/approval-gated, while
+installer/signing and product acceptance remain deferred as documented work.
 
 ## 5. Luna Max operating contract
 
@@ -880,6 +897,6 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | LUNA-20 | Complete | Deterministic small/normal/stress performance runner and JSON artifacts record dataset sizes plus startup/load/save/import/recalculation/grid/workspace/schedule/memory timings; targeted forecast refresh skips the unrelated raw-transaction pivot; the focused contract test and full 176-test suite pass, and the enforced short-run median verifier passes baseline + `max(50 ms, 25%)` while retaining p95 evidence |
 | LUNA-21 | Complete | Root lock-file policy and three committed `packages.lock.json` files pin ClosedXML 0.105.1 and the resolved graph; locked restore, direct/transitive package inventory, zero-vulnerability advisory audit, and license review checklist pass with the full 178-test and retained smoke gates |
 | LUNA-22 | Split | Least-privilege CI, normal-package data filtering, bundled-data provenance, redacted source/history secret scanning, and future-artifact ignore rules pass with 180 tests and the retained smoke gate; tracked release/`Temp` cleanup is isolated and awaits explicit approval |
-| LUNA-23 | Not started | |
+| LUNA-23 | Complete | As-built release-truth matrix reconciles version `1.0.1`, JSON v1/v0 migration, CSV/XLSX/XLSM transaction boundaries, close/recovery semantics, release checklist, explicit negative constraints, and deferred installer/signing/data-approval work; focused contracts and full verification pass with 182 discovered tests plus the retained smoke gate |
 | LUNA-24 | Not started | |
 | SOL-00 | Not started | Independent final audit |
