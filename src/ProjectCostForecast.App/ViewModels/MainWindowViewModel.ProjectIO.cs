@@ -9,7 +9,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using ProjectCostForecast.App;
-using Microsoft.Win32;
 using ProjectCostForecast.App.Models;
 using ProjectCostForecast.App.Services;
 
@@ -82,23 +81,19 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        var backupDialog = new OpenFileDialog
-        {
-            Title = "Select a verified project backup",
-            Filter = "Project Cost Forecast backups (*.bak.json)|*.bak.json|JSON files (*.json)|*.json|All files (*.*)|*.*"
-        };
-        if (backupDialog.ShowDialog() != true)
+        var backupPath = _importExportInteraction.PickOpenFile(
+            "Select a verified project backup",
+            "Project Cost Forecast backups (*.bak.json)|*.bak.json|JSON files (*.json)|*.json|All files (*.*)|*.*");
+        if (string.IsNullOrWhiteSpace(backupPath))
         {
             return;
         }
 
-        var destinationDialog = new SaveFileDialog
-        {
-            Title = "Restore project backup to a new file",
-            Filter = "Project Cost Forecast JSON (*.json)|*.json|All files (*.*)|*.*",
-            FileName = BuildDefaultRestoredProjectFileName()
-        };
-        if (destinationDialog.ShowDialog() != true)
+        var destinationPath = _importExportInteraction.PickSaveFile(
+            "Restore project backup to a new file",
+            "Project Cost Forecast JSON (*.json)|*.json|All files (*.*)|*.*",
+            BuildDefaultRestoredProjectFileName());
+        if (string.IsNullOrWhiteSpace(destinationPath))
         {
             return;
         }
@@ -106,9 +101,9 @@ public sealed partial class MainWindowViewModel
         try
         {
             var restore = _projectFileService.RestoreBackup(
-                backupDialog.FileName,
+                backupPath,
                 ProjectFilePath,
-                destinationDialog.FileName);
+                destinationPath);
             var restoredProject = _projectFileService.LoadWithRevision(restore.RestoredPath);
             ApplyLoadedProject(restore.RestoredPath, restoredProject);
             StatusText = string.IsNullOrWhiteSpace(restore.PreRestoreBackupPath)
@@ -118,7 +113,7 @@ public sealed partial class MainWindowViewModel
         catch (Exception ex)
         {
             StatusText = $"Restore failed: {ex.Message}";
-            MessageBox.Show(ex.Message, "Restore failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            _importExportInteraction.ShowError("Restore failed", ex.Message);
         }
     }
 
@@ -190,7 +185,11 @@ public sealed partial class MainWindowViewModel
         return SaveDataset(dataset, showError, operation, forceSaveAs: true);
     }
 
-    private bool TryBlockOperation(string operation, ProjectDataset dataset, bool showError)
+    private bool TryBlockOperation(
+        string operation,
+        ProjectDataset dataset,
+        bool showError,
+        Action<string, string>? showErrorHandler = null)
     {
         var report = _validationService.ValidateForOperation(dataset);
         if (!report.HasErrors)
@@ -204,7 +203,7 @@ public sealed partial class MainWindowViewModel
 
         if (showError)
         {
-            _projectPrompt.ShowError($"{operation} blocked", message);
+            (showErrorHandler ?? _projectPrompt.ShowError)($"{operation} blocked", message);
         }
 
         return false;
@@ -315,18 +314,23 @@ public sealed partial class MainWindowViewModel
 
     private void ImportCsv()
     {
-        var dialog = new OpenFileDialog
+        try
         {
-            Title = "Import raw transaction file",
-            Filter = _csvTransactionService.GetSupportedFileFilter()
-        };
+            var path = _importExportInteraction.PickOpenFile(
+                "Import raw transaction file",
+                _csvTransactionService.GetSupportedFileFilter());
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return;
+            }
 
-        if (dialog.ShowDialog() != true)
-        {
-            return;
+            ImportTransactionFile(path);
         }
-
-        ImportTransactionFile(dialog.FileName);
+        catch (Exception ex)
+        {
+            StatusText = $"Import failed: {ex.Message}";
+            _importExportInteraction.ShowError("Import failed", ex.Message);
+        }
     }
 
     public void ImportTransactionFile(string path, bool showError = true)
@@ -341,7 +345,9 @@ public sealed partial class MainWindowViewModel
             StatusText = "Import failed: supported import files are .csv, .xlsx, and .xlsm.";
             if (showError)
             {
-                MessageBox.Show("Supported import files are .csv, .xlsx, and .xlsm.", "Import failed", MessageBoxButton.OK, MessageBoxImage.Information);
+                _importExportInteraction.ShowInformation(
+                    "Import failed",
+                    "Supported import files are .csv, .xlsx, and .xlsm.");
             }
 
             return;
@@ -364,22 +370,23 @@ public sealed partial class MainWindowViewModel
             }
 
             SyncDatasetFromCollections();
-            var initialCandidate = _projectDatasetCloner.Clone(_dataset);
-            initialCandidate.Transactions = (initialCandidate.Transactions ?? [])
+            var stagedDataset = _projectDatasetCloner.Clone(_dataset);
+            stagedDataset.Transactions = (stagedDataset.Transactions ?? [])
                 .Concat(newTransactions)
                 .ToList();
-            if (!TryBlockOperation("Import transactions", initialCandidate, showError))
+            if (!TryBlockOperation("Import transactions", stagedDataset, showError, _importExportInteraction.ShowError))
             {
                 return;
             }
 
-            if (!ApplyCostCenterNameMappings(newTransactions))
+            var stagedMappings = stagedDataset.CostCenterNameMappings ??= [];
+            if (!ApplyCostCenterNameMappings(newTransactions, stagedMappings))
             {
                 StatusText = "Import cancelled before any transaction rows were added.";
                 return;
             }
 
-            if (!ReviewForecastLineAutoCreatePreview(newTransactions))
+            if (!ReviewForecastLineAutoCreatePreview(newTransactions, stagedMappings))
             {
                 StatusText = "Import cancelled before any transaction rows were added.";
                 return;
@@ -391,16 +398,12 @@ public sealed partial class MainWindowViewModel
                 transaction.RowNumber = nextRow++;
             }
 
-            SyncDatasetFromCollections();
-            var commitCandidate = _projectDatasetCloner.Clone(_dataset);
-            commitCandidate.Transactions = (commitCandidate.Transactions ?? [])
-                .Concat(newTransactions)
-                .ToList();
-            if (!TryBlockOperation("Import transactions", commitCandidate, showError))
+            if (!TryBlockOperation("Import transactions", stagedDataset, showError, _importExportInteraction.ShowError))
             {
                 return;
             }
 
+            _dataset.CostCenterNameMappings = stagedMappings;
             AddItems(Transactions, newTransactions);
             EnsureForecastLinesForImportedTransactions(newTransactions);
             var initialCostLoadSnapshotCount = CreateInitialCostLoadSavedMonths
@@ -429,7 +432,7 @@ public sealed partial class MainWindowViewModel
             StatusText = $"Import failed: {ex.Message}";
             if (showError)
             {
-                MessageBox.Show(ex.Message, "Import failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                _importExportInteraction.ShowError("Import failed", ex.Message);
             }
         }
     }
@@ -643,7 +646,9 @@ public sealed partial class MainWindowViewModel
             .ToList();
     }
 
-    private bool ReviewForecastLineAutoCreatePreview(IReadOnlyCollection<CostTransaction> transactions)
+    private bool ReviewForecastLineAutoCreatePreview(
+        IReadOnlyCollection<CostTransaction> transactions,
+        IReadOnlyCollection<CostCenterNameMapping> stagedMappings)
     {
         var previewItems = BuildForecastLineAutoCreatePreviewItems(transactions);
         if (previewItems.Count == 0)
@@ -652,36 +657,32 @@ public sealed partial class MainWindowViewModel
         }
 
         if (!_userPreferences.ShowImportAutoCreatePreview
-            || Thread.CurrentThread.GetApartmentState() != ApartmentState.STA
-            || Application.Current is null)
+            || !_importExportInteraction.CanShowAutoCreatePreview)
         {
             return true;
         }
 
-        var window = new ImportAutoCreatePreviewWindow(previewItems, _userPreferences.ShowImportAutoCreatePreview)
-        {
-            Owner = Application.Current.MainWindow
-        };
-
-        var importAccepted = window.ShowDialog() == true;
-        _userPreferences.ShowImportAutoCreatePreview = window.ShowPreviewNextTime;
+        var review = _importExportInteraction.ReviewAutoCreatePreview(
+            new ImportAutoCreatePreviewPrompt(previewItems, _userPreferences.ShowImportAutoCreatePreview));
+        _userPreferences.ShowImportAutoCreatePreview = review.ShowPreviewNextTime;
         SaveUserPreferences();
-        if (!importAccepted)
+        if (!review.Accepted)
         {
             RoutePreviewItemsToUnmatchedList(previewItems);
             OpenUnmatchedImportViewer();
             return false;
         }
 
-        ApplyForecastLineAutoCreatePreviewEdits(transactions, window.PreviewItems);
+        ApplyForecastLineAutoCreatePreviewEdits(transactions, review.PreviewItems, stagedMappings);
         return true;
     }
 
     private void ApplyForecastLineAutoCreatePreviewEdits(
         IEnumerable<CostTransaction> transactions,
-        IEnumerable<ImportAutoCreatePreviewItem> previewItems)
+        IEnumerable<ImportAutoCreatePreviewItem> previewItems,
+        IEnumerable<CostCenterNameMapping> stagedMappings)
     {
-        var mappingsByKey = (_dataset.CostCenterNameMappings ?? [])
+        var mappingsByKey = stagedMappings
             .GroupBy(mapping => mapping.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.OrderByDescending(mapping => mapping.LastUsedAt).First(), StringComparer.OrdinalIgnoreCase);
 
@@ -809,10 +810,13 @@ public sealed partial class MainWindowViewModel
             CalculationService.Normalise(resourceName));
     }
 
-    private bool ApplyCostCenterNameMappings(IReadOnlyCollection<CostTransaction> transactions)
+    private bool ApplyCostCenterNameMappings(
+        IReadOnlyCollection<CostTransaction> transactions,
+        IList<CostCenterNameMapping> stagedMappings)
     {
-        _dataset.CostCenterNameMappings ??= [];
-        var mappingsByKey = _dataset.CostCenterNameMappings
+        ArgumentNullException.ThrowIfNull(stagedMappings);
+
+        var mappingsByKey = stagedMappings
             .Where(mapping => !string.IsNullOrWhiteSpace(mapping.Key) && !string.IsNullOrWhiteSpace(mapping.ManualName))
             .GroupBy(mapping => mapping.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.OrderByDescending(mapping => mapping.LastUsedAt).First(), StringComparer.OrdinalIgnoreCase);
@@ -882,18 +886,21 @@ public sealed partial class MainWindowViewModel
                     && string.Equals(option.RawName, seed.SuggestedOption.RawName, StringComparison.OrdinalIgnoreCase))
                 .ThenBy(option => option.RawName, StringComparer.OrdinalIgnoreCase)
                 .ToList();
-            var mappingWindow = new CostCenterMappingWindow(
-                seed.Group.Sample,
-                combinedRows,
-                combinedCandidates,
-                seed.SuggestedOption,
-                GetExistingCostCenterNames(candidateMappings),
-                unresolvedGroups.Count)
+            if (!_importExportInteraction.CanShowCostCenterMapping)
             {
-                Owner = Application.Current?.MainWindow
-            };
+                return false;
+            }
 
-            if (mappingWindow.ShowDialog() != true)
+            var mappingDecision = _importExportInteraction.ChooseCostCenterMapping(
+                new CostCenterMappingPrompt(
+                    seed.Group.Sample,
+                    combinedRows,
+                    combinedCandidates,
+                    seed.SuggestedOption,
+                    GetExistingCostCenterNames(candidateMappings),
+                    unresolvedGroups.Count,
+                    groupedDetails.Select(detail => detail.Group.Key).ToList()));
+            if (!mappingDecision.Accepted)
             {
                 return false;
             }
@@ -901,15 +908,15 @@ public sealed partial class MainWindowViewModel
             var completedGroupKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var detail in groupedDetails)
             {
-                if (mappingWindow.ExcludedMappingKeys.Contains(detail.Group.Key, StringComparer.OrdinalIgnoreCase))
+                if (mappingDecision.ExcludedMappingKeys.Contains(detail.Group.Key, StringComparer.OrdinalIgnoreCase))
                 {
                     forceIndividualGroupKeys.Add(detail.Group.Key);
                     continue;
                 }
 
-                var assignedName = mappingWindow.TryGetAssignedName(detail.Group.Key, out var overrideName)
+                var assignedName = mappingDecision.MappingNameOverrides.TryGetValue(detail.Group.Key, out var overrideName)
                     ? overrideName
-                    : mappingWindow.SelectedManualName;
+                    : mappingDecision.SelectedManualName;
                 if (string.IsNullOrWhiteSpace(assignedName))
                 {
                     forceIndividualGroupKeys.Add(detail.Group.Key);
@@ -929,7 +936,7 @@ public sealed partial class MainWindowViewModel
 
         foreach (var mapping in newMappings)
         {
-            _dataset.CostCenterNameMappings.Add(mapping);
+            stagedMappings.Add(mapping);
         }
 
         foreach (var resolvedGroup in resolvedGroups)
@@ -1328,26 +1335,24 @@ public sealed partial class MainWindowViewModel
 
     private void ExportTransactions()
     {
-        var dialog = new SaveFileDialog
-        {
-            Title = "Export raw transactions",
-            Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
-            FileName = "ProjectCostForecast.transactions.csv"
-        };
-
-        if (dialog.ShowDialog() != true)
-        {
-            return;
-        }
-
         try
         {
-            _csvTransactionService.ExportTransactions(dialog.FileName, Transactions);
-            StatusText = $"Exported {Transactions.Count} transactions to {dialog.FileName}";
+            var path = _importExportInteraction.PickSaveFile(
+                "Export raw transactions",
+                "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
+                "ProjectCostForecast.transactions.csv");
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return;
+            }
+
+            _csvTransactionService.ExportTransactions(path, Transactions);
+            StatusText = $"Exported {Transactions.Count} transactions to {path}";
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Export failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            StatusText = $"Export failed: {ex.Message}";
+            _importExportInteraction.ShowError("Export failed", ex.Message);
         }
     }
 
@@ -1473,15 +1478,18 @@ public sealed partial class MainWindowViewModel
     {
         if (UnmatchedImportCombinations.Count == 0)
         {
-            MessageBox.Show("There are no unmatched import combinations.", "Unmatched imports", MessageBoxButton.OK, MessageBoxImage.Information);
+            _importExportInteraction.ShowInformation(
+                "Unmatched imports",
+                "There are no unmatched import combinations.");
             return;
         }
 
-        var viewer = new UnmatchedImportWindow(UnmatchedImportCombinations)
+        if (!_importExportInteraction.CanShowUnmatchedImports)
         {
-            Owner = Application.Current.MainWindow
-        };
-        viewer.ShowDialog();
+            return;
+        }
+
+        _importExportInteraction.ShowUnmatchedImports(UnmatchedImportCombinations.ToList());
     }
 
     private SavedMonthSnapshot BuildSavedMonthSnapshot(string period)

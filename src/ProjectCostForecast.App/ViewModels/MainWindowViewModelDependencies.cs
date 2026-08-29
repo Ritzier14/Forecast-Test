@@ -17,6 +17,7 @@ public sealed class MainWindowViewModelDependencies
     public IProjectFileService ProjectFileService { get; init; } = new ProjectFileService();
     public IProjectFilePicker ProjectFilePicker { get; init; } = new WpfProjectFilePicker();
     public IProjectPrompt ProjectPrompt { get; init; } = new WpfProjectPrompt();
+    public IImportExportInteraction ImportExportInteraction { get; init; } = new WpfImportExportInteraction();
     public CsvTransactionService CsvTransactionService { get; init; } = new();
     public ValidationService ValidationService { get; init; } = new();
     public IUserPreferencesService UserPreferencesService { get; init; } = new UserPreferencesService();
@@ -34,6 +35,7 @@ public sealed class MainWindowViewModelDependencies
         ArgumentNullException.ThrowIfNull(ProjectFileService);
         ArgumentNullException.ThrowIfNull(ProjectFilePicker);
         ArgumentNullException.ThrowIfNull(ProjectPrompt);
+        ArgumentNullException.ThrowIfNull(ImportExportInteraction);
         ArgumentNullException.ThrowIfNull(CsvTransactionService);
         ArgumentNullException.ThrowIfNull(ValidationService);
         ArgumentNullException.ThrowIfNull(UserPreferencesService);

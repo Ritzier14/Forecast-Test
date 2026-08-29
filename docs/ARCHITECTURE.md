@@ -31,9 +31,16 @@ operation results. The workflow owns validation, Save As routing, content-hash
 conflict handling, reload, and rollback of a caller-provided pre-save mutation.
 `WpfProjectFilePicker` and `WpfProjectPrompt` are the only presentation
 adapters used by the project open/save workflow; they construct its dialogs or
-display its messages and do not own persistence or session state. Import/export
-and recovery dialogs remain separate follow-up concerns under LUNA-15B or their
-existing recovery packet.
+display its messages and do not own persistence or session state.
+
+Import/export paths and review decisions are supplied through
+`IImportExportInteraction`. `WpfImportExportInteraction` owns the WPF file
+pickers, cost-centre mapping window, auto-create preview, unmatched-import
+viewer, and notifications. The application workflow keeps CSV/XLSX/XLSM
+parsing in `CsvTransactionService`, stages mapping and preview edits on a
+cloned dataset, and commits them only after the final validation succeeds.
+Backup restore path selection uses the same generic adapter boundary; the WPF
+shell's close/discard and new-month prompts remain separate UI concerns.
 
 CSV/XLSX/XLSM files are untrusted boundaries. `CsvTransactionService` applies explicit compressed-file, uncompressed-workbook, worksheet, row, column, cell, and cell-text limits before returning a complete import batch; cancellation or parse failure returns no partial batch. Re-import uses the existing transaction duplicate key and skips matching rows, so an all-duplicate import leaves project state unchanged. Formula-like text is neutralized only while writing CSV output; canonical model and JSON values are never rewritten for spreadsheet safety.
 

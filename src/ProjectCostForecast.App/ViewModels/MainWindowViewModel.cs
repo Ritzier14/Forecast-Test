@@ -53,6 +53,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
     private readonly ProjectDatasetMigrationPipeline _projectDatasetMigrationPipeline;
     private readonly IProjectFileService _projectFileService;
     private readonly IProjectPrompt _projectPrompt;
+    private readonly IImportExportInteraction _importExportInteraction;
     private readonly ProjectFileWorkflow _projectFileWorkflow;
     private readonly CsvTransactionService _csvTransactionService;
     private readonly ValidationService _validationService;
@@ -157,6 +158,7 @@ public sealed partial class MainWindowViewModel : NotifyObject
         _projectDatasetMigrationPipeline = dependencies.ProjectDatasetMigrationPipeline;
         _projectFileService = dependencies.ProjectFileService;
         _projectPrompt = dependencies.ProjectPrompt;
+        _importExportInteraction = dependencies.ImportExportInteraction;
         _csvTransactionService = dependencies.CsvTransactionService;
         _validationService = dependencies.ValidationService;
         _userPreferencesService = dependencies.UserPreferencesService;

@@ -86,6 +86,59 @@ public interface IProjectPrompt
     void ShowError(string title, string message);
 }
 
+/// <summary>
+/// Supplies file paths, import decisions, and import notifications without
+/// coupling the import workflow to WPF. The desktop implementation is an
+/// adapter; tests can provide deterministic decisions without opening a
+/// window.
+/// </summary>
+public interface IImportExportInteraction
+{
+    string? PickOpenFile(string title, string filter);
+
+    string? PickSaveFile(string title, string filter, string suggestedFileName);
+
+    bool CanShowCostCenterMapping { get; }
+
+    CostCenterMappingPromptResult ChooseCostCenterMapping(CostCenterMappingPrompt prompt);
+
+    bool CanShowAutoCreatePreview { get; }
+
+    ImportAutoCreatePreviewResult ReviewAutoCreatePreview(ImportAutoCreatePreviewPrompt prompt);
+
+    bool CanShowUnmatchedImports { get; }
+
+    void ShowUnmatchedImports(IReadOnlyCollection<UnmatchedImportCombination> items);
+
+    void ShowInformation(string title, string message);
+
+    void ShowError(string title, string message);
+}
+
+public sealed record CostCenterMappingPrompt(
+    CostTransaction Sample,
+    IReadOnlyCollection<CostTransaction> MatchingTransactions,
+    IReadOnlyList<CostCenterNameOption> Candidates,
+    CostCenterNameOption? SuggestedOption,
+    IReadOnlyCollection<string> ExistingNames,
+    int RemainingGroupCount,
+    IReadOnlyCollection<string> MappingKeys);
+
+public sealed record CostCenterMappingPromptResult(
+    bool Accepted,
+    string SelectedManualName,
+    IReadOnlyDictionary<string, string> MappingNameOverrides,
+    IReadOnlyCollection<string> ExcludedMappingKeys);
+
+public sealed record ImportAutoCreatePreviewPrompt(
+    IReadOnlyList<ImportAutoCreatePreviewItem> PreviewItems,
+    bool ShowPreviewNextTime);
+
+public sealed record ImportAutoCreatePreviewResult(
+    bool Accepted,
+    bool ShowPreviewNextTime,
+    IReadOnlyList<ImportAutoCreatePreviewItem> PreviewItems);
+
 public enum ProjectOperationStatus
 {
     Succeeded,

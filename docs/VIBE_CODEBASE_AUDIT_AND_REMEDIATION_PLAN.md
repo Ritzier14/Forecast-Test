@@ -867,7 +867,7 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | LUNA-13 | Complete | `ProjectMetadataPresentation` converters own task/category WPF projections; five focused tests, 96 discovered tests, and all 428 retained legacy smoke assertions pass |
 | LUNA-14 | Complete | Forecast/summary WPF projections, attached grid state, and model-folder converters moved to `Presentation`; architecture negative control plus 7 focused tests, 103 discovered tests, and all 428 retained legacy smoke assertions pass |
 | LUNA-15A | Complete | `ProjectFileWorkflow`, WPF picker/prompt adapters, explicit operation results, and 10 headless open/save/session-preservation tests; Release verification passes with 113 discovered tests plus the retained smoke harness |
-| LUNA-15B | Not started | |
+| LUNA-15B | Complete | `IImportExportInteraction`, WPF import/review adapter, cloned import staging, 10 focused headless tests, and no direct file-dialog/window dependencies in `MainWindowViewModel.ProjectIO.cs`; Release verification passes with 123 discovered tests plus the retained smoke harness |
 | LUNA-16A | Not started | |
 | LUNA-16B | Not started | |
 | LUNA-17 | Not started | |
