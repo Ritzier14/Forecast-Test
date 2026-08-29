@@ -60,6 +60,13 @@ The original console harness is retained as a distinct opt-in compatibility smok
 check. Run `.\scripts\verify.ps1 -NoRestore -RunLegacySmoke` when that comparison is
 specifically useful; it is not the authoritative automated-test gate.
 
+Restore is lock-file based: the normal verification path uses
+`dotnet restore --locked-mode` and fails if the committed package graph changes.
+Run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File
+'.\scripts\audit-dependencies.ps1' -FailOnVulnerability` for the direct and
+transitive package inventory and NuGet advisory check. The dependency license
+review is recorded in [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
+
 The checks verify the important workbook-derived drilldowns, including:
 
 - Stanley Drake: 39 transaction lines totalling 15,000.

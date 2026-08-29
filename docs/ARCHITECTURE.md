@@ -209,6 +209,16 @@ omit the unrelated raw-transaction pivot; imports and manual full recalculation
 retain that dependency. `RefreshDiagnostics` records the phase counters used
 to prove both paths.
 
+Dependency resolution is controlled by the root `Directory.Build.props`: every
+project writes a committed `packages.lock.json`, restore enables NuGet audit for
+direct and transitive packages, and `scripts/verify.ps1` uses `--locked-mode`.
+`scripts/audit-dependencies.ps1` records the resolved package graph and queries
+the configured NuGet advisory source; the current 22-package inventory has zero
+vulnerability records. License metadata and the required release review are
+recorded in [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md). ClosedXML is pinned
+to the compatible 0.105.1 patch; transitive versions are not independently
+upgraded.
+
 The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root
 collection and persisted calculated field, records the current identity and
@@ -248,5 +258,7 @@ Every architecture change must keep these gates green:
 3. scheduling correctness, deterministic WPF interaction checks, and the characterized large-schedule/calculation timing checks.
 4. `.\scripts\verify-performance.ps1 -EnforceRegression` for the deterministic
    LUNA-20 workload baseline and p95 regression threshold.
+5. `.\scripts\audit-dependencies.ps1 -FailOnVulnerability` for the locked
+   direct/transitive package inventory and advisory check.
 
 `docs/TEST_COVERAGE_MAP.md` maps all 428 logical assertions from the original console harness to named discovered tests. The executable in `tests/ProjectCostForecast.Tests` remains unchanged as an opt-in compatibility smoke check invoked with `-RunLegacySmoke`; it is deliberately not a second default test gate and must not be retired without explicit user approval.

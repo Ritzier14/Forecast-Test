@@ -39,6 +39,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - Monthly report cards now share one canvas drag/position controller, while hexadecimal colour parsing, labels, and the default header gradient use one tested presentation boundary.
 - Forecast curve previews and applied forecasts now share the pure `ForecastCurveMath` allocator, including profile weights, cent rounding, residual assignment, and user-shape resampling.
 - LUNA-20 adds deterministic small/normal/stress performance workloads, JSON/CSV size recording, refresh-phase evidence, and an opt-in p95 regression verifier.
+- NuGet restore now uses committed lock files and locked verification; ClosedXML is updated to 0.105.1, and the dependency audit records direct/transitive inventory, advisory results, and license review metadata.
 
 ### Verified
 
@@ -66,6 +67,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - The LUNA-19B suite proves supported hex normalization, shared colour labels and default-gradient construction, canvas position bounds, shared controller wiring, z-order restoration, and WPF parser/brush separation; the Release verifier also covers the retained 428-assertion smoke gate.
 - The LUNA-19C suite proves preview/application curve parity across profiles, boundary and negative inputs, exact rounding residuals, total preservation, user-shape allocation, and removal of duplicate profile formulas; the Release verifier also covers the retained 428-assertion smoke gate.
 - The LUNA-20 performance verifier records 21 scenarios across three synthetic datasets on the same Release environment, proves all workload correctness checks, and passes the p95 baseline threshold of baseline plus `max(10 ms, 25%)`; normal grid-edit refresh p95 is 202.276 ms versus 228.502 ms baseline.
+- The LUNA-21 dependency gate passes locked restore, a 22-package direct/transitive inventory, zero NuGet vulnerability records, and the license review checklist; the Release verifier also passes 178 discovered tests and all 428 retained smoke assertions.
 
 ### Remaining Before A Formal Production Release
 

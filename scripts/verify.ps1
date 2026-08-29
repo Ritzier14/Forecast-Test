@@ -70,7 +70,8 @@ try {
     else {
         Invoke-RequiredNativeCommand -FilePath $resolvedDotnet -Arguments @(
             'restore',
-            $solutionPath
+            $solutionPath,
+            '--locked-mode'
         )
     }
 

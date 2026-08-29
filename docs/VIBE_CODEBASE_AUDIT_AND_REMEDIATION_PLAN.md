@@ -878,7 +878,7 @@ The executing agent updates this table sequentially. "Complete" requires the pac
 | LUNA-19B | Complete | `ReportCanvasDragController`, `IReportCanvasObjectHost`, `ReportCanvasObjectPositioning`, `ColorValueParser`, `ColorPalette`, and the shared frozen default header gradient consolidate the report-canvas and colour paths; 15 focused tests and full verification pass with 166 discovered tests plus the retained legacy smoke gate |
 | LUNA-19C | Complete | `ForecastCurveMath` is the canonical allocator for preview and applied forecasts; 9 focused tests and full verification pass with 175 discovered tests plus the retained legacy smoke gate |
 | LUNA-20 | Complete | Deterministic small/normal/stress performance runner and JSON artifacts record dataset sizes plus startup/load/save/import/recalculation/grid/workspace/schedule/memory timings; targeted forecast refresh skips the unrelated raw-transaction pivot; the focused contract test and full 176-test suite pass, and the enforced p95 verifier passes baseline + `max(10 ms, 25%)` |
-| LUNA-21 | Not started | |
+| LUNA-21 | Complete | Root lock-file policy and three committed `packages.lock.json` files pin ClosedXML 0.105.1 and the resolved graph; locked restore, direct/transitive package inventory, zero-vulnerability advisory audit, and license review checklist pass with the full 178-test and retained smoke gates |
 | LUNA-22 | Not started | Requires explicit approval before removing tracked artifacts |
 | LUNA-23 | Not started | |
 | LUNA-24 | Not started | |

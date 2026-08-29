@@ -593,3 +593,19 @@ retain the pivot dependency. The post-change normal grid-edit report recorded
 for initial construction rather than once per five forecast edits. The focused
 contract test and the full 176-test suite preserve the calculation and refresh
 state behavior.
+
+## 23. LUNA-21 deterministic dependency evidence
+
+The root `Directory.Build.props` enables committed NuGet lock files and
+NuGet's direct/transitive audit mode. The three project-level
+`packages.lock.json` files pin ClosedXML 0.105.1 and its resolved dependency
+graph, along with the test graph. `scripts/verify.ps1` performs locked restore;
+it cannot silently update a package graph during verification.
+
+`scripts/audit-dependencies.ps1` records direct and transitive package usage in
+`LUNA-21-DEPENDENCY-AUDIT.json` and fails when invoked with
+`-FailOnVulnerability` if the NuGet advisory query reports a vulnerability. The
+2026-08-29 inventory contains 22 resolved packages and zero vulnerability
+records. The package-declared MIT and Apache-2.0 metadata, plus the two legacy
+packages whose nuspecs provide license URLs rather than SPDX expressions, is
+reviewed in `RELEASE_CHECKLIST.md`.

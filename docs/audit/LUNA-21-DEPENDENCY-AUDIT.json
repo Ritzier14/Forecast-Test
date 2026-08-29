@@ -1,0 +1,544 @@
+﻿{
+    "SchemaVersion":  1,
+    "RecordedAtUtc":  "2026-08-29T07:02:49.5129055Z",
+    "RepositoryCommit":  "2bdf5a597fe5dc25e4bd457956e35b0158552479",
+    "DotnetSdk":  "10.0.202",
+    "LockedRestore":  true,
+    "VulnerabilityCount":  0,
+    "Packages":  [
+                     {
+                         "Id":  "ClosedXML",
+                         "ResolvedVersions":  [
+                                                  "0.105.1"
+                                              ],
+                         "DirectProjects":  [
+                                                "src/ProjectCostForecast.App/ProjectCostForecast.App.csproj"
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "tests/ProjectCostForecast.Tests/ProjectCostForecast.Tests.csproj",
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "ClosedXML.Parser",
+                         "ResolvedVersions":  [
+                                                  "2.0.0"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "src/ProjectCostForecast.App/ProjectCostForecast.App.csproj",
+                                                    "tests/ProjectCostForecast.Tests/ProjectCostForecast.Tests.csproj",
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "DocumentFormat.OpenXml",
+                         "ResolvedVersions":  [
+                                                  "3.1.1"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "src/ProjectCostForecast.App/ProjectCostForecast.App.csproj",
+                                                    "tests/ProjectCostForecast.Tests/ProjectCostForecast.Tests.csproj",
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "DocumentFormat.OpenXml.Framework",
+                         "ResolvedVersions":  [
+                                                  "3.1.1"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "src/ProjectCostForecast.App/ProjectCostForecast.App.csproj",
+                                                    "tests/ProjectCostForecast.Tests/ProjectCostForecast.Tests.csproj",
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "ExcelNumberFormat",
+                         "ResolvedVersions":  [
+                                                  "1.1.0"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "src/ProjectCostForecast.App/ProjectCostForecast.App.csproj",
+                                                    "tests/ProjectCostForecast.Tests/ProjectCostForecast.Tests.csproj",
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "RBush.Signed",
+                         "ResolvedVersions":  [
+                                                  "4.0.0"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "src/ProjectCostForecast.App/ProjectCostForecast.App.csproj",
+                                                    "tests/ProjectCostForecast.Tests/ProjectCostForecast.Tests.csproj",
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "SixLabors.Fonts",
+                         "ResolvedVersions":  [
+                                                  "1.0.0"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "src/ProjectCostForecast.App/ProjectCostForecast.App.csproj",
+                                                    "tests/ProjectCostForecast.Tests/ProjectCostForecast.Tests.csproj",
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "System.IO.Packaging",
+                         "ResolvedVersions":  [
+                                                  "8.0.1"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "src/ProjectCostForecast.App/ProjectCostForecast.App.csproj",
+                                                    "tests/ProjectCostForecast.Tests/ProjectCostForecast.Tests.csproj",
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "Microsoft.NET.Test.Sdk",
+                         "ResolvedVersions":  [
+                                                  "17.11.1"
+                                              ],
+                         "DirectProjects":  [
+                                                "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                            ],
+                         "TransitiveProjects":  [
+
+                                                ]
+                     },
+                     {
+                         "Id":  "xunit",
+                         "ResolvedVersions":  [
+                                                  "2.9.2"
+                                              ],
+                         "DirectProjects":  [
+                                                "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                            ],
+                         "TransitiveProjects":  [
+
+                                                ]
+                     },
+                     {
+                         "Id":  "xunit.runner.visualstudio",
+                         "ResolvedVersions":  [
+                                                  "2.8.2"
+                                              ],
+                         "DirectProjects":  [
+                                                "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                            ],
+                         "TransitiveProjects":  [
+
+                                                ]
+                     },
+                     {
+                         "Id":  "Microsoft.CodeCoverage",
+                         "ResolvedVersions":  [
+                                                  "17.11.1"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "Microsoft.TestPlatform.ObjectModel",
+                         "ResolvedVersions":  [
+                                                  "17.11.1"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "Microsoft.TestPlatform.TestHost",
+                         "ResolvedVersions":  [
+                                                  "17.11.1"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "Newtonsoft.Json",
+                         "ResolvedVersions":  [
+                                                  "13.0.1"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "System.Reflection.Metadata",
+                         "ResolvedVersions":  [
+                                                  "1.6.0"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "xunit.abstractions",
+                         "ResolvedVersions":  [
+                                                  "2.0.3"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "xunit.analyzers",
+                         "ResolvedVersions":  [
+                                                  "1.16.0"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "xunit.assert",
+                         "ResolvedVersions":  [
+                                                  "2.9.2"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "xunit.core",
+                         "ResolvedVersions":  [
+                                                  "2.9.2"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "xunit.extensibility.core",
+                         "ResolvedVersions":  [
+                                                  "2.9.2"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     },
+                     {
+                         "Id":  "xunit.extensibility.execution",
+                         "ResolvedVersions":  [
+                                                  "2.9.2"
+                                              ],
+                         "DirectProjects":  [
+
+                                            ],
+                         "TransitiveProjects":  [
+                                                    "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                ]
+                     }
+                 ],
+    "Projects":  [
+                     {
+                         "Project":  "src/ProjectCostForecast.App/ProjectCostForecast.App.csproj",
+                         "Inventory":  {
+                                           "version":  1,
+                                           "parameters":  "--include-transitive",
+                                           "projects":  [
+                                                            {
+                                                                "path":  "src/ProjectCostForecast.App/ProjectCostForecast.App.csproj",
+                                                                "frameworks":  [
+                                                                                   {
+                                                                                       "framework":  "net8.0-windows7.0",
+                                                                                       "topLevelPackages":  [
+                                                                                                                {
+                                                                                                                    "id":  "ClosedXML",
+                                                                                                                    "requestedVersion":  "0.105.1",
+                                                                                                                    "resolvedVersion":  "0.105.1"
+                                                                                                                }
+                                                                                                            ],
+                                                                                       "transitivePackages":  [
+                                                                                                                  {
+                                                                                                                      "id":  "ClosedXML.Parser",
+                                                                                                                      "resolvedVersion":  "2.0.0"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "DocumentFormat.OpenXml",
+                                                                                                                      "resolvedVersion":  "3.1.1"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "DocumentFormat.OpenXml.Framework",
+                                                                                                                      "resolvedVersion":  "3.1.1"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "ExcelNumberFormat",
+                                                                                                                      "resolvedVersion":  "1.1.0"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "RBush.Signed",
+                                                                                                                      "resolvedVersion":  "4.0.0"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "SixLabors.Fonts",
+                                                                                                                      "resolvedVersion":  "1.0.0"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "System.IO.Packaging",
+                                                                                                                      "resolvedVersion":  "8.0.1"
+                                                                                                                  }
+                                                                                                              ]
+                                                                                   }
+                                                                               ]
+                                                            }
+                                                        ]
+                                       },
+                         "Vulnerabilities":  {
+                                                 "version":  1,
+                                                 "parameters":  "--vulnerable --include-transitive",
+                                                 "sources":  [
+                                                                 "https://api.nuget.org/v3/index.json"
+                                                             ],
+                                                 "projects":  [
+                                                                  {
+                                                                      "path":  "src/ProjectCostForecast.App/ProjectCostForecast.App.csproj"
+                                                                  }
+                                                              ]
+                                             }
+                     },
+                     {
+                         "Project":  "tests/ProjectCostForecast.Tests/ProjectCostForecast.Tests.csproj",
+                         "Inventory":  {
+                                           "version":  1,
+                                           "parameters":  "--include-transitive",
+                                           "projects":  [
+                                                            {
+                                                                "path":  "tests/ProjectCostForecast.Tests/ProjectCostForecast.Tests.csproj",
+                                                                "frameworks":  [
+                                                                                   {
+                                                                                       "framework":  "net8.0-windows7.0",
+                                                                                       "transitivePackages":  [
+                                                                                                                  {
+                                                                                                                      "id":  "ClosedXML",
+                                                                                                                      "resolvedVersion":  "0.105.1"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "ClosedXML.Parser",
+                                                                                                                      "resolvedVersion":  "2.0.0"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "DocumentFormat.OpenXml",
+                                                                                                                      "resolvedVersion":  "3.1.1"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "DocumentFormat.OpenXml.Framework",
+                                                                                                                      "resolvedVersion":  "3.1.1"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "ExcelNumberFormat",
+                                                                                                                      "resolvedVersion":  "1.1.0"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "RBush.Signed",
+                                                                                                                      "resolvedVersion":  "4.0.0"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "SixLabors.Fonts",
+                                                                                                                      "resolvedVersion":  "1.0.0"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "System.IO.Packaging",
+                                                                                                                      "resolvedVersion":  "8.0.1"
+                                                                                                                  }
+                                                                                                              ]
+                                                                                   }
+                                                                               ]
+                                                            }
+                                                        ]
+                                       },
+                         "Vulnerabilities":  {
+                                                 "version":  1,
+                                                 "parameters":  "--vulnerable --include-transitive",
+                                                 "sources":  [
+                                                                 "https://api.nuget.org/v3/index.json"
+                                                             ],
+                                                 "projects":  [
+                                                                  {
+                                                                      "path":  "tests/ProjectCostForecast.Tests/ProjectCostForecast.Tests.csproj"
+                                                                  }
+                                                              ]
+                                             }
+                     },
+                     {
+                         "Project":  "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj",
+                         "Inventory":  {
+                                           "version":  1,
+                                           "parameters":  "--include-transitive",
+                                           "projects":  [
+                                                            {
+                                                                "path":  "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj",
+                                                                "frameworks":  [
+                                                                                   {
+                                                                                       "framework":  "net8.0-windows7.0",
+                                                                                       "topLevelPackages":  [
+                                                                                                                {
+                                                                                                                    "id":  "Microsoft.NET.Test.Sdk",
+                                                                                                                    "requestedVersion":  "17.11.1",
+                                                                                                                    "resolvedVersion":  "17.11.1"
+                                                                                                                },
+                                                                                                                {
+                                                                                                                    "id":  "xunit",
+                                                                                                                    "requestedVersion":  "2.9.2",
+                                                                                                                    "resolvedVersion":  "2.9.2"
+                                                                                                                },
+                                                                                                                {
+                                                                                                                    "id":  "xunit.runner.visualstudio",
+                                                                                                                    "requestedVersion":  "2.8.2",
+                                                                                                                    "resolvedVersion":  "2.8.2"
+                                                                                                                }
+                                                                                                            ],
+                                                                                       "transitivePackages":  [
+                                                                                                                  {
+                                                                                                                      "id":  "ClosedXML",
+                                                                                                                      "resolvedVersion":  "0.105.1"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "ClosedXML.Parser",
+                                                                                                                      "resolvedVersion":  "2.0.0"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "DocumentFormat.OpenXml",
+                                                                                                                      "resolvedVersion":  "3.1.1"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "DocumentFormat.OpenXml.Framework",
+                                                                                                                      "resolvedVersion":  "3.1.1"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "ExcelNumberFormat",
+                                                                                                                      "resolvedVersion":  "1.1.0"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "Microsoft.CodeCoverage",
+                                                                                                                      "resolvedVersion":  "17.11.1"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "Microsoft.TestPlatform.ObjectModel",
+                                                                                                                      "resolvedVersion":  "17.11.1"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "Microsoft.TestPlatform.TestHost",
+                                                                                                                      "resolvedVersion":  "17.11.1"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "Newtonsoft.Json",
+                                                                                                                      "resolvedVersion":  "13.0.1"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "RBush.Signed",
+                                                                                                                      "resolvedVersion":  "4.0.0"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "SixLabors.Fonts",
+                                                                                                                      "resolvedVersion":  "1.0.0"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "System.IO.Packaging",
+                                                                                                                      "resolvedVersion":  "8.0.1"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "System.Reflection.Metadata",
+                                                                                                                      "resolvedVersion":  "1.6.0"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "xunit.abstractions",
+                                                                                                                      "resolvedVersion":  "2.0.3"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "xunit.analyzers",
+                                                                                                                      "resolvedVersion":  "1.16.0"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "xunit.assert",
+                                                                                                                      "resolvedVersion":  "2.9.2"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "xunit.core",
+                                                                                                                      "resolvedVersion":  "2.9.2"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "xunit.extensibility.core",
+                                                                                                                      "resolvedVersion":  "2.9.2"
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                      "id":  "xunit.extensibility.execution",
+                                                                                                                      "resolvedVersion":  "2.9.2"
+                                                                                                                  }
+                                                                                                              ]
+                                                                                   }
+                                                                               ]
+                                                            }
+                                                        ]
+                                       },
+                         "Vulnerabilities":  {
+                                                 "version":  1,
+                                                 "parameters":  "--vulnerable --include-transitive",
+                                                 "sources":  [
+                                                                 "https://api.nuget.org/v3/index.json"
+                                                             ],
+                                                 "projects":  [
+                                                                  {
+                                                                      "path":  "tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj"
+                                                                  }
+                                                              ]
+                                             }
+                     }
+                 ]
+}
