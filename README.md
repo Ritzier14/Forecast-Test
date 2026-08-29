@@ -67,6 +67,14 @@ Run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File
 transitive package inventory and NuGet advisory check. The dependency license
 review is recorded in [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
 
+The Windows CI workflow in [`.github/workflows/verify.yml`](.github/workflows/verify.yml)
+runs the same verification, dependency, redacted secret-scan, and performance
+controls. The performance report retains min/median/p95 samples; short default
+runs gate on median because p95 is the maximum sample with only three
+iterations, while runs with at least 20 samples gate on p95. Bundled-data
+provenance and the approval-gated tracked-artifact cleanup are recorded in
+[`docs/audit/LUNA-22-BUNDLED-DATA-REVIEW.md`](docs/audit/LUNA-22-BUNDLED-DATA-REVIEW.md).
+
 The checks verify the important workbook-derived drilldowns, including:
 
 - Stanley Drake: 39 transaction lines totalling 15,000.

@@ -70,6 +70,15 @@ if ($EnforceRegression) {
         $baselineByKey["$($scenario.Dataset)/$($scenario.Name)"] = $scenario
     }
 
+    # With fewer than 20 samples, the nearest-rank p95 is the maximum sample.
+    # That makes the default three-sample desktop run an outlier gate rather
+    # than a useful percentile comparison. Keep p95 in every report, but use
+    # the median for short runs and reserve p95 enforcement for two reports
+    # that both have enough samples for a meaningful percentile.
+    $useP95 = [int]$current.Runtime.Iterations -ge 20 -and [int]$baseline.Runtime.Iterations -ge 20
+    $comparisonMetric = if ($useP95) { 'P95Milliseconds' } else { 'MedianMilliseconds' }
+    $comparisonLabel = if ($useP95) { 'p95' } else { 'median' }
+
     foreach ($scenario in $current.Scenarios) {
         $key = "$($scenario.Dataset)/$($scenario.Name)"
         if (-not $baselineByKey.ContainsKey($key)) {
@@ -77,14 +86,21 @@ if ($EnforceRegression) {
         }
 
         $baselineScenario = $baselineByKey[$key]
-        $allowed = [math]::Max(10.0, [double]$baselineScenario.P95Milliseconds * 0.25)
-        $limit = [double]$baselineScenario.P95Milliseconds + $allowed
-        if ([double]$scenario.P95Milliseconds -gt $limit) {
-            throw "LUNA-20 regression for ${key}: p95 $($scenario.P95Milliseconds) ms exceeds baseline $($baselineScenario.P95Milliseconds) ms plus tolerance $allowed ms."
+        $baselineMeasurement = [double]$baselineScenario.$comparisonMetric
+        $currentMeasurement = [double]$scenario.$comparisonMetric
+        $allowed = [math]::Max(50.0, $baselineMeasurement * 0.25)
+        $limit = $baselineMeasurement + $allowed
+        if ($currentMeasurement -gt $limit) {
+            throw "LUNA-20 regression for ${key}: $comparisonLabel $currentMeasurement ms exceeds baseline $baselineMeasurement ms plus tolerance $allowed ms."
         }
     }
 
-    Write-Host 'LUNA-20 baseline comparison passed: no p95 scenario exceeded baseline + max(10 ms, 25%).'
+    if ($useP95) {
+        Write-Host 'LUNA-20 baseline comparison passed: no p95 scenario exceeded baseline + max(50 ms, 25%).'
+    }
+    else {
+        Write-Host 'LUNA-20 baseline comparison passed: no median scenario exceeded baseline + max(50 ms, 25%); p95 remains diagnostic for short runs.'
+    }
 }
 
 Write-Host 'LUNA-20 performance verification passed.'

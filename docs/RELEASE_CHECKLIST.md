@@ -1,9 +1,9 @@
 # Release checklist
 
 This checklist records release gates that must be completed for the artifact
-under review. LUNA-21 owns the dependency and supply-chain section; packaging,
-signing, bundled-data, recovery, and CI sections remain in later release
-packets.
+under review. LUNA-21 owns the dependency and supply-chain section, while
+LUNA-22 owns the CI, bundled-data, and repository-hygiene controls. Packaging,
+signing, and recovery remain later release packets.
 
 ## Dependency and supply-chain gate
 
@@ -55,3 +55,28 @@ The machine-readable package paths, resolved versions, direct/transitive
 project usage, NuGet source response, repository commit, and vulnerability
 result are retained in
 [`docs/audit/LUNA-21-DEPENDENCY-AUDIT.json`](audit/LUNA-21-DEPENDENCY-AUDIT.json).
+
+## CI and repository-hygiene gate
+
+- [ ] Run the Windows workflow in [`.github/workflows/verify.yml`](../.github/workflows/verify.yml)
+  on the commit under review.
+- [ ] Confirm the workflow uses only `contents: read`, does not persist checkout
+  credentials, and passes locked restore, Release verification, the retained
+  smoke gate, dependency audit, secret scan, and performance gate.
+- [ ] Review [`docs/audit/LUNA-22-BUNDLED-DATA-REVIEW.md`](audit/LUNA-22-BUNDLED-DATA-REVIEW.md)
+  and obtain release-data owner approval for the anonymised startup workbook
+  and archived source workbook policy.
+- [ ] Confirm a normal application build copies only
+  `src/ProjectCostForecast.App/Data/data_anonymised.xlsx`; `SampleData.json` and
+  `InitialCostLoad.xlsx` must not be in the application package.
+- [ ] Review the redacted source/history secret-scan report. It must contain
+  zero findings; the scanner must never print matched values.
+- [ ] Treat tracked `release/ProjectCostForecast/` and `Temp/` cleanup as a
+  separate reviewable change. No files are removed or untracked by LUNA-22
+  until explicit approval is recorded.
+- [ ] Retain generated CI reports as short-lived workflow artifacts rather than
+  committing build output or scan results.
+
+The current LUNA-22 implementation records the controls and review evidence,
+but the tracked-artifact cleanup checkbox remains intentionally pending explicit
+approval.

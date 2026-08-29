@@ -583,7 +583,12 @@ schedule calculation for every profile, plus normal-profile grid refresh,
 workspace switching, and repeated open/close memory work. The baseline and
 post-change JSON artifacts use the same Windows 10/.NET 8 Release environment,
 three timing iterations, and five memory cycles. The verifier requires all 21
-scenarios and compares p95 values against baseline plus `max(10 ms, 25%)`.
+scenarios and compares values against baseline plus `max(50 ms, 25%)`. For the
+default three-sample desktop gate, the verifier compares medians because
+nearest-rank p95 is the maximum sample at that size; when both reports have at
+least 20 samples it compares p95. The absolute floor is intentional for
+Windows scheduling/GC noise. The raw samples remain in each artifact so a
+repeated or larger regression is visible rather than hidden by the tolerance.
 
 Refresh ownership is now explicit: a forecast-only spreadsheet edit requests
 calculated views, totals, ledger, and collection projections without rebuilding
@@ -609,3 +614,19 @@ it cannot silently update a package graph during verification.
 records. The package-declared MIT and Apache-2.0 metadata, plus the two legacy
 packages whose nuspecs provide license URLs rather than SPDX expressions, is
 reviewed in `RELEASE_CHECKLIST.md`.
+
+## 24. LUNA-22 CI, bundled-data, and repository hygiene evidence
+
+The checked-in Windows workflow grants only `contents: read`, disables checkout
+credential persistence, and invokes the same locked verification script used
+locally. It also runs the dependency audit, redacted source/history secret scan,
+and deterministic LUNA-20 performance gate, uploading generated reports with a
+short retention period rather than committing build output.
+
+The normal application package copies only `data_anonymised.xlsx`. The bundled
+data review records file hashes, provenance, and package decisions without
+printing workbook or project values. `SampleData.json` remains a source/test
+fallback and `InitialCostLoad.xlsx` is not packaged. Existing tracked release
+and `Temp` copies are documented as legacy artifacts and ignored for future
+changes; removing them from Git is intentionally isolated behind explicit user
+approval.

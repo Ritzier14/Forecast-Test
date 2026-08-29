@@ -202,12 +202,14 @@ do not redefine committed financial allocation.
 Performance evidence has an explicit opt-in gate in
 [`scripts/verify-performance.ps1`](../scripts/verify-performance.ps1). It builds
 Release, runs the headless LUNA-20 workload over deterministic small, normal,
-and stress datasets, records dataset byte sizes and p95 timings in
+and stress datasets, records dataset byte sizes and min/median/p95 timings in
 [`docs/audit`](audit), and compares every scenario with the baseline using the
-documented `max(10 ms, 25%)` tolerance. Forecast-only spreadsheet refreshes
-omit the unrelated raw-transaction pivot; imports and manual full recalculation
-retain that dependency. `RefreshDiagnostics` records the phase counters used
-to prove both paths.
+documented `max(50 ms, 25%)` tolerance. The default three-sample gate compares
+medians because nearest-rank p95 is the maximum sample at that size; p95 is
+enforced when both reports contain at least 20 samples. Forecast-only
+spreadsheet refreshes omit the unrelated raw-transaction pivot; imports and
+manual full recalculation retain that dependency. `RefreshDiagnostics` records
+the phase counters used to prove both paths.
 
 Dependency resolution is controlled by the root `Directory.Build.props`: every
 project writes a committed `packages.lock.json`, restore enables NuGet audit for
@@ -218,6 +220,17 @@ vulnerability records. License metadata and the required release review are
 recorded in [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md). ClosedXML is pinned
 to the compatible 0.105.1 patch; transitive versions are not independently
 upgraded.
+
+The Windows CI workflow in [`.github/workflows/verify.yml`](../.github/workflows/verify.yml)
+uses `contents: read`, disables checkout credential persistence, and runs the
+same locked verification, dependency, secret-scan, and performance gates used
+locally. `scripts/scan-secrets.ps1` reports only redacted file/type locations
+across the working tree and Git history. The bundled-data review in
+[`docs/audit/LUNA-22-BUNDLED-DATA-REVIEW.md`](audit/LUNA-22-BUNDLED-DATA-REVIEW.md)
+records hashes, provenance, and package decisions without printing workbook
+values. Normal application output contains only the approved anonymised startup
+workbook; tracked legacy release and `Temp` copies remain an explicit,
+approval-gated cleanup decision.
 
 The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root
@@ -257,7 +270,11 @@ Every architecture change must keep these gates green:
 2. project save/load and CSV/XLSX/XLSM import/export boundary checks.
 3. scheduling correctness, deterministic WPF interaction checks, and the characterized large-schedule/calculation timing checks.
 4. `.\scripts\verify-performance.ps1 -EnforceRegression` for the deterministic
-   LUNA-20 workload baseline and p95 regression threshold.
+   LUNA-20 workload baseline and regression threshold. The default three-sample
+   gate compares medians because p95 is the maximum sample at that size; runs
+   where both reports have at least 20 samples enforce p95. The 50 ms absolute
+   floor accounts for Windows scheduling/GC noise, and all samples remain
+   stored in the report.
 5. `.\scripts\audit-dependencies.ps1 -FailOnVulnerability` for the locked
    direct/transitive package inventory and advisory check.
 

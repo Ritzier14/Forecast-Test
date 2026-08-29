@@ -30,6 +30,11 @@ coverage/
 *.temp
 ~$*
 
+# Release and scratch artifacts are generated outside normal builds. Existing
+# tracked copies require an explicit cleanup packet before they are removed.
+/release/ProjectCostForecast/
+/Temp/
+
 # OS files
 .DS_Store
 Thumbs.db

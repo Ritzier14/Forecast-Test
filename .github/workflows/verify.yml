@@ -1,0 +1,50 @@
+name: verify
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Release verification and legacy smoke
+        shell: pwsh
+        run: .\scripts\verify.ps1 -RunLegacySmoke
+
+      - name: Dependency inventory and vulnerability audit
+        shell: pwsh
+        run: .\scripts\audit-dependencies.ps1 -NoRestore -FailOnVulnerability -OutputPath 'artifacts/luna22/dependency-audit.json'
+
+      - name: Source and history secret scan
+        shell: pwsh
+        run: .\scripts\scan-secrets.ps1 -OutputPath 'artifacts/luna22/secret-scan.json' -FailOnMatch
+
+      - name: Performance regression gate
+        shell: pwsh
+        run: .\scripts\verify-performance.ps1 -OutputPath 'artifacts/luna22/performance-run.json' -BaselinePath 'docs/audit/LUNA-20-PERFORMANCE-BASELINE.json' -EnforceRegression
+
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-cost-forecast-verification
+          path: artifacts/luna22/
+          if-no-files-found: warn
+          retention-days: 14
