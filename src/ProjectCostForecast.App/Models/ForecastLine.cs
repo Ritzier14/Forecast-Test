@@ -325,9 +325,14 @@ public sealed class ForecastMonthlyComment
     public DateTimeOffset RecordedAt { get; set; } = DateTimeOffset.UnixEpoch;
 
     [System.Text.Json.Serialization.JsonIgnore]
-    public int PeriodSortKey => Services.FiscalPeriod.SortKey(PeriodLabel) == int.MaxValue
-        ? 0
-        : Services.FiscalPeriod.SortKey(PeriodLabel);
+    public int PeriodSortKey
+    {
+        get
+        {
+            var sortKey = FiscalPeriodOrdering.SortKey(PeriodLabel);
+            return sortKey == int.MaxValue ? 0 : sortKey;
+        }
+    }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public string DisplayText
@@ -363,5 +368,43 @@ public sealed class ResourceCommentMetricPreference
             new() { Key = "ActualCostToDate", Label = "Actual Cost to Date", IsVisible = true, DisplayOrder = 7 },
             new() { Key = "CostVsLastForecast", Label = "Variance in Cost vs Last Month Forecast", IsVisible = true, DisplayOrder = 8 }
         ];
+    }
+}
+
+/// <summary>
+/// Model-safe fiscal-period parsing and ordering used by comment projections.
+/// This keeps the model candidate independent from the Services namespace.
+/// </summary>
+internal static class FiscalPeriodOrdering
+{
+    public static bool TryParseLabel(string? periodLabel, out int year, out int month)
+    {
+        year = 0;
+        month = 0;
+        if (string.IsNullOrWhiteSpace(periodLabel))
+        {
+            return false;
+        }
+
+        var parts = periodLabel.Trim().Split(
+            '-',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length != 2
+            || !int.TryParse(parts[0], out var shortYear)
+            || !int.TryParse(parts[1], out month)
+            || month is < 1 or > 12)
+        {
+            return false;
+        }
+
+        year = shortYear >= 70 ? 1900 + shortYear : 2000 + shortYear;
+        return true;
+    }
+
+    public static int SortKey(string? periodLabel)
+    {
+        return TryParseLabel(periodLabel, out var year, out var month)
+            ? (year * 100) + month
+            : int.MaxValue;
     }
 }

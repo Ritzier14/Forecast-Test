@@ -1,3 +1,5 @@
+using ProjectCostForecast.App.Models;
+
 namespace ProjectCostForecast.App.Services;
 
 public static class FiscalPeriod
@@ -14,27 +16,8 @@ public static class FiscalPeriod
         return $"{year % 100:00}-{month:00}";
     }
 
-    public static bool TryParseLabel(string? periodLabel, out int year, out int month)
-    {
-        year = 0;
-        month = 0;
-        if (string.IsNullOrWhiteSpace(periodLabel))
-        {
-            return false;
-        }
-
-        var parts = periodLabel.Trim().Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length != 2
-            || !int.TryParse(parts[0], out var shortYear)
-            || !int.TryParse(parts[1], out month)
-            || month is < 1 or > 12)
-        {
-            return false;
-        }
-
-        year = shortYear >= 70 ? 1900 + shortYear : 2000 + shortYear;
-        return true;
-    }
+    public static bool TryParseLabel(string? periodLabel, out int year, out int month) =>
+        FiscalPeriodOrdering.TryParseLabel(periodLabel, out year, out month);
 
     /// <summary>
     /// Converts a July-to-June fiscal period label into the corresponding
@@ -64,15 +47,8 @@ public static class FiscalPeriod
         return FormatLabel(fiscalYear, fiscalMonth);
     }
 
-    public static int SortKey(string? periodLabel)
-    {
-        if (TryParseLabel(periodLabel, out var year, out var month))
-        {
-            return (year * 100) + month;
-        }
-
-        return int.MaxValue;
-    }
+    public static int SortKey(string? periodLabel) =>
+        FiscalPeriodOrdering.SortKey(periodLabel);
 
     public static List<string> BuildContinuousRange(int startYear, int startMonth, int endYear, int endMonth)
     {

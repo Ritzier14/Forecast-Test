@@ -93,6 +93,31 @@ Acceptance:
 - forecast comment ordering remains deterministic; and
 - focused tests, full verification, retained smoke, and `git diff --check` pass.
 
+Implementation status: complete on baseline `7c42c5f`.
+
+Implementation evidence: `AuditEvent` and `UnmatchedImportCombination` retain
+their persisted `DateTimeOffset` values while `DateTimeDisplayConverter`
+formats them through `DateTimeContract` at the WPF boundary. Forecast comment
+ordering and the existing public `Services.FiscalPeriod` parsing/sort API share
+one canonical model-safe fiscal-period implementation, with the service facade
+delegating downward. Runtime parity and malformed-label coverage plus a
+service-delegation source contract prevent the two paths from diverging. The
+architecture gate covers the full model candidate root, recognizes qualified
+namespace references and using directives after removing comments/literals,
+and has deliberate negative controls for Services, Presentation, ViewModels,
+and WPF. The packet changed seven production files and one test file. The one
+production-file variance above the six-file packet limit is the parent-requested
+canonicalization correction in `Services/FiscalPeriod.cs`; no assembly split or
+LUNA-26B work was included.
+
+Focused evidence: `dotnet test
+tests/ProjectCostForecast.UnitTests/ProjectCostForecast.UnitTests.csproj -c
+Release --no-restore --filter
+"FullyQualifiedName~Luna26A|FullyQualifiedName~Luna14ArchitectureTests|FullyQualifiedName~DateTimeLocaleContractTests|FullyQualifiedName~StateModelCharacterizationTests"`
+exited 0 with 46 tests passed. The required verifier exited 0 with a
+zero-warning/zero-error Release build, 213 discovered tests passed, and all
+428 retained smoke assertions passed.
+
 ### LUNA-26B — revision-safe persistence boundary
 
 Depends on: LUNA-26A complete.
@@ -186,7 +211,7 @@ that larger migration is already complete.
 
 | Packet | Status | Evidence |
 |---|---|---|
-| LUNA-26A | Pending | Model dependency closure |
+| LUNA-26A | Complete | Model dependency closure with one canonical fiscal parser; 46 focused tests, 213 discovered tests, and 428 retained smoke assertions pass |
 | LUNA-26B | Pending | Revision-safe persistence boundary |
 | LUNA-26C | Pending | MainWindow deferred-work lifetime closure |
 | SOL-01 | Pending | Independent post-SOL architecture review |

@@ -72,24 +72,36 @@ displaying exception details, project values, imported rows, names, or paths.
 
 The `Models` folder is now the agreed candidate set for persisted/domain
 types. `ForecastLine`, `MonthlyForecast`, `CategorySummary`, the true summary
-DTOs, and the other model files contain no `System.Windows`, control, dialog,
-brush, image, visibility, or `MainWindow` dependency. `MonthlyForecast` keeps
-its persisted amount/lock contract and editability notification; its old row
-brush projections were dead UI state and have been removed.
+DTOs, and the other model files contain no `Services`, `Presentation`,
+`ViewModels`, `System.Windows`, control, dialog, brush, image, visibility, or
+`MainWindow` dependency. `MonthlyForecast` keeps its persisted amount/lock
+contract and editability notification; its old row brush projections were dead
+UI state and have been removed.
 
 The WPF-only `KpiPill`, `WorkspaceViewTab`, and
 `ForecastMonthColumnDefinition` projections, the attached grid state helpers,
 and the model-folder converters now live under
-`src/ProjectCostForecast.App/Presentation`. `WorkspaceViewLayout` remains the
-plain project-local persisted layout; `WorkspaceViewTab` is the live shell
-projection and its `IconPreview` stays ignored by JSON. The XAML resource and
-attached-property bindings point to the App namespace, preserving the existing
-icons, colours, locking, separators, comparison visibility, and grid behavior.
+`src/ProjectCostForecast.App/Presentation`. `DateTimeDisplayConverter` formats
+durable audit and unmatched-import instants through the NZ date/time contract;
+the models retain only their persisted `DateTimeOffset` values.
+`ForecastMonthlyComment` uses the model-safe fiscal ordering boundary for its
+ignored sort key. That boundary is the canonical fiscal-period parser and sort
+implementation; the existing public `Services.FiscalPeriod.TryParseLabel` and
+`SortKey` API delegates down to it so parsing behavior has one source of truth.
+`WorkspaceViewLayout` remains the plain project-local persisted layout;
+`WorkspaceViewTab` is the live shell projection and its `IconPreview` stays
+ignored by JSON. The XAML resource and attached-property bindings point to the
+App namespace, preserving the existing icons, colours, locking, separators,
+comparison visibility, and grid behavior.
 
 `Luna14ArchitectureTests` scans every C# file in `Models` for forbidden WPF or
-window references and includes a deliberate negative-control source string,
-so adding a dependency to the agreed candidate set fails the discovered test
-gate.
+window references and includes a deliberate negative-control source string.
+`Luna26AModelDependencyTests` extends that gate to every C# file below the
+candidate root, recognizes using directives and qualified references for the
+forbidden Services/Presentation/ViewModels/WPF directions, ignores comments
+and literals, and includes negative controls for each forbidden layer. Its
+fiscal-period parity, malformed-label, and service-delegation contracts keep
+the public facade aligned with the canonical model-safe implementation.
 
 ### Canonical financial state boundary
 

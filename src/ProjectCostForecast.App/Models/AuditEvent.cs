@@ -13,8 +13,6 @@ public sealed class AuditEvent
     public string Reason { get; set; } = string.Empty;
     public string Source { get; set; } = "Desktop";
 
-    [System.Text.Json.Serialization.JsonIgnore]
-    public string ChangedAtDisplay => Services.DateTimeContract.FormatNewZealand(ChangedAt);
 }
 
 public sealed class ValidationIssue

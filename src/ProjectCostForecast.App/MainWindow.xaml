@@ -20,6 +20,7 @@
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
     <Window.Resources>
+        <local:DateTimeDisplayConverter x:Key="DateTimeDisplayConverter" />
         <local:ForecastGroupSummaryConverter x:Key="ForecastGroupSummaryConverter" />
         <local:ForecastGroupMonthSummaryConverter x:Key="ForecastGroupMonthSummaryConverter" />
         <local:DateOnlyTextConverter x:Key="DateOnlyText" />
@@ -1828,7 +1829,7 @@
                                 </local:ProjectDataGrid>
                                 <local:ProjectDataGrid x:Name="AuditGrid" local:ProjectDataGridProfiles.Profile="ReadOnlyLedger" ItemsSource="{Binding AuditEvents}">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Changed" Binding="{Binding ChangedAtDisplay}" SortMemberPath="ChangedAt" Width="155" />
+                                        <DataGridTextColumn Header="Changed" Binding="{Binding ChangedAt, Converter={StaticResource DateTimeDisplayConverter}}" SortMemberPath="ChangedAt" Width="155" />
                                         <DataGridTextColumn Header="User" Binding="{Binding ChangedBy}" Width="110" />
                                         <DataGridTextColumn Header="Entity" Binding="{Binding EntityType}" Width="115" />
                                         <DataGridTextColumn Header="ID" Binding="{Binding EntityId}" Width="80" />

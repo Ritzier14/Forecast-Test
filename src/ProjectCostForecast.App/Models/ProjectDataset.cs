@@ -255,8 +255,6 @@ public sealed class UnmatchedImportCombination
     public decimal Amount { get; set; }
     public int TransactionCount { get; set; }
 
-    [System.Text.Json.Serialization.JsonIgnore]
-    public string RecordedAtDisplay => Services.DateTimeContract.FormatNewZealand(RecordedAt);
 }
 
 public sealed class SavedMonthSnapshot
