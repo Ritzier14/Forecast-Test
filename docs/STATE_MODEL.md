@@ -457,3 +457,23 @@ Workspace layouts remain project-local persisted presentation state. The WPF
 `WorkspaceViewTab` objects are an explicit projection and are subscribed by
 reference, while saved-month snapshots remain frozen history and never feed
 current financial or schedule calculation.
+
+## 16. LUNA-18A lifecycle evidence
+
+`Luna18ALifecycleTests` records the WPF shell ownership boundary:
+
+- the main window has one named `Loaded`, `DataContextChanged`, `Unloaded`,
+  and `Closed` owner; the former Gantt-specific lifecycle registrations were
+  removed so a load or data-context replacement cannot multiply callbacks;
+- grid, routed-event, column-width, forecast-scroll, management-scroll, and
+  schedule-scroll subscriptions are attached through idempotent methods and
+  removed through the matching event or routed-handler API;
+- queued window work captures a lifetime generation and checks dispatcher
+  shutdown state, so callbacks already posted before unload/close cannot
+  update stale controls; and
+- closing disposes the view model, stops its timers, aborts its refresh and
+  schedule dispatcher operations, and detaches its tracked model subscriptions.
+
+The focused suite also proves that a queued refresh coordinator callback is a
+safe no-op after disposal. Child-window async ownership remains LUNA-18B, and
+binding trace capture remains LUNA-18C.

@@ -82,7 +82,7 @@ public partial class MainWindow
 
     private void QueueRestoreForecastGridRefreshState(DataGrid grid)
     {
-        Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
+        QueueMainWindowWork(DispatcherPriority.Render, () =>
         {
             if (_pendingForecastGridRefreshState is not { } state)
             {
@@ -118,7 +118,7 @@ public partial class MainWindow
                 return;
             }
 
-            Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+            QueueMainWindowWork(DispatcherPriority.Input, () =>
             {
                 var row = grid.ItemContainerGenerator.ContainerFromItem(state.CurrentItem) as DataGridRow;
                 var presenter = row is null ? null : FindChild<DataGridCellsPresenter>(row);
@@ -136,8 +136,8 @@ public partial class MainWindow
                 }
 
                 editor.Focus();
-            }));
-        }));
+            });
+        });
     }
 
     private void QueueRestoreForecastGroupExpansion()
@@ -148,11 +148,14 @@ public partial class MainWindow
         }
 
         _forecastGroupExpansionRestoreQueued = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        if (!QueueMainWindowWork(DispatcherPriority.Loaded, () =>
         {
             _forecastGroupExpansionRestoreQueued = false;
             SetForecastGroupExpansion(ForecastLinesGrid, _forecastGroupsExpanded);
-        }));
+        }))
+        {
+            _forecastGroupExpansionRestoreQueued = false;
+        }
     }
 
     private sealed record ForecastGridRefreshState(

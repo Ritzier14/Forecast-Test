@@ -69,31 +69,6 @@ public partial class MainWindow
     private double _scheduleLinkClipboardStartX;
     private double _scheduleLinkClipboardStartY;
 
-    private void InitializeGanttChart()
-    {
-        Loaded += MainWindow_GanttLoaded;
-        DataContextChanged += MainWindow_GanttDataContextChanged;
-        Unloaded += MainWindow_SubscriptionsUnloaded;
-    }
-
-    private void MainWindow_GanttLoaded(object sender, RoutedEventArgs e)
-    {
-        WireViewModelSubscriptions();
-        WireGanttSubscriptions();
-    }
-
-    private void MainWindow_GanttDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
-    {
-        WireViewModelSubscriptions();
-        WireGanttSubscriptions();
-    }
-
-    private void MainWindow_SubscriptionsUnloaded(object sender, RoutedEventArgs e)
-    {
-        UnwireGanttSubscriptions();
-        UnwireViewModelSubscriptions();
-    }
-
     private void WireGanttSubscriptions()
     {
         var nextViewModel = DataContext as MainWindowViewModel;
@@ -123,6 +98,15 @@ public partial class MainWindow
 
         _ganttSubscribedViewModel.ScheduleRecalculated -= GanttViewModel_ScheduleRecalculated;
         _ganttSubscribedViewModel = null;
+    }
+
+    private void UnwireGanttVisualSubscriptions()
+    {
+        if (_scheduleGridScrollViewer is not null)
+        {
+            _scheduleGridScrollViewer.ScrollChanged -= ScheduleGridScrollViewer_ScrollChanged;
+            _scheduleGridScrollViewer = null;
+        }
     }
 
     private void GanttViewModel_ScheduleRecalculated(object? sender, EventArgs e)
@@ -438,11 +422,14 @@ public partial class MainWindow
         }
 
         _ganttRedrawQueued = true;
-        Dispatcher.BeginInvoke(new Action(() =>
+        if (!QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.Render, () =>
         {
             _ganttRedrawQueued = false;
             RedrawGantt();
-        }), System.Windows.Threading.DispatcherPriority.Render);
+        }))
+        {
+            _ganttRedrawQueued = false;
+        }
     }
 
     private void RedrawGantt()

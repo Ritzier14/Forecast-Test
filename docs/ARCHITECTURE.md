@@ -146,6 +146,15 @@ restores each value only when its identity still exists. Filter values remain in
 the view model, while dispatcher-queued column rebuilds prevent collection and
 property notifications from rebuilding the same grid more than once per turn.
 
+`MainWindow` owns one named lifetime boundary for visual wiring. `Loaded` and
+`DataContextChanged` call the idempotent view-model/Gantt attach methods, while
+`Unloaded` and `Closed` detach grid, scroll-viewer, routed-event, width,
+timer, and dispatcher work. Each queued window action captures a lifetime
+version and is ignored after unload or close. Closing the shell also disposes
+the view model, stopping its preference/search timers and aborting queued
+refresh or schedule work. Reopening the same window reattaches handlers and
+restores transient visual state without repeating the initial column rebuild.
+
 The state inventory and ownership boundary is recorded in
 [`STATE_MODEL.md`](STATE_MODEL.md). It classifies every `ProjectDataset` root
 collection and persisted calculated field, records the current identity and

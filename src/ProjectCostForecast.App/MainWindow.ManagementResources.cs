@@ -66,7 +66,7 @@ public partial class MainWindow
         }
 
         _managementResourceGridSyncQueued = true;
-        Dispatcher.BeginInvoke(() =>
+        if (!QueueMainWindowWork(DispatcherPriority.Render, () =>
         {
             _managementResourceGridSyncQueued = false;
             var grids = GetManagementResourceGrids();
@@ -107,7 +107,10 @@ public partial class MainWindow
             }
 
             AttachManagementResourceScrollSync(grids);
-        }, DispatcherPriority.Render);
+        }))
+        {
+            _managementResourceGridSyncQueued = false;
+        }
     }
 
     private void AttachManagementResourceWidthSync(IReadOnlyList<DataGrid> grids)

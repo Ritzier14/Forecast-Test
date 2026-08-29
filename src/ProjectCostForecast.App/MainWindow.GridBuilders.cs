@@ -569,11 +569,14 @@ public partial class MainWindow
         }
 
         _forecastYearBandRebuildQueued = true;
-        Dispatcher.BeginInvoke(priority, new Action(() =>
+        if (!QueueMainWindowWork(priority, () =>
         {
             _forecastYearBandRebuildQueued = false;
             RebuildForecastYearBands();
-        }));
+        }))
+        {
+            _forecastYearBandRebuildQueued = false;
+        }
     }
 
     private void RefreshForecastColumnWidthSubscriptions()

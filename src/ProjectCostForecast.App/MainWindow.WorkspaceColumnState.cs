@@ -134,11 +134,14 @@ public partial class MainWindow
         }
 
         _monthlyPivotColumnsRebuildQueued = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(() =>
+        if (!QueueMainWindowWork(DispatcherPriority.DataBind, () =>
         {
             _monthlyPivotColumnsRebuildQueued = false;
             RebuildMonthlyPivotColumns();
-        }));
+        }))
+        {
+            _monthlyPivotColumnsRebuildQueued = false;
+        }
     }
 
     private void QueueRebuildForecastGridColumns()
@@ -149,12 +152,15 @@ public partial class MainWindow
         }
 
         _forecastGridColumnsRebuildQueued = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(() =>
+        if (!QueueMainWindowWork(DispatcherPriority.DataBind, () =>
         {
             _forecastGridColumnsRebuildQueued = false;
             RebuildForecastGridColumns();
             ConfigureSelectedMonthlyForecastGrid();
-        }));
+        }))
+        {
+            _forecastGridColumnsRebuildQueued = false;
+        }
     }
 
     private void QueueRebuildBudgetGridColumns()
@@ -165,11 +171,14 @@ public partial class MainWindow
         }
 
         _budgetGridColumnsRebuildQueued = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(() =>
+        if (!QueueMainWindowWork(DispatcherPriority.DataBind, () =>
         {
             _budgetGridColumnsRebuildQueued = false;
             RebuildBudgetGridColumns();
-        }));
+        }))
+        {
+            _budgetGridColumnsRebuildQueued = false;
+        }
     }
 
     private void SubscribedViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -282,11 +291,14 @@ public partial class MainWindow
         }
 
         _ledgerChartScrollQueued = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        if (!QueueMainWindowWork(DispatcherPriority.Loaded, () =>
         {
             _ledgerChartScrollQueued = false;
             LedgerChartScrollViewer.ScrollToRightEnd();
-        }));
+        }))
+        {
+            _ledgerChartScrollQueued = false;
+        }
     }
 
     private void QueueApplyCurrentWorkspaceViewColumnState()
@@ -297,11 +309,14 @@ public partial class MainWindow
         }
 
         _workspaceViewColumnStateQueued = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        if (!QueueMainWindowWork(DispatcherPriority.Loaded, () =>
         {
             _workspaceViewColumnStateQueued = false;
             ApplyCurrentWorkspaceViewColumnState();
-        }));
+        }))
+        {
+            _workspaceViewColumnStateQueued = false;
+        }
     }
 
     private void QueueApplyCurrentDetailWorkspaceViewColumnState()
@@ -312,11 +327,14 @@ public partial class MainWindow
         }
 
         _detailWorkspaceViewColumnStateQueued = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        if (!QueueMainWindowWork(DispatcherPriority.Loaded, () =>
         {
             _detailWorkspaceViewColumnStateQueued = false;
             ApplyCurrentDetailWorkspaceViewColumnState();
-        }));
+        }))
+        {
+            _detailWorkspaceViewColumnStateQueued = false;
+        }
     }
 
     private void ApplyCurrentWorkspaceViewColumnState()
@@ -683,7 +701,7 @@ public partial class MainWindow
             .ToList();
 
         ApplyForecastFreezeBoundary(ForecastLinesGrid, viewModel, freezeCandidates);
-        Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(RebuildForecastYearBands));
+        QueueMainWindowWork(DispatcherPriority.Render, RebuildForecastYearBands);
         QueueRebuildForecastYearBands();
     }
 

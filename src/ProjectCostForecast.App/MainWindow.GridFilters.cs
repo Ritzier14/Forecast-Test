@@ -145,14 +145,17 @@ public partial class MainWindow
             return;
         }
 
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        if (!QueueMainWindowWork(DispatcherPriority.Background, () =>
         {
             _workspaceColumnStateCaptureQueuedGrids.Remove(grid);
             if (!_applyingWorkspaceColumnState)
             {
                 CaptureGridColumnState(grid);
             }
-        }));
+        }))
+        {
+            _workspaceColumnStateCaptureQueuedGrids.Remove(grid);
+        }
     }
 
     private void Grid_MouseMove(object sender, MouseEventArgs e)

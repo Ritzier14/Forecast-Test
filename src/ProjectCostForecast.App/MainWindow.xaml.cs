@@ -143,6 +143,11 @@ public partial class MainWindow : Window
     private bool _budgetGridColumnsRebuildQueued;
     private bool _forecastGroupExpansionRestoreQueued;
     private ForecastGridRefreshState? _pendingForecastGridRefreshState;
+    private bool _mainWindowLoaded;
+    private bool _mainWindowVisualsInitialized;
+    private bool _mainWindowNeedsVisualRefresh = true;
+    private bool _mainWindowClosed;
+    private int _mainWindowLifetimeVersion;
     private bool _applyingWorkspaceColumnState;
     private readonly HashSet<DataGrid> _workspaceColumnStateTrackedGrids = [];
     private readonly HashSet<DataGridColumn> _workspaceColumnStateTrackedColumns = [];
@@ -181,55 +186,11 @@ public partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(viewModel);
         InitializeComponent();
         ApplyWorkspaceCategorySelection();
-        InitializeGanttChart();
         DataContext = viewModel;
-        Loaded += (_, _) =>
-        {
-            ApplyWindowPreferences();
-            WireViewModelSubscriptions();
-            ApplySavedWorkspaceTabOrders();
-            RebuildMonthlyPivotColumns();
-            RebuildBudgetGridColumns();
-            ConfigureSelectedMonthlyForecastGrid();
-            ConfigureTaskCodeReviewGrid();
-            StartForecastGridFirstDrawMeasure();
-            RebuildForecastGridColumns();
-            AttachColumnMenus(this);
-            ApplyDefaultColumnPresentation(this);
-            AttachGridPanHandlers(this);
-            AttachSpreadsheetGridHandlers(this);
-            AttachForecastGridScrollSync();
-            QueueApplyCurrentWorkspaceViewColumnState();
-            QueueApplyCurrentDetailWorkspaceViewColumnState();
-            QueueScrollLedgerChartToEnd();
-            RefreshForecastGridStatePills();
-            RefreshWorkspaceTabIcons();
-            UpdateForecastGroupToggleVisual();
-            ForecastGridHost.SizeChanged += ForecastGridHost_SizeChanged;
-            QueueReportForecastGridFirstDraw();
-            InitializeMonthlyReportCanvas();
-        };
-        DataContextChanged += (_, _) =>
-        {
-            ApplyWindowPreferences();
-            WireViewModelSubscriptions();
-            ApplySavedWorkspaceTabOrders();
-            RebuildMonthlyPivotColumns();
-            RebuildBudgetGridColumns();
-            ConfigureSelectedMonthlyForecastGrid();
-            ConfigureTaskCodeReviewGrid();
-            RebuildForecastGridColumns();
-            ApplyDefaultColumnPresentation(this);
-            AttachSpreadsheetGridHandlers(this);
-            AttachForecastGridScrollSync();
-            RebuildForecastYearBands();
-            QueueApplyCurrentWorkspaceViewColumnState();
-            QueueApplyCurrentDetailWorkspaceViewColumnState();
-            RefreshForecastGridStatePills();
-            RefreshWorkspaceTabIcons();
-            UpdateForecastGroupToggleVisual();
-            QueueScrollLedgerChartToEnd();
-        };
+        Loaded += MainWindow_Loaded;
+        DataContextChanged += MainWindow_DataContextChanged;
+        Unloaded += MainWindow_Unloaded;
+        Closed += MainWindow_Closed;
     }
 
     private void StartForecastGridFirstDrawMeasure()
@@ -249,7 +210,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ContextIdle, new Action(() =>
+        QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.ContextIdle, () =>
         {
             if (_forecastGridFirstDrawReported || _forecastGridFirstDrawTimer is null)
             {
@@ -262,7 +223,7 @@ public partial class MainWindow : Window
                 "forecast-grid-first-draw",
                 _forecastGridFirstDrawTimer.Elapsed,
                 $"rows={ForecastLinesGrid.Items.Count:N0} columns={ForecastLinesGrid.Columns.Count:N0}");
-        }));
+        });
     }
 
     private void ForecastGridHost_SizeChanged(object sender, SizeChangedEventArgs e)

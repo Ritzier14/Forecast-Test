@@ -54,6 +54,7 @@ This build advances the original Alpha 1 workbook rebuild toward the Alpha 3+ ro
 - The LUNA-16A suite proves canonical financial collection identity, derived category-cache rebuilding from inputs, legacy-fixture total parity, and saved-month projection isolation/restoration.
 - The LUNA-16B suite proves schedule/snapshot collection identity, idempotent replacement subscription tracking, dirty coverage for supported persisted editors, preference separation, and old-project subscription detachment.
 - The LUNA-17 suite proves merged refresh requests, batch-held refreshes, one calculation/pivot path for a full refresh, stable filter/resource/line selection, and the measured refresh phase contract; the Release verifier also covers the retained 428-assertion smoke gate.
+- The LUNA-18A suite proves one named MainWindow lifecycle owner, matching routed/grid/scroll detachment, generation-guarded dispatcher work, and view-model timer/refresh disposal; the Release verifier also covers the retained 428-assertion smoke gate.
 
 ### Remaining Before A Formal Production Release
 

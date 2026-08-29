@@ -251,13 +251,13 @@ public partial class MainWindow
 
     private void QueueAttachInteractiveGridHandlers()
     {
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        QueueMainWindowWork(DispatcherPriority.Loaded, () =>
         {
             AttachColumnMenus(this);
             ApplyDefaultColumnPresentation(this);
             AttachGridPanHandlers(this);
             AttachSpreadsheetGridHandlers(this);
-        }));
+        });
     }
 
     private void HideDetailWorkspacePanel_Click(object sender, RoutedEventArgs e)

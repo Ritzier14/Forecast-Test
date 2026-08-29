@@ -547,11 +547,14 @@ public partial class MainWindow
         }
 
         _forecastGroupHeaderRefreshQueued = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
+        if (!QueueMainWindowWork(DispatcherPriority.Render, () =>
         {
             _forecastGroupHeaderRefreshQueued = false;
             RefreshForecastGroupHeaderPresenters();
-        }));
+        }))
+        {
+            _forecastGroupHeaderRefreshQueued = false;
+        }
     }
 
     private IEnumerable<DataGrid> GetHighlightableGrids()

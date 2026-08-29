@@ -14,7 +14,7 @@ using ProjectCostForecast.App.Services;
 
 namespace ProjectCostForecast.App.ViewModels;
 
-public sealed partial class MainWindowViewModel : NotifyObject
+public sealed partial class MainWindowViewModel : NotifyObject, IDisposable
 {
     private static readonly string AppVersionValue =
         typeof(MainWindowViewModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
@@ -185,21 +185,13 @@ public sealed partial class MainWindowViewModel : NotifyObject
         {
             Interval = TimeSpan.FromMilliseconds(350)
         };
-        _preferenceSaveTimer.Tick += (_, _) =>
-        {
-            _preferenceSaveTimer.Stop();
-            PersistUserPreferences();
-        };
+        _preferenceSaveTimer.Tick += PreferenceSaveTimer_Tick;
 
         _searchRefreshTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = TimeSpan.FromMilliseconds(180)
         };
-        _searchRefreshTimer.Tick += (_, _) =>
-        {
-            _searchRefreshTimer.Stop();
-            RefreshSearchViews();
-        };
+        _searchRefreshTimer.Tick += SearchRefreshTimer_Tick;
         _dataset = dependencies.InitialDatasetFactory()
             ?? throw new InvalidOperationException("The initial dataset factory returned null.");
         _userPreferences = _userPreferencesService.Load();

@@ -277,17 +277,30 @@ public sealed partial class MainWindowViewModel
 
     private void QueueScheduleRecalculation()
     {
-        if (_scheduleRecalcQueued)
+        if (_disposed || _scheduleRecalcQueued)
         {
             return;
         }
 
         _scheduleRecalcQueued = true;
-        Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        var dispatcher = Dispatcher.CurrentDispatcher;
+        try
         {
+            _scheduleRecalculationOperation = dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                _scheduleRecalculationOperation = null;
+                _scheduleRecalcQueued = false;
+                if (!_disposed)
+                {
+                    RecalculateSchedule();
+                }
+            }));
+        }
+        catch (InvalidOperationException) when (dispatcher.HasShutdownStarted)
+        {
+            _scheduleRecalculationOperation = null;
             _scheduleRecalcQueued = false;
-            RecalculateSchedule();
-        });
+        }
     }
 
     private void ScheduleActivity_PropertyChanged(ScheduleActivity activity, PropertyChangedEventArgs e)

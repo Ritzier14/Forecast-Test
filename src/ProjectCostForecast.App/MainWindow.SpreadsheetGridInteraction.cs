@@ -54,7 +54,7 @@ public partial class MainWindow
             return;
         }
 
-        Dispatcher.BeginInvoke(() =>
+        if (!QueueMainWindowWork(System.Windows.Threading.DispatcherPriority.Background, () =>
         {
             _spreadsheetSelectionUpdateQueued.Remove(grid);
             using (GridPerformanceDiagnostics.Measure($"grid-selection-update:{grid.Name}"))
@@ -71,7 +71,12 @@ public partial class MainWindow
                     UpdateSpreadsheetSelectionVisuals(grid, pendingItems);
                 }
             }
-        }, System.Windows.Threading.DispatcherPriority.Background);
+        }))
+        {
+            _spreadsheetSelectionUpdateQueued.Remove(grid);
+            _spreadsheetSelectionVisualPendingItems.Remove(grid);
+            _spreadsheetSelectionVisualFullRefresh.Remove(grid);
+        }
     }
 
     private void AttachSpreadsheetGridHandlers(DependencyObject root)

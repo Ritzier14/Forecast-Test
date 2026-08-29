@@ -25,9 +25,13 @@ public sealed partial class MainWindowViewModel
         _refreshCoordinator.Measure(phase, action);
     }
 
-    private static void ScheduleRefreshWork(Action action)
+    private void ScheduleRefreshWork(Action action)
     {
         ArgumentNullException.ThrowIfNull(action);
+        if (_disposed)
+        {
+            return;
+        }
 
         var dispatcher = Application.Current?.Dispatcher;
         if (dispatcher is null || dispatcher.HasShutdownStarted)
@@ -36,16 +40,40 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        dispatcher.BeginInvoke(action, DispatcherPriority.ApplicationIdle);
+        try
+        {
+            _refreshDispatcherOperation = dispatcher.BeginInvoke(new Action(() =>
+            {
+                _refreshDispatcherOperation = null;
+                if (!_disposed)
+                {
+                    action();
+                }
+            }), DispatcherPriority.ApplicationIdle);
+        }
+        catch (InvalidOperationException) when (dispatcher.HasShutdownStarted)
+        {
+            _refreshDispatcherOperation = null;
+        }
     }
 
     private void RequestRefresh(RefreshRequest request)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         _refreshCoordinator.Request(request);
     }
 
     private void ExecuteRefreshRequest(RefreshRequest request)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         var projections = request.Projections;
 
         if (request.Recalculate)
